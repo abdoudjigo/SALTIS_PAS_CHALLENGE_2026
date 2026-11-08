@@ -1,7 +1,8 @@
 version: 2
 sources:
   - name: raw
-    schema: raw
+    database: SALTIS
+    schema: RAW
     tables:
       - name: a_saisons_departement
       - name: a_profil_agroclimatique_departement
