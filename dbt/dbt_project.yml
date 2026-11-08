@@ -1,0 +1,8 @@
+name: saltis
+version: "1.0"
+profile: saltis
+model-paths: ["models"]
+models:
+  saltis:
+    staging: {+materialized: view, +schema: staging}
+    marts: {+materialized: table, +schema: marts}

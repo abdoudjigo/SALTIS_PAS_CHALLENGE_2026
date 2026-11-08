@@ -1,0 +1,10 @@
+version: 2
+models:
+  - name: mart_saisons
+    columns:
+      - name: code_departement
+        tests: [not_null]
+  - name: mart_adequation
+    columns:
+      - name: code_departement
+        tests: [not_null]
