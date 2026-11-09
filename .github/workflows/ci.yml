@@ -7,6 +7,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
-      - run: pip install ruff dbt-postgres
+      - run: pip install ruff dbt-snowflake
       - run: ruff check .
       - run: cd dbt && dbt parse --profiles-dir .
+        env:
+          SNOWFLAKE_ACCOUNT: parse-only
+          SNOWFLAKE_USER: parse-only
+          SNOWFLAKE_PASSWORD: parse-only
+          SNOWFLAKE_ROLE: parse-only
+          SNOWFLAKE_WAREHOUSE: parse-only
+          SNOWFLAKE_DATABASE: SALTIS
+          SNOWFLAKE_SCHEMA: PUBLIC

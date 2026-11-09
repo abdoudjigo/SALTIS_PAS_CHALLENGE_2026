@@ -10,30 +10,53 @@ Les agriculteurs doivent savoir **comment sera la pluie de la campagne** (courte
 | Module | Question | Tables (dbt marts) |
 |---|---|---|
 | A. Suivi & anticipation agroclimatique | Quelle pluie, quelle saison ? | `mart_saisons`, `mart_profil_agro` |
-| B. Choix cultures & variétés | Que semer, avec quel cycle ? | `mart_adequation` |
-| C. Besoins & rendements | Combien d'intrants, quels facteurs limitants ? | `mart_besoins`, `mart_rendements` |
+| B. Choix cultures & variétés | Que semer, avec quel cycle ? | `mart_adequation`, `mart_adequation_varietes` |
+| C. Besoins & rendements | Combien d'intrants, quels facteurs limitants ? | `mart_besoins`, `mart_rendements`, `mart_facteurs_limitants` |
 | D. AgroDistrib | Comment répartir les intrants ? | `mart_agrodistrib` |
 
-## Architecture (volontairement simple)
+## Architecture
 ```
 sources (CHIRPS, NASA POWER, SoilGrids, DAPSA…)
-   └─ ingestion/  (Python)  ──►  PostgreSQL (schéma raw)
-                                   └─ dbt/  (staging → marts)  ──►  PostgreSQL (schéma marts)
-                                                                      ├─ ml/   (prévision pluie, rendement)
-                                                                      ├─ api/  (FastAPI)
-                                                                      └─ app/  (front carte Mapbox)
+   └─ CSV ──► Snowflake SALTIS.RAW
+                 └─ dbt/ (staging → marts) ──► Snowflake SALTIS.STAGING / SALTIS.MARTS
+                                                   ├─ ml/   (prévision pluie, rendement)
+                                                   └─ app/  (front carte Mapbox)
+
+L'API et le chargeur Python historiques utilisent encore PostgreSQL; ils ne font pas partie de la cible Snowflake/dbt configurée ici.
 ```
 Pas de Redis, Airflow ni Kafka : on n'en a pas besoin pour une démo en une semaine. `make` suffit pour orchestrer.
 
 ## Démarrage rapide
 ```bash
 cp .env.example .env
-make up          # PostgreSQL via Docker
 make install     # venv + dépendances
-make load        # charge data/modules/*.csv dans le schéma raw
-make dbt-run     # construit staging + marts
+make dbt-run     # construit staging + marts dans Snowflake
 make api         # http://localhost:8000/docs
 ```
+
+## Cible Snowflake pour dbt
+
+dbt cible Snowflake. Pour exécuter les modèles dans le compte où les CSV sont déjà chargés :
+
+1. Installer les dépendances du projet (`python -m venv .venv`, puis `.\.venv\Scripts\python.exe -m pip install -r requirements.txt` sous Windows).
+2. Copier `.env.example` vers `.env`, puis renseigner `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER` et `SNOWFLAKE_PASSWORD`. L'identifiant du compte est celui attendu par le connecteur Snowflake, pas l'URL complète de Snowsight.
+3. Le profil utilise l'authentification Snowflake par mot de passe. Ne pas configurer l'authentification par navigateur pour ce profil et ne jamais commiter de mot de passe.
+4. Depuis PowerShell, charger les variables locales, puis vérifier la connexion et lancer dbt :
+
+```powershell
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^\s*([^#=]+)=(.*)$') {
+        [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
+    }
+}
+Push-Location dbt
+& ..\.venv\Scripts\dbt.exe debug --profiles-dir . --target snowflake
+& ..\.venv\Scripts\dbt.exe run --profiles-dir . --target snowflake
+& ..\.venv\Scripts\dbt.exe test --profiles-dir . --target snowflake
+Pop-Location
+```
+
+Le profil Snowflake utilise par défaut le rôle `SYSADMIN`, l'entrepôt `SALTIS_WH` et la base `SALTIS`. Les modèles configurés avec `+schema: staging` et `+schema: marts` sont créés dans `SALTIS.STAGING` et `SALTIS.MARTS`; le schéma `RAW` est déclaré comme source et n'est pas modifié par dbt. La description des transformations, des grains et des limites des modèles est dans [`dbt/README.md`](./dbt/README.md).
 
 ## Données
 Les gros fichiers ne vont **pas** dans Git (voir `.gitignore`). Les tables `a_*`, `b_*`, `c_*`, `d_*` se partagent via un dossier Drive commun, à déposer dans `data/modules/`. Détail des colonnes : `docs/data-dictionary.md`.

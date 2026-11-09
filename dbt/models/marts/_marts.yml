@@ -1,10 +1,64 @@
 version: 2
 models:
   - name: mart_saisons
+    description: Bilan des pluies, alertes et conditions de chaque saison agricole par département.
     columns:
       - name: code_departement
         tests: [not_null]
-  - name: mart_adequation
+      - name: annee
+        tests: [not_null]
+  - name: mart_profil_agro
+    description: Climatologie habituelle et caractéristiques des sols par département.
     columns:
       - name: code_departement
+        tests: [not_null, unique]
+  - name: mart_adequation
+    description: Adéquation des cultures selon le département et la durée du cycle.
+    columns:
+      - name: code_departement
+        tests: [not_null]
+      - name: culture
+        tests: [not_null]
+      - name: classe_cycle
+        tests: [not_null]
+  - name: mart_adequation_varietes
+    description: Adéquation des variétés documentées selon le département.
+    columns:
+      - name: code_departement
+        tests: [not_null]
+      - name: culture
+        tests: [not_null]
+      - name: variete
+        tests: [not_null]
+  - name: mart_besoins
+    description: Besoins estimés en intrants et irrigation par département et par culture.
+    columns:
+      - name: code_departement
+        tests: [not_null]
+      - name: culture
+        tests: [not_null]
+  - name: mart_facteurs_limitants
+    description: Facteurs associés aux rendements et pistes d'amélioration par zone et culture.
+    columns:
+      - name: zone_agroecologique
+        tests: [not_null]
+      - name: culture
+        tests: [not_null]
+  - name: mart_rendements
+    description: Historique des rendements agricoles et variables climatiques associées.
+    columns:
+      - name: code_departement
+        tests: [not_null]
+      - name: annee
+        tests: [not_null]
+      - name: culture
+        tests: [not_null]
+  - name: mart_agrodistrib
+    description: Scénarios de répartition d'intrants par département et par produit.
+    columns:
+      - name: code_departement
+        tests: [not_null]
+      - name: scenario
+        tests: [not_null]
+      - name: produit
         tests: [not_null]

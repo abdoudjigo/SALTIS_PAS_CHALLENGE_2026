@@ -10,5 +10,7 @@ data/modules/*
 dbt/target/
 dbt/logs/
 dbt/dbt_packages/
+dbt/.user.yml
 node_modules/
 .DS_Store
+dataset/
