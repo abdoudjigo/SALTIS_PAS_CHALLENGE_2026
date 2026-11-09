@@ -1,12 +1,22 @@
 version: 2
 sources:
   - name: raw
+    database: SALTIS
     schema: raw
     tables:
-      - name: a_saisons_departement
+      - name: a_predicteurs_saisonniers
       - name: a_profil_agroclimatique_departement
+      - name: a_repartition_pluie_departement_decade
+      - name: a_repartition_pluie_zone_decade
+      - name: a_saisons_departement
+      - name: a_suivi_pluie_decade
       - name: b_adequation_culture_departement
-      - name: c_rendements_departement
+      - name: b_adequation_variete_departement
+      - name: b_referentiel_varietes
       - name: c_besoins_departement_culture
+      - name: c_besoins_par_hectare
+      - name: c_facteurs_limitants_zone_culture
+      - name: c_rendements_departement
       - name: d_besoins_consolides_departement
       - name: d_stocks_disponibles
+      - name: d_scenarios_repartition

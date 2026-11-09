@@ -1,0 +1,34 @@
+version: 2
+models:
+  - name: stg_predicteurs_saisonniers
+    description: Données saisonnières utilisées pour les prédictions.
+  - name: stg_profil_agroclimatique
+    description: Profil agroclimatique moyen de chaque département.
+  - name: stg_repartition_pluie_departement
+    description: Répartition des pluies par département et par décade.
+  - name: stg_repartition_pluie_zone
+    description: Répartition des pluies par zone agroécologique et par décade.
+  - name: stg_saisons
+    description: Résumé des saisons agricoles par département et par année.
+  - name: stg_suivi_pluie
+    description: Suivi des pluies par département et par décade.
+  - name: stg_adequation
+    description: Niveau d'adéquation des cultures par département.
+  - name: stg_adequation_varietes
+    description: Niveau d'adéquation des variétés par département.
+  - name: stg_varietes
+    description: Référentiel des variétés agricoles.
+  - name: stg_besoins_culture
+    description: Besoins en intrants par département et par culture.
+  - name: stg_besoins_hectare
+    description: Besoins en intrants par hectare et par culture.
+  - name: stg_facteurs_limitants
+    description: Facteurs limitants par zone agroécologique et par culture.
+  - name: stg_rendements
+    description: Rendements agricoles par département, culture et année.
+  - name: stg_besoins
+    description: Besoins consolidés en intrants par département.
+  - name: stg_stocks
+    description: Stocks disponibles par département et par produit.
+  - name: stg_scenarios_repartition
+    description: Scénarios de répartition des stocks par département.

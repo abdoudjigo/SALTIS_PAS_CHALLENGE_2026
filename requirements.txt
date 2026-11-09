@@ -2,7 +2,7 @@ pandas
 sqlalchemy
 psycopg2-binary
 python-dotenv
-dbt-postgres
+dbt-snowflake
 fastapi
 uvicorn
 scikit-learn

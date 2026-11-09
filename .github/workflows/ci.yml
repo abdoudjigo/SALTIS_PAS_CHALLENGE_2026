@@ -1,12 +1,92 @@
-name: ci
-on: [pull_request, push]
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "dev/**"]
+  pull_request:
+    branches: [main, develop]
+
+# Si on repousse sur la même branche, on annule l'ancien run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
 jobs:
-  check:
+  # 1. Lint : attrape les erreurs de syntaxe et les vrais bugs (pas le style)
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: "3.11"}
-      - run: pip install ruff dbt-postgres
-      - run: ruff check .
-      - run: cd dbt && dbt parse --profiles-dir .
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install ruff
+      - name: Ruff (erreurs de syntaxe et bugs seulement)
+        run: ruff check . --select E9,F63,F7,F82,F401
+
+  # 2. Tests Python par composant (aucun secret requis)
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [ingestion, api, ml]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Installer les dépendances
+        if: hashFiles(format('{0}/requirements.txt', matrix.component)) != ''
+        run: pip install -r ${{ matrix.component }}/requirements.txt pytest
+      - name: Lancer pytest
+        if: hashFiles(format('{0}/requirements.txt', matrix.component)) != ''
+        working-directory: ${{ matrix.component }}
+        # code 5 = aucun test trouvé : on ne casse pas le CI pour ça
+        run: pytest -q || [ $? -eq 5 ]
+
+  # 3. dbt : compile le projet, puis build + tests sur Snowflake (schéma CI isolé)
+  dbt:
+    runs-on: ubuntu-latest
+    # pas de secrets pour les PR venant de forks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    defaults:
+      run:
+        working-directory: dbt
+    env:
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+      SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+      SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+      SNOWFLAKE_SCHEMA: CI
+      DBT_PROFILES_DIR: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install dbt-snowflake
+      - name: Installer les packages dbt (si présents)
+        run: '[ -f packages.yml ] && dbt deps || echo "pas de packages.yml"'
+      - name: Compiler le projet
+        run: dbt parse
+      - name: Build (run + test) sur Snowflake
+        run: dbt build
+
+  # 4. Verdict unique, pratique pour protéger develop et main
+  ci-status:
+    runs-on: ubuntu-latest
+    needs: [lint, tests, dbt]
+    if: always()
+    steps:
+      - name: Vérifier le résultat des jobs
+        run: |
+          echo "lint=${{ needs.lint.result }} tests=${{ needs.tests.result }} dbt=${{ needs.dbt.result }}"
+          if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.tests.result }}" != "success" ] || [ "${{ needs.dbt.result }}" != "success" ]; then
+            exit 1
+          fi

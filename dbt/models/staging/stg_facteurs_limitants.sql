@@ -1,0 +1,19 @@
+select
+    zone_agroecologique,
+    culture,
+    rendement_moyen_kg_ha,
+    rendement_atteignable_kg_ha,
+    ecart_rendement_kg_ha,
+    source_rendement,
+    facteur_limitant_principal,
+    adequation_cycle,
+    besoin_irrigation_normal_mm,
+    apport_organique_recommande,
+    amendement_ph_recommande,
+    fractionnement_azote_recommande,
+    nb_observations,
+    correlation_eau,
+    correlation_sequence_seche,
+    correlation_chaleur,
+    correlation_demarrage_tardif
+from {{ source('raw', 'c_facteurs_limitants_zone_culture') }}
