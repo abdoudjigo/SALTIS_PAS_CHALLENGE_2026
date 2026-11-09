@@ -27,24 +27,19 @@ jobs:
       - name: Ruff (erreurs de syntaxe et bugs seulement)
         run: ruff check . --select E9,F63,F7,F82,F401
 
-  # 2. Tests Python par composant (aucun secret requis)
+  # 2. Tests Python (requirements.txt à la racine, aucun secret requis)
   tests:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        component: [ingestion, api, ml]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Installer les dépendances
-        if: hashFiles(format('{0}/requirements.txt', matrix.component)) != ''
-        run: pip install -r ${{ matrix.component }}/requirements.txt pytest
+        run: pip install -r requirements.txt pytest
+      - name: Vérifier que le code se compile
+        run: python -m compileall -q api ingestion
       - name: Lancer pytest
-        if: hashFiles(format('{0}/requirements.txt', matrix.component)) != ''
-        working-directory: ${{ matrix.component }}
         # code 5 = aucun test trouvé : on ne casse pas le CI pour ça
         run: pytest -q || [ $? -eq 5 ]
 
