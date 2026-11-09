@@ -14,3 +14,4 @@ dbt/.user.yml
 node_modules/
 .DS_Store
 dataset/
+/logs/
