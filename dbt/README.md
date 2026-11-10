@@ -39,18 +39,19 @@ La constellation analytique est une évolution à construire à partir des modè
 Depuis la racine du dépôt, après avoir défini les variables Snowflake nécessaires dans l'environnement PowerShell :
 
 ```powershell
-Push-Location dbt
-& ..\.venv\Scripts\dbt.exe debug --profiles-dir . --target snowflake
-& ..\.venv\Scripts\dbt.exe run --profiles-dir . --target snowflake
-& ..\.venv\Scripts\dbt.exe test --profiles-dir . --target snowflake
-Pop-Location
+.\dbt.ps1 debug --profiles-dir . --target snowflake
+.\dbt.ps1 seed  --profiles-dir . --target snowflake
+.\dbt.ps1 run   --profiles-dir . --target snowflake
+.\dbt.ps1 test  --profiles-dir . --target snowflake
 ```
+
+`dbt.ps1` (à la racine) lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
 
 Pour reconstruire uniquement les vues staging ou un mart et ses dépendances :
 
 ```powershell
-& ..\.venv\Scripts\dbt.exe run --profiles-dir . --target snowflake --select path:models/staging
-& ..\.venv\Scripts\dbt.exe run --profiles-dir . --target snowflake --select +mart_saisons
+.\dbt.ps1 run   --profiles-dir . --target snowflake --select path:models/staging
+.\dbt.ps1 build --profiles-dir . --target snowflake --select +fact_saison_departement
 ```
 
 Le profil du projet utilise l'authentification Snowflake par mot de passe. Ne partagez et ne versionnez jamais le mot de passe ou le fichier local `.env`.

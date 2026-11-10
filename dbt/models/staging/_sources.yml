@@ -21,3 +21,9 @@ sources:
       - name: d_stocks_disponibles
       - name: d_scenarios_repartition
       - name: app_intrants
+      - name: geo_departements
+        description: >
+          Contours GADM 4.1 des départements (niveau 2), à charger avec
+          snowflake/10_geo_departements.sql. Licence non commerciale,
+          citation obligatoire. Utilisée seulement si la variable
+          geo_departements_charge vaut true.

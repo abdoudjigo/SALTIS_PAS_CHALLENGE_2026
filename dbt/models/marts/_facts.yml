@@ -159,3 +159,269 @@ models:
           - accepted_values:
               arguments:
                 values: ['1991-2020']
+
+  - name: fact_adequation_culture
+    description: >
+      Adéquation de chaque culture au climat de chaque département, par classe
+      de cycle (courte, moyenne, longue). score_adequation = round(0,6 x
+      proba_cycle_couvert_pct + 0,4 x proba_besoin_eau_couvert_pct du cycle
+      moyen), calculé par la source ; niveau : adaptée > 80, à risque > 50,
+      déconseillée <= 50. Score nul pour 'irrigation requise' et
+      'non évaluée (culture pluriannuelle)'.
+    columns:
+      - name: id_adequation_culture
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: classe_cycle
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['courte', 'moyenne', 'longue']
+      - name: proba_besoin_eau_couvert_pct
+        description: >
+          Renseignée uniquement pour le cycle moyen ; reprise aussi dans le
+          score des cycles court et long.
+      - name: niveau_adequation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
+
+  - name: fact_adequation_variete
+    description: >
+      Adéquation des variétés documentées au climat de chaque département.
+      Mil souna (type hâtif) absent (cycle inconnu) ; Sahel 177 irrigué,
+      sans probabilité de cycle couvert.
+    columns:
+      - name: id_adequation_variete
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: id_variete
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_variete')
+                field: id_variete
+      - name: niveau_adequation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise']
+
+  - name: fact_facteurs_limitants
+    description: >
+      Rendement moyen et atteignable, écart, facteur climatique limitant
+      principal, corrélations avec le rendement et recommandations de sol,
+      par zone agroécologique et culture. Sur 16 lignes
+      (est_rendement_national = true), les rendements sont des valeurs
+      nationales FAOSTAT recopiées sur la zone : ne pas les lire comme des
+      valeurs zonales. 'données insuffisantes' et 'aucun facteur climatique
+      net' sont des valeurs légitimes.
+    columns:
+      - name: id_facteur_limitant
+        data_tests: [not_null, unique]
+      - name: id_zone_agroecologique
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: rendement_moyen_kg_ha
+        data_tests: [not_null]
+      - name: rendement_atteignable_kg_ha
+        data_tests: [not_null]
+      - name: ecart_rendement_kg_ha
+        data_tests: [not_null]
+      - name: source_rendement
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['départements (DAPSA)', 'national (FAOSTAT)']
+      - name: est_rendement_national
+        data_tests: [not_null]
+      - name: facteur_limitant_principal
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['eau', 'sequence_seche', 'chaleur', 'demarrage_tardif', 'aucun facteur climatique net', 'données insuffisantes']
+      - name: apport_organique_recommande
+        data_tests: [not_null]
+      - name: amendement_ph_recommande
+        data_tests: [not_null]
+      - name: fractionnement_azote_recommande
+        data_tests: [not_null]
+
+  - name: fact_reference_agronomique
+    description: >
+      Doses de référence par zone agroécologique (nulle = dose nationale),
+      culture, intrant et source. Une ligne par dose et par source : une dose
+      ISRA s'ajoute sans écraser les références actuelles. type_intrant :
+      PRODUIT (engrais, fumier, semences), ELEMENT (N, P2O5, K2O) ou EAU
+      (irrigation). On n'additionne JAMAIS des doses de types ou d'unités
+      différents : produits et éléments décrivent la même fertilisation, et
+      les unités diffèrent (kg/ha, t/ha, m3/ha). Une dose à 0 signifie
+      « besoin nul » ; une dose inconnue ne donne pas de ligne (« dose à
+      saisir »). VALIDEE est réservé aux doses validées par un spécialiste :
+      aucune aujourd'hui.
+    columns:
+      - name: id_reference_agronomique
+        data_tests: [not_null, unique]
+      - name: id_zone_agroecologique
+        description: Nulle pour une dose nationale (portee_geographique = NATIONAL).
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+      - name: portee_geographique
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ZONE', 'NATIONAL']
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: code_intrant
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_intrant')
+                field: code_intrant
+      - name: type_intrant
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['PRODUIT', 'ELEMENT', 'EAU']
+      - name: dose
+        data_tests: [not_null]
+      - name: unite
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['kg/ha', 't/ha', 'm3/ha']
+      - name: statut_validation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'NON_VERIFIEE', 'A_COMPLETER']
+      - name: source_reference
+        data_tests: [not_null]
+      - name: note_source
+        data_tests: [not_null]
+
+  - name: fact_besoin_reference
+    description: >
+      Besoins de référence historiques, pas prévisionnels. Par département et
+      culture : superficie de référence (moyenne des dernières campagnes
+      connues, voir annees_reference et type_superficie) x dose de référence
+      de la zone. 43 départements : Guédiawaye et Pikine absents. Besoin nul
+      (null) quand la dose est à compléter, jamais remplacé par 0. « Riz
+      (irrigué) » inclut le riz pluvial de Casamance : la dose de semis de
+      40 kg/ha (repiquage irrigué) ne s'applique pas au riz pluvial.
+    columns:
+      - name: id_besoin_reference
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: superficie_reference_ha
+        data_tests: [not_null]
+      - name: annees_reference
+        data_tests: [not_null]
+      - name: type_superficie
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['semée', 'récoltée']
+      - name: besoin_semences_applicable
+        description: >
+          Faux pour « Riz (irrigué) » en Casamance (riz surtout pluvial, dose de
+          repiquage irrigué) : exclure ces lignes des totaux de semences et
+          afficher « non applicable (riz pluvial) ». La valeur du besoin n'est
+          pas modifiée.
+        data_tests: [not_null]
+      - name: statut_validation_engrais
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'NON_VERIFIEE', 'A_COMPLETER']
+      - name: statut_validation_semis
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'NON_VERIFIEE', 'A_COMPLETER']
+      - name: coherence_dose_n
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['COHERENT', 'ECART', 'A_VERIFIER']
+      - name: coherence_dose_semis
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['COHERENT', 'ECART', 'A_VERIFIER']

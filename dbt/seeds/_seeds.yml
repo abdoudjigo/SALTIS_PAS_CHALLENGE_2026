@@ -1,0 +1,20 @@
+version: 2
+
+seeds:
+  - name: ref_intrants
+    description: >
+      Référentiel des 9 intrants de référence (produits, éléments fertilisants,
+      eau) avec leur unité et leurs teneurs en N, P2O5 et K2O (%). Base de
+      dim_intrant ; SALTIS.APP.intrants (C3) reprendra ces code_intrant.
+    config:
+      column_types:
+        code_intrant: varchar
+        nom_intrant: varchar
+        type_intrant: varchar
+        unite: varchar
+        teneur_n_pct: float
+        teneur_p2o5_pct: float
+        teneur_k2o_pct: float
+    columns:
+      - name: code_intrant
+        data_tests: [not_null, unique]
