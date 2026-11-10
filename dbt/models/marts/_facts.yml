@@ -159,3 +159,81 @@ models:
           - accepted_values:
               arguments:
                 values: ['1991-2020']
+
+  - name: fact_adequation_culture
+    description: >
+      Adéquation de chaque culture au climat de chaque département, par classe
+      de cycle (courte, moyenne, longue). score_adequation = round(0,6 x
+      proba_cycle_couvert_pct + 0,4 x proba_besoin_eau_couvert_pct du cycle
+      moyen), calculé par la source ; niveau : adaptée > 80, à risque > 50,
+      déconseillée <= 50. Score nul pour 'irrigation requise' et
+      'non évaluée (culture pluriannuelle)'.
+    columns:
+      - name: id_adequation_culture
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: classe_cycle
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['courte', 'moyenne', 'longue']
+      - name: proba_besoin_eau_couvert_pct
+        description: >
+          Renseignée uniquement pour le cycle moyen ; reprise aussi dans le
+          score des cycles court et long.
+      - name: niveau_adequation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
+
+  - name: fact_adequation_variete
+    description: >
+      Adéquation des variétés documentées au climat de chaque département.
+      Mil souna (type hâtif) absent (cycle inconnu) ; Sahel 177 irrigué,
+      sans probabilité de cycle couvert.
+    columns:
+      - name: id_adequation_variete
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: id_variete
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_variete')
+                field: id_variete
+      - name: niveau_adequation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise']
