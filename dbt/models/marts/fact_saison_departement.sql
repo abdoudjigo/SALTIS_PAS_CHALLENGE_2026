@@ -9,7 +9,8 @@
 -- (pluie, SPI, démarrage, séquences sèches, chaleur, NDVI) : elles ne sont plus
 -- portées par fact_rendement_departement, où elles étaient répétées pour chaque culture.
 --
--- Exclu : pluie_normale_saison_mm (constante par département, voir mart_profil_agro).
+-- Exclu : pluie_normale_saison_mm (constante par département, voir stg_profil_agroclimatique ;
+-- reprise dans mart_carte_agroclimat).
 -- Limites connues :
 --   - Guédiawaye : calendrier NASA POWER (source_calendrier), pas de décades ;
 --   - NDVI disponible à partir de 2000.
