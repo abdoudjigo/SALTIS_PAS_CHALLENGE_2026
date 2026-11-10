@@ -9,6 +9,27 @@
 
 ---
 
+> **État de mise en œuvre (10/11/2026).** Ce document décrit l'architecture **cible**. Ce qui est réellement construit, avec les grains, volumes, règles et limites, est suivi dans [`etat-modelisation.md`](etat-modelisation.md) ; le contrat des marts est dans [`contrat-donnees.md`](contrat-donnees.md).
+>
+> | Élément proposé ici | État |
+> |---|---|
+> | `dim_temps`, `dim_geographie`, `dim_zone_agroecologique`, `dim_culture`, `dim_variete` | construits |
+> | `dim_region` (non prévue ici) | construite : région et zone sont deux regroupements parallèles (voir 6.1) |
+> | `dim_intrant` | construite sur le référentiel `seeds/ref_intrants.csv` (9 intrants), en attendant `APP_INTRANTS` |
+> | `dim_organisation`, `dim_scenario_allocation` | désactivées : tables de l'application pas encore disponibles |
+> | `fact_pluviometrie_decadaire`, `fact_climatologie_decadaire`, `fact_rendement_departement`, `fact_reference_agronomique` | construits |
+> | `fact_climat_mensuel`, `fact_pluie_station_mensuelle` | non construits : `departement_mois` et `stations_pluie_mois` ne sont pas dans `SALTIS.RAW` |
+> | `fact_rendement_national` | non construit : les valeurs nationales sont exclues des faits départementaux ; pas de source nationale dédiée dans RAW |
+> | `fact_besoin_intrant` | remplacé pour l'instant par `fact_besoin_reference` (besoins de référence historiques, pas prévisionnels) ; le fait prévisionnel attend les plans culturaux de l'application et les doses ISRA |
+> | `fact_stock_intrant`, `fact_allocation_intrant` | à venir : tables de l'application (`APP_*`) |
+> | Faits ajoutés, non prévus ici | `fact_saison_departement` (bilan de saison, référence), `fact_adequation_culture`, `fact_adequation_variete`, `fact_facteurs_limitants` |
+> | Data marts (section 12) | remplacés par des marts par écran : `mart_carte_agroclimat`, `mart_suivi_decadaire`, `mart_choix_cultures`, `mart_besoins`, `mart_territoires_agrodistrib`, `mart_vulnerabilite_departement`, `mart_ml_prevision_pluie` |
+> | Anciens marts (copies du staging) | supprimés : `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_adequation_varietes`, `mart_rendements`, `mart_facteurs_limitants`, `mart_agrodistrib` ; `mart_besoins` reconstruit sur les faits |
+>
+> Les coopératives et les fournisseurs d'intrants sont hors périmètre (section 3).
+
+---
+
 # 1. Contexte et objectifs
 
 Assaman & Suuf est une plateforme d'aide à la décision agricole qui exploite les données climatiques, agricoles et agroclimatiques pour accompagner les producteurs, les conseillers agricoles, les ONG et les services publics dans leurs décisions.
@@ -279,13 +300,13 @@ Les données historiques ne doivent pas être présentées comme des prévisions
 
 Chaque département est rattaché à une région et à une zone agroécologique dans le référentiel géographique retenu.
 
-La hiérarchie géographique est :
+Zone agroécologique et région ne sont **pas emboîtées** : ce sont deux regroupements **parallèles** des départements.
 
-**Zone agroécologique → Région → Département**
+**Département → Région** et **Département → Zone agroécologique**
 
-Un département appartient à une seule zone agroécologique dans le référentiel actuel.
+Un département appartient à une seule région et à une seule zone agroécologique, mais une région peut couvrir plusieurs zones : Louga, Matam et Tambacounda s'étendent chacune sur deux zones. Il ne faut donc pas coder de hiérarchie zone → région.
 
-La dimension géographique doit permettre de naviguer entre ces niveaux sans dupliquer les mesures.
+La dimension géographique doit permettre d'agréger les départements par région ou par zone, sans dupliquer les mesures.
 
 ### Règle de granularité
 
@@ -845,6 +866,8 @@ Les faits de climatologie, de stations et les autres faits historiques complète
 ---
 
 # 12. Data Marts proposés
+
+> Proposition initiale. Les marts réellement construits sont des marts par écran (voir l'état de mise en œuvre en tête de document et [`contrat-donnees.md`](contrat-donnees.md)).
 
 Les Data Marts regroupent les indicateurs destinés aux utilisateurs de la plateforme et aux outils de visualisation.
 
