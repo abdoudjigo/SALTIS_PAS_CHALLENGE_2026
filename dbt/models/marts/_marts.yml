@@ -30,7 +30,8 @@ models:
   - name: dim_geographie
     description: >
       Référentiel des 45 départements avec leur région et leur zone
-      agroécologique.
+      agroécologique. Région et zone sont deux regroupements parallèles
+      (Louga, Matam et Tambacounda couvrent deux zones) : pas de hiérarchie.
     columns:
       - name: id_departement
         data_tests: [not_null, unique]
@@ -40,6 +41,21 @@ models:
         data_tests: [not_null]
       - name: region
         data_tests: [not_null]
+      - name: id_region
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: id_region
+      - name: code_region
+        description: Déduit du code département (règle GADM), à confirmer avec GID_1.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: code_region
       - name: id_zone_agroecologique
         data_tests:
           - not_null
@@ -47,6 +63,40 @@ models:
               arguments:
                 to: ref('dim_zone_agroecologique')
                 field: id_zone_agroecologique
+
+  - name: dim_region
+    description: >
+      Référentiel des 14 régions administratives, dérivé du profil
+      agroclimatique. Regroupement parallèle à la zone agroécologique,
+      sans lien région -> zone.
+    columns:
+      - name: id_region
+        data_tests: [not_null, unique]
+      - name: code_region
+        description: Déduit du code département (SEN.10.1_1 -> SEN.10_1, règle GADM), à confirmer avec GID_1.
+        data_tests: [not_null, unique]
+      - name: region
+        data_tests: [not_null, unique]
+      - name: nb_departements
+        data_tests: [not_null]
+
+  - name: dim_intrant
+    description: >
+      Référentiel des 9 intrants de référence (seed ref_intrants) : produits,
+      éléments fertilisants et eau, avec unité et teneurs N-P2O5-K2O.
+    columns:
+      - name: id_intrant
+        data_tests: [not_null, unique]
+      - name: code_intrant
+        data_tests: [not_null, unique]
+      - name: type_intrant
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['PRODUIT', 'ELEMENT', 'EAU']
+      - name: unite
+        data_tests: [not_null]
 
   - name: dim_zone_agroecologique
     description: Référentiel des 6 zones agroécologiques.
@@ -82,77 +132,3 @@ models:
               arguments:
                 to: ref('dim_culture')
                 field: id_culture
-
-  # ------------------------------------------------------------------
-  # Marts métier
-  # ------------------------------------------------------------------
-
-  - name: mart_saisons
-    description: Bilan des pluies, alertes et conditions de chaque saison agricole par département.
-    columns:
-      - name: code_departement
-        data_tests: [not_null]
-      - name: annee
-        data_tests: [not_null]
-
-  - name: mart_profil_agro
-    description: Climatologie habituelle et caractéristiques des sols par département.
-    columns:
-      - name: code_departement
-        data_tests: [not_null, unique]
-
-  - name: mart_adequation
-    description: Adéquation des cultures selon le département et la durée du cycle.
-    columns:
-      - name: code_departement
-        data_tests: [not_null]
-      - name: culture
-        data_tests: [not_null]
-      - name: classe_cycle
-        data_tests: [not_null]
-
-  - name: mart_adequation_varietes
-    description: Adéquation des variétés documentées selon le département.
-    columns:
-      - name: code_departement
-        data_tests: [not_null]
-      - name: culture
-        data_tests: [not_null]
-      - name: variete
-        data_tests: [not_null]
-
-  - name: mart_besoins
-    description: Besoins estimés en intrants et irrigation par département et par culture.
-    columns:
-      - name: code_departement
-        data_tests: [not_null]
-      - name: culture
-        data_tests: [not_null]
-
-  - name: mart_facteurs_limitants
-    description: Facteurs associés aux rendements et pistes d'amélioration par zone et culture.
-    columns:
-      - name: zone_agroecologique
-        data_tests: [not_null]
-      - name: culture
-        data_tests: [not_null]
-
-  - name: mart_rendements
-    description: Historique des rendements agricoles et variables climatiques associées.
-    columns:
-      - name: code_departement
-        data_tests: [not_null]
-      - name: annee
-        data_tests: [not_null]
-      - name: culture
-        data_tests: [not_null]
-
-  - name: mart_agrodistrib
-    description: Scénarios de répartition d'intrants par département et par produit.
-    columns:
-      - name: code_departement
-        data_tests: [not_null]
-      - name: scenario
-        data_tests: [not_null]
-      - name: produit
-        data_tests: [not_null]
