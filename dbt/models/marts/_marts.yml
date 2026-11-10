@@ -80,6 +80,24 @@ models:
       - name: nb_departements
         data_tests: [not_null]
 
+  - name: dim_intrant
+    description: >
+      Référentiel des 9 intrants de référence (seed ref_intrants) : produits,
+      éléments fertilisants et eau, avec unité et teneurs N-P2O5-K2O.
+    columns:
+      - name: id_intrant
+        data_tests: [not_null, unique]
+      - name: code_intrant
+        data_tests: [not_null, unique]
+      - name: type_intrant
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['PRODUIT', 'ELEMENT', 'EAU']
+      - name: unite
+        data_tests: [not_null]
+
   - name: dim_zone_agroecologique
     description: Référentiel des 6 zones agroécologiques.
     columns:

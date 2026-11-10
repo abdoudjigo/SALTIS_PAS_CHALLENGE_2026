@@ -43,15 +43,15 @@ Sources futures citées dans la candidature, absentes de RAW aujourd'hui : ERA5-
 
 ## Environnement
 
-- Windows / PowerShell, venv à la racine : `..\.venv\Scripts\dbt.exe` depuis `dbt/`.
+- Windows / PowerShell, venv à la racine (`.venv`) ; dbt se lance par `.\dbt.ps1` depuis la racine.
 - dbt `1.13.0-rc1`, adaptateur Snowflake `1.12.5`, profil `saltis`, target `snowflake`, `--profiles-dir .`
 - Les avertissements `FutureWarning` / `UserWarning` du connecteur Snowflake sont sans effet.
+- `dbt.exe` est bloqué par la stratégie de contrôle des applications de Windows (constaté le 10/11/2026) : toujours passer par `dbt.ps1` à la racine, qui lance `python -c "from dbt.cli.main import cli; cli()"` du venv.
 
 ```powershell
-Push-Location dbt
-& ..\.venv\Scripts\dbt.exe run  --profiles-dir . --target snowflake --select <modele>
-& ..\.venv\Scripts\dbt.exe test --profiles-dir . --target snowflake --select <modele>
-Pop-Location
+# depuis la racine du dépôt (dbt.ps1 se place dans dbt/ et passe les arguments tels quels)
+.\dbt.ps1 build --profiles-dir . --target snowflake --select <modele>
+.\dbt.ps1 test  --profiles-dir . --target snowflake --select <modele>
 ```
 
 ## Règles à respecter (décisions validées)
@@ -89,7 +89,7 @@ Pop-Location
 ### Fait et validé
 
 - **Étape 1** :
-  - modèles sans source désactivés : `stg_organisations`, `stg_intrants`, `dim_organisation`, `dim_intrant`, `dim_scenario_allocation` ;
+  - modèles sans source désactivés : `stg_organisations`, `stg_intrants`, `dim_organisation`, `dim_intrant` (réactivée en A4 sur le seed `ref_intrants`), `dim_scenario_allocation` ;
   - `dim_variete` corrigé (`tolerance_secheresse`, `disponibilite_semences`) ;
   - `int_reference_besoins_departement_culture` déplacé dans `SALTIS.INTERMEDIATE` (ancienne vue de `PUBLIC` supprimée).
 - **Étape 2** :
@@ -152,10 +152,34 @@ Pop-Location
   - grain : zone × culture, 72 lignes (6 × 12) ; clés `cle_zone`, `cle_culture` ;
   - colonnes : `nb_observations`, rendements moyen et atteignable, écart, `source_rendement`, `est_rendement_national`, facteur limitant principal, 4 corrélations, 3 recommandations de sol (booléens, depuis `oui`/`non`) ;
   - `données insuffisantes` (33 lignes) et `aucun facteur climatique net` (4) sont des valeurs légitimes ;
-  - **16 lignes à rendement national FAOSTAT recopié sur la zone** (`est_rendement_national = true`, ex. oignon 30 555,71 kg/ha dans 6 zones), toutes en `données insuffisantes` ; non corrigées ;
+  - **16 lignes à rendement national FAOSTAT recopié sur la zone** (`est_rendement_national = true`, ex. oignon 30 555,71 kg/ha dans 6 zones), toutes en `données insuffisantes` ; conservées telles quelles (décision validée) ;
+  - **Règle pour B2 et AgroDistrib** : quand `est_rendement_national` est vrai, le potentiel de gain (écart atteignable − moyen) est « non évalué au niveau de la zone » et ne doit jamais servir à comparer ni classer les zones ;
   - écart négatif pour Vallée du fleuve × Sésame (−26,12) ; `correlation_chaleur` nulle pour 5 cultures des Niayes ; `apport_organique_recommande` toujours faux ;
-  - exclus : `adequation_cycle` (voir `fact_adequation_culture`), `besoin_irrigation_normal_mm` (à reprendre avec les besoins) ;
+  - exclus : `adequation_cycle` (voir `fact_adequation_culture`), `besoin_irrigation_normal_mm` (repris en A4 comme intrant `EAU_IRRIGATION` de `fact_reference_agronomique` : volume m³/ha et besoin mm, statut « estimation FAO-56, efficience 60 % ») ;
   - tests OK : 17 génériques et `tests/fact_facteurs_limitants_valeurs_valides.sql`. 125 tests OK sur l'ensemble du projet.
+
+- **A4, étape 9** : `fact_reference_agronomique` (depuis `stg_besoins_hectare`)
+  - grain : zone (nullable = dose nationale) × culture × `code_intrant` × `source_reference`, pour que les doses ISRA s'ajoutent sans écraser les références actuelles ; `portee_geographique` (`ZONE` / `NATIONAL`), `unite`, `date_reception` (nulle aujourd'hui), `note_source` (texte d'origine) ;
+  - intrants : `PRODUIT` (NPK_15_15_15, UREE, DAP_18_46_0 en kg/ha, FUMIER en t/ha, SEMENCES en kg/ha), `ELEMENT` (N, P2O5, K2O en kg/ha), `EAU` (EAU_IRRIGATION en m³/ha, avec `besoin_eau_mm`) ;
+  - **on n'additionne jamais des types ou des unités différents** (produits et éléments décrivent la même fertilisation) ; test garde-fou : un `code_intrant` = un seul type et une seule unité ;
+  - **dose à 0 conservée** (produit absent de la formule, irrigation inutile en année normale : 0 = besoin nul) ; dose inconnue = aucune ligne (= dose à saisir, visible dans `mart_besoins` en B2) ;
+  - correspondance des statuts validée : Tounkara 2022 (Casamance × mil) et Faye 2020 (Vallée × riz, engrais et semis) → `A_CONFIRMER` ; mil extrapolé aux 5 autres zones, formule N120 P60 K60 (source web), semis riz hors Vallée → `NON_VERIFIEE` ; irrigation → `A_CONFIRMER` (« estimation calculée (FAO-56, efficience 60 %), non mesurée ») ; `VALIDEE` réservé aux doses validées par un spécialiste (aucune aujourd'hui, et toujours avec `date_reception`) ; « à compléter » → pas de ligne ;
+  - volumes : 141 lignes = EAU 72 (A_CONFIRMER, dont 22 à 0) + ELEMENT 27 (6 A_CONFIRMER, 21 NON_VERIFIEE) + PRODUIT 42 (9 A_CONFIRMER, 33 NON_VERIFIEE) ; 35 doses à 0 ;
+  - `besoin_irrigation_normal_mm` identique dans `stg_besoins_hectare` et `stg_facteurs_limitants` (72/72) ;
+  - tests OK : génériques (dont `code_intrant` → `dim_intrant`), `tests/fact_reference_agronomique_valeurs_valides.sql` et `tests/fact_reference_agronomique_bilan_elements.sql` (pour chaque zone × culture × source : N = Σ produit × teneur N, idem P2O5 et K2O, à 0,1 kg près).
+  - `dim_intrant` réactivée sur le seed `seeds/ref_intrants.csv` (9 codes, teneurs NPK 15-15-15, urée 46-0-0, DAP 18-46-0 ; fumier, semences, éléments et eau sans teneur) ; `stg_intrants` reste désactivé. Seed construit dans `SALTIS.STAGING`.
+  - **Note pour C3** : `SALTIS.APP.intrants` reprendra ces 9 `code_intrant`.
+
+- **A5, étape 10** : `fact_besoin_reference` (depuis `int_reference_besoins_departement_culture`)
+  - **besoins de référence historiques, pas prévisionnels** ; grain : département × culture, 367 lignes, 43 départements (**Guédiawaye et Pikine absents** : aucune superficie de référence) ;
+  - colonnes : `superficie_reference_ha`, `annees_reference`, `type_superficie` (semée 350, récoltée 17), 8 besoins en t (N, P2O5, K2O, NPK, urée, DAP, fumier, semences), `statut_validation_engrais` / `_semis` et `source_reference_engrais` / `_semis`, `coherence_dose_n`, `coherence_dose_semis` ;
+  - statuts calculés par les macros `macros/statuts_doses.sql`, désormais partagées avec `fact_reference_agronomique` (refonte sans changement de résultat) ; « densité documentée » (semis mil) → `A_COMPLETER` ;
+  - besoin = superficie × dose de la zone / 1000, vérifié par rapport à `fact_reference_agronomique` (à 0,05 t) ; besoin nul (null) si et seulement si statut `A_COMPLETER` ; besoin à 0 si superficie de référence à 0 (22 lignes) ;
+  - `coherence_dose_*` : uniquement `COHERENT` ou `A_VERIFIER`, aucun `ECART` ;
+  - `annees_reference` très hétérogène : 2019-2021 pour 279 lignes, mais jusqu'à 2003-2004 ;
+  - exclus : doses et irrigation par hectare (références de zone recopiées sur chaque département ; jointure par zone vers `fact_reference_agronomique`) ;
+  - riz : 38 départements avec besoin en semences, dont Casamance 7 858 t sur 10 929 t (dose de repiquage irrigué appliquée au riz surtout pluvial, voir règle `mart_besoins`) ;
+  - tests OK : 15 génériques et `tests/fact_besoin_reference_valeurs_valides.sql`. 173 tests OK sur l'ensemble du projet.
 
 ### Règle d'usage : saison ou décadaire
 
@@ -165,12 +189,27 @@ Pop-Location
 
 ### À signaler
 
-- **Adéquation des cultures** : la probabilité « eau » utilisée dans le score des cycles court et long reprend celle du cycle moyen. À recalculer par le producteur du dataset ; rien n'est corrigé dans dbt.
+- **Adéquation des cultures** : la probabilité « eau » utilisée dans le score des cycles court et long reprend celle du cycle moyen. À recalculer par le producteur du dataset (voir rubrique dédiée) ; rien n'est corrigé dans dbt.
 - **Pour B2, `mart_choix_cultures`** : comparer les cycles sur `proba_cycle_couvert_pct`, pas sur le score, et signaler que le score des cycles court et long utilise la part « eau » du cycle moyen.
 
 - `api/` appartient à Anthony : ne rien y modifier. L'endpoint `/saisons` de [api/main.py](api/main.py) lit `marts_marts.mart_saisons`, supprimé en T0. Il devra être rebranché sur `mart_carte_agroclimat` après B2.
 
 - Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql`, puis activer `geo_departements_charge`. Le front attend un GeoJSON simplifié du même fichier.
+
+- **Riz, règle pour `mart_besoins` (B2)** : « Riz (irrigué) » inclut le riz pluvial de Casamance. La dose de semis de 40 kg/ha (repiquage irrigué, Faye et al. 2020) ne s'applique pas au riz pluvial : ne pas l'utiliser pour calculer les besoins en semences du riz pluvial (Casamance), signaler « dose à saisir ». `fact_besoin_reference.besoin_semences_t` l'applique pourtant aux 9 départements de Casamance (7 858 t sur 10 929 t au niveau national) : `mart_besoins` doit les afficher comme non applicables.
+
+### Questions pour l'ISRA
+
+- Arachide : confirmer la dose « 150 kg/ha de 6-20-10 », citée seulement dans le texte du statut (`note_source`), sans dose chiffrée.
+- Mil : poids de semences par hectare (seule la densité est documentée : 5 graines par poquet à 80 × 80 cm, démariage à 3 plants).
+- Plus largement : doses validées par zone pour toutes les cultures « à compléter » (voir circuit ISRA).
+
+### À signaler au producteur du dataset
+
+- Adéquation des cultures : la probabilité « eau » des cycles court et long reprend celle du cycle moyen (voir A2).
+- Rendements et besoins : « Riz (irrigué) » regroupe aussi le riz pluvial de Casamance ; la dose de semis de 40 kg/ha (repiquage irrigué) ne vaut pas pour le riz pluvial. À séparer quand les données le permettront.
+- Facteurs limitants, Vallée du fleuve Sénégal × Sésame : rendement atteignable (723,88) inférieur au rendement moyen (750), écart −26,12 kg/ha.
+- Facteurs limitants, Niayes : `correlation_chaleur` absente pour arachide, maïs, mil (souna), niébé et sorgho, alors que les trois autres corrélations sont calculées.
 
 ### À confirmer
 
@@ -178,12 +217,6 @@ Pop-Location
 
 ### Prochaines étapes
 
-9. `fact_reference_agronomique`
-   - grain : zone × culture × intrant × source ;
-   - colonnes de traçabilité prévues dès le départ : source, unité, statut de validation, date.
-10. `fact_besoin_reference`
-    - à partir de `int_reference_besoins_departement_culture` ;
-    - besoins historiques ou de référence, pas prévisionnels.
 11. Indicateur de vulnérabilité par département (mart), à partir de `fact_saison_departement` et du profil agroclimatique.
 12. Faits AgroDistrib (besoins prévisionnels, stocks, allocations), en attente des tables PostgreSQL :
     - `APP_ORGANISATIONS` (ONG, services de l'État ; associations de semenciers à confirmer) ;

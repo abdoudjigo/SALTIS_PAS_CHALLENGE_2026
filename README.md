@@ -49,12 +49,13 @@ Get-Content .env | ForEach-Object {
         [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
     }
 }
-Push-Location dbt
-& ..\.venv\Scripts\dbt.exe debug --profiles-dir . --target snowflake
-& ..\.venv\Scripts\dbt.exe run --profiles-dir . --target snowflake
-& ..\.venv\Scripts\dbt.exe test --profiles-dir . --target snowflake
-Pop-Location
+.\dbt.ps1 debug --profiles-dir . --target snowflake
+.\dbt.ps1 seed  --profiles-dir . --target snowflake
+.\dbt.ps1 run   --profiles-dir . --target snowflake
+.\dbt.ps1 test  --profiles-dir . --target snowflake
 ```
+
+`dbt.ps1` (à la racine) lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
 
 Le profil Snowflake utilise par défaut le rôle `SYSADMIN`, l'entrepôt `SALTIS_WH` et la base `SALTIS`. Les modèles configurés avec `+schema: staging` et `+schema: marts` sont créés dans `SALTIS.STAGING` et `SALTIS.MARTS`; le schéma `RAW` est déclaré comme source et n'est pas modifié par dbt. La description des transformations, des grains et des limites des modèles est dans [`dbt/README.md`](./dbt/README.md).
 

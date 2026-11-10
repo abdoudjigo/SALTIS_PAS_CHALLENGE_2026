@@ -4,12 +4,17 @@ profile: saltis
 model-paths: ["models"]
 macro-paths: ["macros"]
 test-paths: ["tests"]
+seed-paths: ["seeds"]
 
 models:
   saltis:
     staging:      {+materialized: view,  +schema: staging}
     intermediate: {+materialized: view,  +schema: intermediate}
     marts:        {+materialized: table, +schema: marts}
+
+seeds:
+  saltis:
+    +schema: staging
 
 vars:
   # Passer à true une fois SALTIS.RAW.GEO_DEPARTEMENTS chargée (GADM 4.1) :
