@@ -110,3 +110,52 @@ models:
         data_tests: [not_null]
       - name: pluie_normale_mm
         data_tests: [not_null]
+
+
+  - name: fact_climatologie_decadaire
+    description: >
+      Climatologie décadaire de référence 1991-2020, au niveau du département
+      (44, Guédiawaye absent) et de la zone agroécologique (6) : pluie moyenne,
+      médiane, quantiles 1 année sur 5 et 4 années sur 5, maximum, jours de
+      pluie, séquences sèches, probabilités, cumul moyen et parts de saison.
+      Une ligne porte exactement une clé géographique selon niveau_geographique.
+      Les valeurs de zone viennent de la source zonale, jamais recalculées
+      depuis les départements. Toutes les mesures sont NON ADDITIVES (moyennes,
+      médianes, quantiles, probabilités, parts) : ne jamais les sommer entre
+      territoires, entre niveaux ni entre décades.
+    columns:
+      - name: id_climatologie
+        data_tests: [not_null, unique]
+      - name: niveau_geographique
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['DEPARTEMENT', 'ZONE']
+      - name: id_departement
+        description: Renseigné uniquement si niveau_geographique = DEPARTEMENT.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_zone_agroecologique
+        description: Renseigné uniquement si niveau_geographique = ZONE.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+      - name: numero_decade_annee
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_temps')
+                field: numero_decade_annee
+      - name: periode_reference
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['1991-2020']
