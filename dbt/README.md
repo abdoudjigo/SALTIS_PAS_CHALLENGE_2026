@@ -22,6 +22,10 @@ Les modèles `stg_` sont des vues dans `SALTIS.STAGING`. Les modèles `mart_` so
 
 Les modèles de mart exposent les données utiles avec une liste explicite de colonnes, conservent les grains des tables sources et ne fabriquent pas de prévisions ou de recommandations nouvelles. L'adéquation et les scénarios sont ceux déjà calculés dans les données d'entrée.
 
+## Évolution multidimensionnelle proposée
+
+La constellation analytique est une évolution à construire à partir des modèles `stg_`. Son architecture cible, les dimensions, faits, grains et liaisons proposés sont décrits dans le [README de la modélisation multidimensionnelle](../docs/README-constellation.md). Les modèles `dim_` et `fct_` n'existent pas encore.
+
 ## Limites à garder en tête
 
 - Les prévisions saisonnières ne sont pas encore produites par un modèle ML ; les tables de prédicteurs sont seulement disponibles dans la couche staging.
