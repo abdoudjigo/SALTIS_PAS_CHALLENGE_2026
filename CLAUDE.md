@@ -174,12 +174,20 @@ Sources futures citées dans la candidature, absentes de RAW aujourd'hui : ERA5-
   - **besoins de référence historiques, pas prévisionnels** ; grain : département × culture, 367 lignes, 43 départements (**Guédiawaye et Pikine absents** : aucune superficie de référence) ;
   - colonnes : `superficie_reference_ha`, `annees_reference`, `type_superficie` (semée 350, récoltée 17), 8 besoins en t (N, P2O5, K2O, NPK, urée, DAP, fumier, semences), `statut_validation_engrais` / `_semis` et `source_reference_engrais` / `_semis`, `coherence_dose_n`, `coherence_dose_semis` ;
   - statuts calculés par les macros `macros/statuts_doses.sql`, désormais partagées avec `fact_reference_agronomique` (refonte sans changement de résultat) ; « densité documentée » (semis mil) → `A_COMPLETER` ;
-  - besoin = superficie × dose de la zone / 1000, vérifié par rapport à `fact_reference_agronomique` (à 0,05 t) ; besoin nul (null) si et seulement si statut `A_COMPLETER` ; besoin à 0 si superficie de référence à 0 (22 lignes) ;
+  - besoin = superficie × dose de la zone / 1000, vérifié par rapport à `fact_reference_agronomique` (à 0,05 t) pour les 8 besoins ;
+  - **règle NULL / 0, vérifiée et testée sur les 8 besoins** : dose inconnue (statut `A_COMPLETER`) → besoin **NULL**, jamais 0 ; dose à 0 → besoin à 0 ; superficie de référence à 0 → besoin à 0 (22 lignes) ;
+  - `besoin_semences_applicable` (booléen) : faux pour « Riz (irrigué) » en Casamance (9 départements, 7 858 t), vrai ailleurs ; la valeur de `besoin_semences_t` n'est pas modifiée ; testé ;
   - `coherence_dose_*` : uniquement `COHERENT` ou `A_VERIFIER`, aucun `ECART` ;
   - `annees_reference` très hétérogène : 2019-2021 pour 279 lignes, mais jusqu'à 2003-2004 ;
   - exclus : doses et irrigation par hectare (références de zone recopiées sur chaque département ; jointure par zone vers `fact_reference_agronomique`) ;
   - riz : 38 départements avec besoin en semences, dont Casamance 7 858 t sur 10 929 t (dose de repiquage irrigué appliquée au riz surtout pluvial, voir règle `mart_besoins`) ;
-  - tests OK : 15 génériques et `tests/fact_besoin_reference_valeurs_valides.sql`. 173 tests OK sur l'ensemble du projet.
+  - tests OK : 16 génériques et `tests/fact_besoin_reference_valeurs_valides.sql`. 174 tests OK sur l'ensemble du projet.
+  - **Règles pour `mart_besoins` (B2)** :
+    - partir de `dim_geographie` (45 départements) : Guédiawaye et Pikine apparaissent avec « pas de superficie agricole de référence » ;
+    - exclure des totaux de semences les lignes `besoin_semences_applicable = false` et afficher « non applicable (riz pluvial) » ;
+    - afficher `annees_reference` avec un indicateur « référence antérieure à 2015 » ;
+    - irrigation totale (m³) = `superficie_reference_ha` × `volume_irrigation_m3_ha` (zone, `fact_reference_agronomique`), **uniquement** quand `niveau_adequation = 'irrigation requise'` (`fact_adequation_culture`), NULL sinon ;
+    - dose inconnue → « dose à saisir » ; dose à 0 → besoin nul.
 
 ### Règle d'usage : saison ou décadaire
 
@@ -207,6 +215,7 @@ Sources futures citées dans la candidature, absentes de RAW aujourd'hui : ERA5-
 ### À signaler au producteur du dataset
 
 - Adéquation des cultures : la probabilité « eau » des cycles court et long reprend celle du cycle moyen (voir A2).
+- Besoins de référence : `annees_reference` très hétérogène (2019-2021 pour 279 lignes, mais jusqu'à 2003-2004 ou 2004-2008) ; mettre à jour les superficies de référence anciennes (antérieures à 2015).
 - Rendements et besoins : « Riz (irrigué) » regroupe aussi le riz pluvial de Casamance ; la dose de semis de 40 kg/ha (repiquage irrigué) ne vaut pas pour le riz pluvial. À séparer quand les données le permettront.
 - Facteurs limitants, Vallée du fleuve Sénégal × Sésame : rendement atteignable (723,88) inférieur au rendement moyen (750), écart −26,12 kg/ha.
 - Facteurs limitants, Niayes : `correlation_chaleur` absente pour arachide, maïs, mil (souna), niébé et sorgho, alors que les trois autres corrélations sont calculées.

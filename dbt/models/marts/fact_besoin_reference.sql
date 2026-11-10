@@ -13,10 +13,10 @@
 --
 -- Limites connues :
 --   - Guédiawaye et Pikine (Dakar, Niayes) absents : aucune superficie de référence ;
---   - besoin nul (null) quand la dose est à compléter, jamais remplacé par 0 ;
---     besoin à 0 quand la superficie de référence est 0 (22 lignes) ou la dose vaut 0 ;
+--   - dose inconnue (à compléter) -> besoin NULL, jamais 0 ; dose à 0 -> besoin à 0
+--     (produit absent de la formule) ; superficie de référence à 0 -> besoin à 0 ;
 --   - « Riz (irrigué) » inclut le riz pluvial de Casamance : besoin_semences_t (repiquage
---     irrigué, 40 kg/ha) ne s'applique pas au riz pluvial ;
+--     irrigué, 40 kg/ha) ne s'y applique pas -> besoin_semences_applicable = false ;
 --   - statuts calculés avec la même correspondance que fact_reference_agronomique
 --     (macros/statuts_doses.sql).
 --
@@ -55,6 +55,14 @@ select
     besoin_dap_t,
     besoin_fumier_t,
     besoin_semences_t,
+
+    -- Faux pour « Riz (irrigué) » en Casamance : riz surtout pluvial, alors que la dose
+    -- de semis est celle du repiquage irrigué. La valeur de besoin_semences_t n'est pas
+    -- modifiée ; les marts excluent ces lignes des totaux de semences.
+    not (
+        upper(trim(culture)) = 'RIZ (IRRIGUÉ)'
+        and upper(trim(zone_agroecologique)) = 'CASAMANCE'
+    ) as besoin_semences_applicable,
 
     -- Statut des doses utilisées
     {{ statut_validation_engrais('statut_dose') }} as statut_validation_engrais,

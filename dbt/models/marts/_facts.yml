@@ -394,6 +394,13 @@ models:
           - accepted_values:
               arguments:
                 values: ['semée', 'récoltée']
+      - name: besoin_semences_applicable
+        description: >
+          Faux pour « Riz (irrigué) » en Casamance (riz surtout pluvial, dose de
+          repiquage irrigué) : exclure ces lignes des totaux de semences et
+          afficher « non applicable (riz pluvial) ». La valeur du besoin n'est
+          pas modifiée.
+        data_tests: [not_null]
       - name: statut_validation_engrais
         data_tests:
           - not_null
