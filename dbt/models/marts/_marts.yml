@@ -1,64 +1,158 @@
 version: 2
+
 models:
+
+  # ------------------------------------------------------------------
+  # Dimensions
+  # ------------------------------------------------------------------
+
+  - name: dim_temps
+    description: >
+      Calendrier journalier 1980-2035 avec mois, décade (1 à 36), campagne
+      agricole (juin N à mai N+1) et saison.
+    columns:
+      - name: id_temps
+        data_tests: [not_null, unique]
+      - name: date_complete
+        data_tests: [not_null, unique]
+      - name: decade_mois
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+                quote: false
+      - name: numero_decade_annee
+        data_tests: [not_null]
+      - name: campagne_agricole
+        data_tests: [not_null]
+
+  - name: dim_geographie
+    description: >
+      Référentiel des 45 départements avec leur région et leur zone
+      agroécologique.
+    columns:
+      - name: id_departement
+        data_tests: [not_null, unique]
+      - name: code_departement
+        data_tests: [not_null, unique]
+      - name: departement
+        data_tests: [not_null]
+      - name: region
+        data_tests: [not_null]
+      - name: id_zone_agroecologique
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+
+  - name: dim_zone_agroecologique
+    description: Référentiel des 6 zones agroécologiques.
+    columns:
+      - name: id_zone_agroecologique
+        data_tests: [not_null, unique]
+      - name: zone_agroecologique
+        data_tests: [not_null, unique]
+
+  - name: dim_culture
+    description: >
+      Référentiel des cultures présentes dans les rendements, les besoins et
+      les variétés.
+    columns:
+      - name: id_culture
+        data_tests: [not_null, unique]
+      - name: culture
+        data_tests: [not_null, unique]
+
+  - name: dim_variete
+    description: >
+      Référentiel des variétés documentées (incomplet, à compléter avec le
+      catalogue DISEM / ISRA).
+    columns:
+      - name: id_variete
+        data_tests: [not_null, unique]
+      - name: variete
+        data_tests: [not_null]
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+
+  # ------------------------------------------------------------------
+  # Marts métier
+  # ------------------------------------------------------------------
+
   - name: mart_saisons
     description: Bilan des pluies, alertes et conditions de chaque saison agricole par département.
     columns:
       - name: code_departement
-        tests: [not_null]
+        data_tests: [not_null]
       - name: annee
-        tests: [not_null]
+        data_tests: [not_null]
+
   - name: mart_profil_agro
     description: Climatologie habituelle et caractéristiques des sols par département.
     columns:
       - name: code_departement
-        tests: [not_null, unique]
+        data_tests: [not_null, unique]
+
   - name: mart_adequation
     description: Adéquation des cultures selon le département et la durée du cycle.
     columns:
       - name: code_departement
-        tests: [not_null]
+        data_tests: [not_null]
       - name: culture
-        tests: [not_null]
+        data_tests: [not_null]
       - name: classe_cycle
-        tests: [not_null]
+        data_tests: [not_null]
+
   - name: mart_adequation_varietes
     description: Adéquation des variétés documentées selon le département.
     columns:
       - name: code_departement
-        tests: [not_null]
+        data_tests: [not_null]
       - name: culture
-        tests: [not_null]
+        data_tests: [not_null]
       - name: variete
-        tests: [not_null]
+        data_tests: [not_null]
+
   - name: mart_besoins
     description: Besoins estimés en intrants et irrigation par département et par culture.
     columns:
       - name: code_departement
-        tests: [not_null]
+        data_tests: [not_null]
       - name: culture
-        tests: [not_null]
+        data_tests: [not_null]
+
   - name: mart_facteurs_limitants
     description: Facteurs associés aux rendements et pistes d'amélioration par zone et culture.
     columns:
       - name: zone_agroecologique
-        tests: [not_null]
+        data_tests: [not_null]
       - name: culture
-        tests: [not_null]
+        data_tests: [not_null]
+
   - name: mart_rendements
     description: Historique des rendements agricoles et variables climatiques associées.
     columns:
       - name: code_departement
-        tests: [not_null]
+        data_tests: [not_null]
       - name: annee
-        tests: [not_null]
+        data_tests: [not_null]
       - name: culture
-        tests: [not_null]
+        data_tests: [not_null]
+
   - name: mart_agrodistrib
     description: Scénarios de répartition d'intrants par département et par produit.
     columns:
       - name: code_departement
-        tests: [not_null]
+        data_tests: [not_null]
       - name: scenario
-        tests: [not_null]
+        data_tests: [not_null]
       - name: produit
-        tests: [not_null]
+        data_tests: [not_null]

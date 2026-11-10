@@ -20,3 +20,4 @@ sources:
       - name: d_besoins_consolides_departement
       - name: d_stocks_disponibles
       - name: d_scenarios_repartition
+      - name: app_intrants
