@@ -56,6 +56,15 @@ where (score_adequation is null)
 
 union all
 
+-- id_culture du fait égal à celui de dim_variete pour la même variété
+select variete.id_adequation_variete, 'id_culture différent de dim_variete'
+from variete
+join {{ ref('dim_variete') }} dv
+    on dv.id_variete = variete.id_variete
+where dv.id_culture <> variete.id_culture
+
+union all
+
 -- Niveau cohérent avec le score
 select id_adequation_culture, 'niveau incohérent avec le score'
 from culture

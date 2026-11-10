@@ -237,3 +237,56 @@ models:
           - accepted_values:
               arguments:
                 values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise']
+
+  - name: fact_facteurs_limitants
+    description: >
+      Rendement moyen et atteignable, écart, facteur climatique limitant
+      principal, corrélations avec le rendement et recommandations de sol,
+      par zone agroécologique et culture. Sur 16 lignes
+      (est_rendement_national = true), les rendements sont des valeurs
+      nationales FAOSTAT recopiées sur la zone : ne pas les lire comme des
+      valeurs zonales. 'données insuffisantes' et 'aucun facteur climatique
+      net' sont des valeurs légitimes.
+    columns:
+      - name: id_facteur_limitant
+        data_tests: [not_null, unique]
+      - name: id_zone_agroecologique
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: rendement_moyen_kg_ha
+        data_tests: [not_null]
+      - name: rendement_atteignable_kg_ha
+        data_tests: [not_null]
+      - name: ecart_rendement_kg_ha
+        data_tests: [not_null]
+      - name: source_rendement
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['départements (DAPSA)', 'national (FAOSTAT)']
+      - name: est_rendement_national
+        data_tests: [not_null]
+      - name: facteur_limitant_principal
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['eau', 'sequence_seche', 'chaleur', 'demarrage_tardif', 'aucun facteur climatique net', 'données insuffisantes']
+      - name: apport_organique_recommande
+        data_tests: [not_null]
+      - name: amendement_ph_recommande
+        data_tests: [not_null]
+      - name: fractionnement_azote_recommande
+        data_tests: [not_null]

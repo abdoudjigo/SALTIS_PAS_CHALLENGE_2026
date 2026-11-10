@@ -144,9 +144,18 @@ Pop-Location
 - **A2, étape 7** : `fact_adequation_culture` et `fact_adequation_variete` (module B)
   - `fact_adequation_culture` : département × culture × `classe_cycle`, 1 620 lignes (45 × 12 × 3). Exclus car constants sur les 3 cycles (vérifié) : `rendement_moyen_kg_ha`, `variabilite_rendement_cv_pct`, `classe_texture`, `ph_eau`, `reserve_utile_mm`.
   - Calcul du score par la source, vérifié sur les 1 080 lignes notées, non corrigé : `score = round(0,6 × proba_cycle_couvert_pct du cycle + 0,4 × proba_besoin_eau_couvert_pct du cycle moyen)`. Les cycles court et long reprennent la probabilité « eau » du cycle moyen, d'où `proba_besoin_eau_couvert_pct` renseignée seulement pour le cycle moyen.
-  - Niveau sur le score arrondi, seuils **stricts** : adaptée > 80, à risque > 50 et ≤ 80, déconseillée ≤ 50 (14 lignes pile à 80 ou 50). Score nul seulement pour `irrigation requise` (riz irrigué, oignon, tomate : 405) et `non évaluée (culture pluriannuelle)` (manioc : 135).
-  - `fact_adequation_variete` : département × variété, 90 lignes (45 × 2). Mil souna (type hâtif) absent (cycle inconnu) ; Sahel 177 sans `proba_cycle_couvert_pct` (irrigué). `cycle_jours` et `zones_recommandees` laissés à `dim_variete`.
+  - **Règle de seuils retenue (celle de la source)**, sur le score arrondi : `adaptée` si score > 80, `à risque` si score > 50 (et ≤ 80), `déconseillée` sinon (14 lignes pile à 80 ou 50). `dataset/README.md` corrigé (il annonçait ≥ 80). Variétés : seuil différent, `adaptée` dès `proba_cycle_couvert_pct` ≥ 80 (une ligne à 80,0 classée adaptée), conforme au README. Score nul seulement pour `irrigation requise` (riz irrigué, oignon, tomate : 405) et `non évaluée (culture pluriannuelle)` (manioc : 135).
+  - `fact_adequation_variete` : département × variété, 90 lignes (45 × 2), `id_culture` conservé et testé égal à celui de `dim_variete`. Mil souna (type hâtif) absent (cycle inconnu) ; Sahel 177 sans `proba_cycle_couvert_pct` (irrigué). `cycle_jours` et `zones_recommandees` laissés à `dim_variete`.
   - tests OK : 21 génériques et `tests/fact_adequation_valeurs_valides.sql`. 107 tests OK sur l'ensemble du projet, 29 modèles actifs.
+
+- **A3, étape 8** : `fact_facteurs_limitants` (module C)
+  - grain : zone × culture, 72 lignes (6 × 12) ; clés `cle_zone`, `cle_culture` ;
+  - colonnes : `nb_observations`, rendements moyen et atteignable, écart, `source_rendement`, `est_rendement_national`, facteur limitant principal, 4 corrélations, 3 recommandations de sol (booléens, depuis `oui`/`non`) ;
+  - `données insuffisantes` (33 lignes) et `aucun facteur climatique net` (4) sont des valeurs légitimes ;
+  - **16 lignes à rendement national FAOSTAT recopié sur la zone** (`est_rendement_national = true`, ex. oignon 30 555,71 kg/ha dans 6 zones), toutes en `données insuffisantes` ; non corrigées ;
+  - écart négatif pour Vallée du fleuve × Sésame (−26,12) ; `correlation_chaleur` nulle pour 5 cultures des Niayes ; `apport_organique_recommande` toujours faux ;
+  - exclus : `adequation_cycle` (voir `fact_adequation_culture`), `besoin_irrigation_normal_mm` (à reprendre avec les besoins) ;
+  - tests OK : 17 génériques et `tests/fact_facteurs_limitants_valeurs_valides.sql`. 125 tests OK sur l'ensemble du projet.
 
 ### Règle d'usage : saison ou décadaire
 
@@ -155,6 +164,9 @@ Pop-Location
 - Ne pas recalculer le total de saison en sommant les décades : le cumul décadaire à fin octobre diffère de `pluie_saison_mm` (1 663 couples département × année sur 1 980 avec plus de 1 mm d'écart, écart moyen −2,4 mm, maximum 41 mm ; les deux mesures sont calculées différemment par la source).
 
 ### À signaler
+
+- **Adéquation des cultures** : la probabilité « eau » utilisée dans le score des cycles court et long reprend celle du cycle moyen. À recalculer par le producteur du dataset ; rien n'est corrigé dans dbt.
+- **Pour B2, `mart_choix_cultures`** : comparer les cycles sur `proba_cycle_couvert_pct`, pas sur le score, et signaler que le score des cycles court et long utilise la part « eau » du cycle moyen.
 
 - `api/` appartient à Anthony : ne rien y modifier. L'endpoint `/saisons` de [api/main.py](api/main.py) lit `marts_marts.mart_saisons`, supprimé en T0. Il devra être rebranché sur `mart_carte_agroclimat` après B2.
 
@@ -166,7 +178,6 @@ Pop-Location
 
 ### Prochaines étapes
 
-8. `fact_facteurs_limitants` (zone × culture), pour le module C.
 9. `fact_reference_agronomique`
    - grain : zone × culture × intrant × source ;
    - colonnes de traçabilité prévues dès le départ : source, unité, statut de validation, date.
