@@ -33,12 +33,8 @@ Pas d'Airflow ni de Kafka : on n'en a pas besoin pour une démo en une semaine. 
 cp .env.example .env
 make install     # venv + dépendances
 make dbt-run     # construit staging + marts dans Snowflake
-<<<<<<< HEAD
-python -m api   # charge les marts puis sert l'API → http://localhost:8080/docs (Ctrl + C pour arrêter)
-=======
-make api         # http://localhost:8000/docs
+python -m api    # charge les marts puis sert l'API → http://localhost:8080/docs (Ctrl + C pour arrêter)
 make front-install && make front   # front React (données d'exemple) : http://localhost:5173
->>>>>>> 8eaddb5a24281c5c84110b89f0a926ee2c0a15b5
 ```
 
 Front (React, Tailwind, PWA, Mapbox), contrat d'API attendu et **déploiement gratuit du front, de l'API et du modèle ML** : [`app/README.md`](./app/README.md).
