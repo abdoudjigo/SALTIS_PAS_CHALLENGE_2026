@@ -11,7 +11,7 @@ Le contexte du projet, les règles validées, l'état des modèles et les points
 - Aucun commit, aucun changement de branche, aucun push : l'utilisateur commite lui-même sur `dev/aby`.
 - Ne pas toucher à `dbt/models.zip`.
 - Tout script SQL qui modifie Snowflake (`drop`, `create`, `grant`…) est **écrit** dans `snowflake/`, jamais exécuté : c'est l'utilisateur qui l'exécute. Les requêtes de lecture (`select`, `show`, `information_schema`) sont permises.
-- Ne rien modifier dans `api/` (partie d'Anthony) : signaler dans `docs/etat-modelisation.md`, rubrique « À signaler ».
+- `api/` est géré par Abdou Djigo (décision du 11/11/2026) : exposition des marts avec cache Redis, voir [`api/README.md`](api/README.md). Tests : `python -m pytest api/tests`.
 - Vérifier dans les données avant d'écrire une règle (constance d'une colonne, sens d'un quantile, seuils réellement appliqués par la source) ; documenter ce que fait la source sans la corriger, sauf décision contraire.
 - Mettre à jour `docs/etat-modelisation.md` à la fin de chaque tâche (état des modèles, règles d'usage, points à signaler, questions pour l'ISRA).
 

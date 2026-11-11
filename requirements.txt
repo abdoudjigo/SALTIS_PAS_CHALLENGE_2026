@@ -5,6 +5,13 @@ python-dotenv
 dbt-snowflake
 fastapi
 uvicorn
+redis
+pydantic-settings
+snowflake-connector-python
 scikit-learn
 xgboost
 ruff
+# tests de l'API
+httpx
+fakeredis
+pytest
