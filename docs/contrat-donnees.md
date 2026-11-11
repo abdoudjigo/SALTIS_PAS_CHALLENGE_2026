@@ -161,7 +161,7 @@ from SALTIS.MARTS.MART_BESOINS;
 
 | Groupe | Colonnes | Additif ? |
 |---|---|---|
-| Besoin | `superficie_reference_ha`, `besoin_*_t` (8 besoins, semences retenues), `statut_validation_engrais`, `statut_validation_semis` | **Oui** (superficie et besoins) |
+| Besoin | `superficie_reference_ha`, `besoin_*_t` (7 besoins d'engrais et `besoin_semences_retenu_t`), `besoin_semences_applicable` (faux pour le riz pluvial de Casamance), `statut_validation_engrais`, `statut_validation_semis` | **Oui** (superficie et besoins) |
 | Potentiel de gain | `niveau_source_potentiel` (`ZONE`), `rendement_moyen_kg_ha`, `rendement_atteignable_kg_ha`, `ecart_rendement_kg_ha`, `potentiel_evalue`, `potentiel_gain_kg_ha` | Non |
 | Capacité à valoriser | `meilleur_niveau_adequation`, `proba_cycle_couvert_moyen_pct`, `facteur_limitant_principal` (zone), `proba_saison_seche_pct` | Non |
 | Sol | `classe_texture`, `ph_eau`, `reserve_utile_mm`, `carbone_organique_g_kg` (département) ; `amendement_ph_recommande`, `fractionnement_azote_recommande` (zone) | Non |

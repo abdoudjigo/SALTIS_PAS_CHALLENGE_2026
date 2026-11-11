@@ -323,6 +323,9 @@ models:
         data_tests: [not_null]
       - name: superficie_reference_ha
         data_tests: [not_null]
+      - name: besoin_semences_applicable
+        description: Faux pour le riz irrigué en Casamance (riz surtout pluvial) ; besoin_semences_retenu_t est alors NULL.
+        data_tests: [not_null]
       - name: niveau_source_potentiel
         data_tests:
           - not_null
