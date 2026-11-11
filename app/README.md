@@ -44,11 +44,14 @@ Comptes de démonstration (mode exemple), mot de passe `demo2026` ; ils sont aus
 
 | Variable | Rôle | Exemple |
 |---|---|---|
-| `VITE_API_URL` | URL de l'API FastAPI, sans `/` final | `http://localhost:8000` |
+| `VITE_API_URL` | URL de l'API FastAPI, sans `/` final | `http://localhost:8080` |
 | `VITE_USE_MOCK` | `true` = données d'exemple, `false` = vraie API | `true` |
+| `VITE_AUTH_DEMO`, `VITE_DONNEES_DEMO` | Réglages séparés, facultatifs (chacun vaut `VITE_USE_MOCK` par défaut). Site déployé sans back d'authentification : `VITE_AUTH_DEMO=true` (comptes de démonstration) et `VITE_DONNEES_DEMO=false` (données de l'API) | `true`, `false` |
 | `VITE_MAPBOX_TOKEN` | Token **public** Mapbox (`pk.…`). Vide = carte simplifiée sans fond | `pk.eyJ…` |
 | `VITE_MAPBOX_STYLE` | Style Mapbox (facultatif) | `mapbox://styles/mapbox/light-v11` |
 | `VITE_ACTIVER_SEMENCIERS` | `false` masque le profil semencier et son écran si la cible est retirée | `true` |
+| `VITE_EMAIL_CONTACT` | Adresse de contact des pages publiques (Contact, Confidentialité). Vide = « bientôt » | `contact@exemple.sn` |
+| `VITE_LIEN_LINKEDIN`, `VITE_LIEN_FACEBOOK`, `VITE_LIEN_X`, `VITE_LIEN_YOUTUBE` | Réseaux sociaux du pied de page. Vide = affiché « bientôt » | `https://…` |
 
 Les variables `VITE_*` sont **lisibles dans le navigateur** : n'y mettre aucun secret (ni mot de passe Snowflake, ni clé privée). Le `MAPBOX_TOKEN` du `.env` racine n'est pas lu par Vite : le recopier dans `app/.env.local` sous le nom `VITE_MAPBOX_TOKEN`.
 

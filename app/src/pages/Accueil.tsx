@@ -35,7 +35,7 @@ export default function Accueil() {
 
   const derniere = historique?.at(-1)
   const recents = useMemo(() => historique?.slice(-25) ?? [], [historique])
-  const modules = NAVIGATION.filter((n) => n.to !== '/' && n.to !== '/admin' && peutAcceder(user, n.acces))
+  const modules = NAVIGATION.filter((n) => n.to !== '/' && n.to !== '/tableau-de-bord' && n.to !== '/admin' && peutAcceder(user, n.acces))
   const prenom = user?.nom?.split(' ')[0]
 
   return (

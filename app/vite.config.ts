@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiUrl = env.VITE_API_URL || 'http://localhost:8000'
+  const apiUrl = env.VITE_API_URL || 'http://localhost:8080'
 
   return {
     plugins: [
@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
           // Mapbox (~1,7 Mo) n'est pas préchargé : connexions faibles. Il est mis en cache à la première ouverture de la carte.
           // Polices : seuls les jeux latins (français, wolof) sont préchargés
-          globIgnores: ['**/mapbox-*.js', '**/mapbox-*.css', '**/inter-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2'],
+          globIgnores: ['**/mapbox-*.js', '**/mapbox-*.css', '**/*-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2'],
           navigateFallback: '/index.html',
           runtimeCaching: [
             {

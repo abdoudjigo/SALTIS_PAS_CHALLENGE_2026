@@ -8,7 +8,7 @@ import { useReferentiels } from '../hooks/donnees'
 // Écran d'administration : structure prête, à brancher sur les routes /admin/* de l'API (PostgreSQL).
 export default function Administration() {
   const { data: ref } = useReferentiels()
-  const utilisateurs = config.useMock ? UTILISATEURS_DEMO : []
+  const utilisateurs = config.authDemo ? UTILISATEURS_DEMO : []
 
   return (
     <>

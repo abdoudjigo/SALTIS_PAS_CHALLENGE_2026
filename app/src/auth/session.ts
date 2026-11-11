@@ -13,13 +13,19 @@ function lire(): Session | null {
 }
 
 let session = lire()
+// Pourquoi la dernière session s'est terminée : message « session expirée » à la connexion,
+// retour à la landing après une déconnexion volontaire
+export type FinSession = 'expiree' | 'deconnexion' | null
+let finSession: FinSession = null
 const abonnes = new Set<(s: Session | null) => void>()
 
 export const sessionStore = {
   get: (): Session | null => session,
   token: (): string | null => session?.access_token ?? null,
+  finSession: (): FinSession => finSession,
   set(valeur: Session | null) {
     session = valeur
+    if (valeur) finSession = null
     try {
       if (valeur) localStorage.setItem(CLE, JSON.stringify(valeur))
       else localStorage.removeItem(CLE)
@@ -28,7 +34,8 @@ export const sessionStore = {
     }
     abonnes.forEach((f) => f(session))
   },
-  clear() {
+  clear(motif: FinSession = null) {
+    finSession = motif
     sessionStore.set(null)
   },
   subscribe(f: (s: Session | null) => void) {

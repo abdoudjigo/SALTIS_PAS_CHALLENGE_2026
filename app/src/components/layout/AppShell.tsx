@@ -109,7 +109,7 @@ export function AppShell() {
         </button>
       </header>
 
-      {config.useMock && (
+      {config.donneesDemo && (
         <div className="border-b border-soleil-500/30 bg-soleil-100 px-4 py-1.5 text-center text-xs text-terre-700">
           Données d'exemple : les valeurs affichées ne sont pas réelles.
         </div>
