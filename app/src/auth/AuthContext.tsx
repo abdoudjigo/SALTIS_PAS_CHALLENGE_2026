@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { DonneesInscription, Utilisateur } from '../types/auth'
@@ -30,8 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Déconnexion (manuelle ou jeton expiré) : on vide le cache des données
+  // (seulement quand une session se termine : à l'ouverture, un visiteur a déjà des données publiques en cours de chargement)
+  const etaitConnecte = useRef(Boolean(session))
   useEffect(() => {
-    if (!session) queryClient.clear()
+    if (etaitConnecte.current && !session) queryClient.clear()
+    etaitConnecte.current = Boolean(session)
   }, [session, queryClient])
 
   const login = useCallback(async (email: string, password: string) => {
@@ -46,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user
   }, [])
 
-  const logout = useCallback(() => sessionStore.clear(), [])
+  const logout = useCallback(() => sessionStore.clear('deconnexion'), [])
 
   const valeur = useMemo<ValeurAuth>(
     () => ({ user: session?.user ?? null, estConnecte: Boolean(session?.access_token), login, register, logout }),

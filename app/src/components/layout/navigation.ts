@@ -1,4 +1,4 @@
-import { CloudRain, LayoutDashboard, Map, Package, Settings, ShieldAlert, Sprout, Split, Wheat, type LucideIcon } from 'lucide-react'
+import { CloudRain, Globe, LayoutDashboard, Map, Package, Settings, ShieldAlert, Sprout, Split, Wheat, type LucideIcon } from 'lucide-react'
 import type { CleAcces } from '../../auth/roles'
 import type { ClePrechargement } from '../../hooks/donnees'
 
@@ -15,7 +15,8 @@ export interface ElementMenu {
 
 // Menu principal. `acces` renvoie aux règles de auth/roles.ts ; `module` = module du projet.
 export const NAVIGATION: ElementMenu[] = [
-  { to: '/', libelle: 'Accueil', icone: LayoutDashboard, fin: true },
+  { to: '/', libelle: 'Le Sénégal en 3D', court: 'Sénégal', icone: Globe, fin: true },
+  { to: '/tableau-de-bord', libelle: 'Tableau de bord', court: 'Tableau', icone: LayoutDashboard },
   { to: '/carte', libelle: 'Carte agroclimatique', court: 'Carte', icone: Map, module: 'A' },
   { to: '/suivi', libelle: 'Suivi décadaire', court: 'Suivi', icone: CloudRain, module: 'A' },
   { to: '/cultures', libelle: 'Cultures et variétés', court: 'Cultures', icone: Sprout, module: 'B' },

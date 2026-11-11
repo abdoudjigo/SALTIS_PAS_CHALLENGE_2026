@@ -21,3 +21,4 @@ dataset/*
 app/dist/
 app/dev-dist/
 *.local
+venv
