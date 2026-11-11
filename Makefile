@@ -1,4 +1,4 @@
-include .env
+-include .env
 export
 
 install:
@@ -23,3 +23,13 @@ test-api:
 	.venv/bin/python -m pytest api/tests -q
 lint:
 	.venv/bin/ruff check .
+
+# --- Front (app/) : Node 20.19+ ---
+front-install:
+	cd app && npm ci && ( [ -f .env.local ] || cp .env.example .env.local )
+front:
+	cd app && npm run dev
+front-build:
+	cd app && npm run lint && npm run build
+front-preview:
+	cd app && npm run build && npm run preview

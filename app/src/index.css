@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/* Palette « Ciel & Terre » : vert culture, ocre terre, bleu pluie */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-sol: #f7f5ef;
+  --color-carte: #ffffff;
+  --color-trait: #e6e1d6;
+  --color-encre: #1d2a22;
+  --color-encre-douce: #5b6a60;
+
+  --color-vert-50: #eef6f0;
+  --color-vert-100: #d5eadb;
+  --color-vert-500: #2f7d4f;
+  --color-vert-700: #1f5f3a;
+  --color-vert-900: #12391f;
+
+  --color-terre-100: #f4e6d6;
+  --color-terre-500: #b7793f;
+  --color-terre-700: #8a5527;
+
+  --color-pluie-100: #dcecf8;
+  --color-pluie-500: #2d7fc1;
+  --color-pluie-700: #1b5a8e;
+
+  --color-soleil-100: #fdf0d2;
+  --color-soleil-500: #f2b544;
+
+  --color-alerte-100: #fbe1dc;
+  --color-alerte-500: #d2492f;
+  --color-alerte-700: #a3311c;
+
+  --animate-apparition: apparition 0.25s ease-out both;
+  @keyframes apparition {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-sol text-encre antialiased;
+    font-feature-settings: 'cv11', 'tnum';
+  }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-vert-500; }
+}
+
+@layer components {
+  .carte { @apply rounded-2xl border border-trait bg-carte shadow-[0_1px_2px_rgba(29,42,34,0.04)]; }
+  .champ {
+    @apply w-full rounded-xl border border-trait bg-white px-3 py-2.5 text-sm text-encre
+      transition placeholder:text-encre-douce/60 focus:border-vert-500 focus:ring-2 focus:ring-vert-100 focus:outline-none;
+  }
+  .etiquette { @apply mb-1.5 block text-xs font-medium tracking-wide text-encre-douce uppercase; }
+}
+
+/* Respecte la préférence « réduire les animations » */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.mapboxgl-popup-content { @apply rounded-xl! p-3! shadow-lg!; font-family: var(--font-sans); }

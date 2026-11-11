@@ -340,7 +340,8 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 ### À signaler
 
 - `api/` appartient à Anthony : l'équipe données n'y modifie rien. L'endpoint `/saisons` de `api/main.py` lit `marts_marts.mart_saisons`, supprimé en T0. Il devra être rebranché sur `mart_carte_agroclimat` après B2.
-- Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql` (section 7).
+- Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql` (section 7). Le front attend aussi une version simplifiée dans `app/public/geo/departements.geojson` (propriété `GID_2`).
+- Front (`app/`, 11/11/2026, React + TypeScript) : construit sur des données d'exemple aux colonnes des marts. Associations de producteurs de semences : **option B appliquée côté front** (offre de variétés déclarée + adéquation variétés × départements, sans scénario), désactivable par `VITE_ACTIVER_SEMENCIERS=false` si la cible est retirée ; la décision reste à confirmer par l'équipe. Routes attendues de l'API (authentification JWT, `/referentiels`, `/carte`, `/suivi`, `/choix-cultures`, `/besoins`, `/vulnerabilite`, `/agrodistrib/*`), CORS et cache : voir [`app/README.md`](../app/README.md), section 3. À reprendre par l'équipe API.
 - **Marts reconstruits depuis une version ancienne du code** : le 11/11/2026 vers 02:51 UTC, `SALTIS.MARTS` a été reconstruit sans la colonne `besoin_semences_applicable` de `mart_territoires_agrodistrib`, pourtant présente dans le commit `c109ae1`. Reconstruit depuis `dev/aby` le 11/11/2026 (262 nœuds, 0 erreur). Tant que la construction n'est pas faite depuis une seule branche, chaque `dbt build` lancé depuis une autre copie du dépôt écrase `SALTIS.MARTS` : convenir de qui construit, et depuis quelle branche.
 ### Questions pour l'ISRA
 
