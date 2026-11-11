@@ -262,7 +262,7 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
 13. `fact_prevision_saisonniere` (département × campagne × version de modèle) quand le modèle ML existera. Ne jamais la mélanger avec `fact_saison_departement`.
 14. Potentiel de gain par département (option b, avec l'ISRA) : calculer un rendement atteignable par département depuis `fact_rendement_departement` (ex. 90e centile 1991-2015) pour distinguer les départements d'une même zone ; aujourd'hui, le potentiel est une valeur de zone (`niveau_source_potentiel = 'ZONE'`).
 
-Plan restant de la passation : **C1 à C3, plateforme Snowflake** (schémas `SALTIS.APP` et `SALTIS.ML`, rôles et utilisateurs de service `SVC_API` / `SVC_ML` par paire de clés, DDL de `SALTIS.APP`, puis déclaration de ces tables comme sources dbt et réalignement de `stg_organisations` et `stg_intrants`). Non commencé : scripts Snowflake mis en attente sur consigne.
+Plan restant de la passation : **C1 à C3, plateforme Snowflake**. Le schéma `SALTIS.ML` (créé le 11/11/2026), le rôle `R_ML` et l'utilisateur `USER_ML` (lecture `MARTS`, écriture `ML`) ont été créés par Ibrahima. Restent : le schéma `SALTIS.APP` (absent au 11/11/2026), l'accès de l'API, le DDL de `SALTIS.APP`, puis la déclaration de ces tables comme sources dbt et le réalignement de `stg_organisations` et `stg_intrants`.
 
 ---
 
@@ -304,6 +304,7 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 
 - `api/` appartient à Anthony : l'équipe données n'y modifie rien. L'endpoint `/saisons` de `api/main.py` lit `marts_marts.mart_saisons`, supprimé en T0. Il devra être rebranché sur `mart_carte_agroclimat` après B2.
 - Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql` (section 7).
+- **Marts reconstruits depuis une version ancienne du code** : le 11/11/2026 vers 02:51 UTC, `SALTIS.MARTS` a été reconstruit sans la colonne `besoin_semences_applicable` de `mart_territoires_agrodistrib`, pourtant présente dans le commit `c109ae1`. Reconstruit depuis `dev/aby` le 11/11/2026 (262 nœuds, 0 erreur). Tant que la construction n'est pas faite depuis une seule branche, chaque `dbt build` lancé depuis une autre copie du dépôt écrase `SALTIS.MARTS` : convenir de qui construit, et depuis quelle branche.
 ### Questions pour l'ISRA
 
 - Arachide : confirmer la dose « 150 kg/ha de 6-20-10 », citée seulement dans le texte du statut (`note_source`), sans dose chiffrée.
