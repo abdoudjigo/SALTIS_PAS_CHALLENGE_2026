@@ -34,7 +34,10 @@ cp .env.example .env
 make install     # venv + dépendances
 make dbt-run     # construit staging + marts dans Snowflake
 make api         # http://localhost:8000/docs
+make front-install && make front   # front React (données d'exemple) : http://localhost:5173
 ```
+
+Front (React, Tailwind, PWA, Mapbox), contrat d'API attendu et **déploiement gratuit du front, de l'API et du modèle ML** : [`app/README.md`](./app/README.md).
 
 ## Cible Snowflake pour dbt
 

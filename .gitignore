@@ -17,3 +17,7 @@ node_modules/
 CLAUDE.md
 dataset/*
 !dataset/README.md
+# Front (app/)
+app/dist/
+app/dev-dist/
+*.local
