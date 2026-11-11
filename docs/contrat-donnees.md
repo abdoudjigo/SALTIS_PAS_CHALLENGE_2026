@@ -15,7 +15,7 @@ Référence pour l'API et le front : ce que chaque mart contient, à quel grain,
 | Additivité | Seuls les quantités (superficies, besoins en t, volumes en m³) s'additionnent. Les moyennes, probabilités, scores, rangs, quantiles et valeurs de zone ne s'additionnent jamais. |
 | Unités | Dans le nom de la colonne : `_mm`, `_pct` (0-100), `_kg_ha`, `_t`, `_ha`, `_m3`, `_m3_ha`, `_j` (jours), `_jour` (jour de l'année, 1 à 366), `_c` (°C). |
 | Temps | `campagne_agricole` : année de la campagne (juin N à mai N+1 rattachés à N). `numero_decade_annee` : 1 à 36 (16 = 1-10 juin, 30 = 21-31 octobre ; saison des pluies = décades 16 à 30). |
-| Coordonnées | `latitude` / `longitude` et contours viendront de GADM 4.1 (licence non commerciale, citation obligatoire) ; pas encore disponibles. |
+| Coordonnées | `latitude` / `longitude` des départements (degrés décimaux, WGS 84) : `dim_geographie` et `MART_CARTE_AGROCLIMAT`. Contours des zones : GeoJSON statique (voir « Fonds de carte »). Contours des départements : GADM 4.1, à venir. |
 
 ## Vue d'ensemble
 
@@ -37,6 +37,8 @@ Référence pour l'API et le front : ce que chaque mart contient, à quel grain,
 
 | Colonne | Unité | Description |
 |---|---|---|
+| `latitude`, `longitude` | degrés décimaux (WGS 84) | Point représentatif du département (référentiel fourni par Ibrahima), pour placer un marqueur ; même valeur pour toutes les campagnes |
+| `zone_secondaire` | texte | Département de transition entre deux zones (8 départements, ex. Kébémer : « Niayes (frange côtière) ») ; NULL sinon. **Information seulement, jamais une clé d'agrégation** : agréger par `zone_agroecologique` |
 | `campagne_agricole` | année | Campagne |
 | `pluie_saison_mm` | mm | Cumul juin-octobre |
 | `pluie_saison_normale_mm` | mm | Normale 1991-2020 du département |
@@ -57,7 +59,7 @@ Référence pour l'API et le front : ce que chaque mart contient, à quel grain,
 
 ```sql
 -- Carte d'une campagne
-select code_departement, departement, pluie_saison_mm, anomalie_pluie_saison_pct, risque_saison, classe_vulnerabilite
+select code_departement, departement, latitude, longitude, pluie_saison_mm, anomalie_pluie_saison_pct, risque_saison, classe_vulnerabilite
 from SALTIS.MARTS.MART_CARTE_AGROCLIMAT
 where campagne_agricole = 2024;
 ```
@@ -105,17 +107,21 @@ order by numero_decade_annee;
 | `cycle_jours` | jours | Durée du cycle |
 | `proba_cycle_couvert_pct` | % | Part des années 1991-2020 où la saison couvre le cycle. **Critère de comparaison des options.** |
 | `rang_option` | entier | 1 = meilleure probabilité au sein du département × culture × type d'option ; NULL si la probabilité est inconnue |
-| `score_adequation` | 0-100 | Cycles seulement : `round(0,6 × proba cycle + 0,4 × proba eau du cycle moyen)` |
-| `proba_besoin_eau_couvert_pct` | % | Cycle moyen seulement |
-| `niveau_adequation` | texte | Cultures : `adaptée` (score > 80), `à risque` (> 50), `déconseillée`, `irrigation requise`, `non évaluée (culture pluriannuelle)`. Variétés : `adaptée` dès 80 % |
-| `note_score` | texte | « score calculé avec la part eau du cycle moyen » (cycles court et long) |
+| `score_adequation` | 0-100 | **Valeur principale.** Cycles seulement : `round(0,6 × proba_cycle_couvert_pct + 0,4 × proba_besoin_eau_couvert_pct)`, avec la couverture en eau **propre au cycle** |
+| `proba_besoin_eau_couvert_pct` | % | **Valeur principale.** Cycles seulement : part des années 1991-2020 où la pluie efficace couvre au moins 80 % du besoin en eau du cycle. **Cycle moyen : valeur de la source. Cycles court et long : valeur du cycle moyen de la source + écart calculé entre le cycle et le cycle moyen** (calcul décadaire FAO), bornée entre 0 et 100. NULL pour les cultures irriguées, le manioc et les cycles court et long de Guédiawaye |
+| `nb_annees_calc` | nombre | Années utilisées par le calcul décadaire (28 à 30) |
+| `niveau_adequation` | texte | **Valeur principale.** Cultures : `adaptée` (score > 80), `à risque` (> 50), `déconseillée`, `irrigation requise`, `non évaluée (culture pluriannuelle)`. Variétés : `adaptée` dès 80 % (niveau de la source) |
+| `methode_niveau` | texte | Origine du niveau : `FAO décadaire v1, ancrage sur le cycle moyen de la source` (1 064 lignes), `source` (irrigation requise, non évaluée, variétés : 630), `source, sans données décadaires` (cycles court et long de Guédiawaye : 16) |
+| `note_score` | texte | « probabilité eau de la source » (cycle moyen) ; « probabilité eau ancrée sur le cycle moyen de la source (écart décadaire entre cycles) » (cycles court et long) |
+| `score_adequation_source`, `proba_besoin_eau_couvert_pct_source`, `niveau_adequation_source` | 0-100 / % / texte | Valeurs de la source, pour comparaison. La source ne calcule la probabilité eau que pour le cycle moyen et la reprend dans le score des cycles court et long. Le niveau diffère du niveau principal sur 25 lignes (cycles court et long uniquement) |
 | `tolerance_secheresse`, `disponibilite_semences`, `zones_recommandees` | texte | Variétés seulement |
 
-**Limites** : comparer les options sur `proba_cycle_couvert_pct`, pas sur le score. Seulement 2 variétés évaluées (Mil sanio, Sahel 177 ; mil souna absent, cycle inconnu) ; Sahel 177 et le manioc n'ont pas de probabilité de cycle. Le mil ressort « déconseillé » dans le nord, où il est pourtant cultivé (calibration à faire).
+**Limites** : comparer les options sur `proba_cycle_couvert_pct`, pas sur le score. L'écart entre cycles vient d'une approximation décadaire, contrôlée sur le cycle moyen (5 points d'écart moyen avec la source, corrélation 0,98) ; l'ancrage sur la source supprime le biais du calcul (−3,5 points) : le cycle moyen est identique à la source. Seulement 2 variétés évaluées (Mil sanio, Sahel 177 ; mil souna absent, cycle inconnu) ; Sahel 177 et le manioc n'ont pas de probabilité de cycle. Le mil ressort « déconseillé » dans le nord, où il est pourtant cultivé (calibration à faire).
 
 ```sql
 -- Options pour une culture dans un département, de la meilleure à la moins bonne
-select type_option, option, cycle_jours, proba_cycle_couvert_pct, niveau_adequation, note_score
+select type_option, option, cycle_jours, proba_cycle_couvert_pct, score_adequation,
+       niveau_adequation, niveau_adequation_source, note_score
 from SALTIS.MARTS.MART_CHOIX_CULTURES
 where code_departement = 'SEN.7.1_1' and culture = 'MIL (SOUNA)'
 order by type_option, rang_option;
@@ -227,3 +233,18 @@ order by rang_vulnerabilite nulls last;
 ```sql
 select * from SALTIS.MARTS.MART_ML_PREVISION_PLUIE where jeu = 'ENTRAINEMENT';
 ```
+
+---
+
+## Fonds de carte
+
+| Couche | Fichier ou table | Jointure | État |
+|---|---|---|---|
+| Contours des 6 zones agroécologiques | `app/public/geo/zones_agroecologiques.geojson` (fourni par Ibrahima, WGS 84, 6 entités `MultiPolygon`) | propriété `zone_agroecologique` ↔ colonne `zone_agroecologique` des marts | disponible |
+| Points des 45 départements | colonnes `latitude`, `longitude` de `MART_CARTE_AGROCLIMAT` (et de `dim_geographie`) | `code_departement` | disponible |
+| Contours des 45 départements | GADM 4.1 niveau 2 (`RAW.GEO_DEPARTEMENTS`, GeoJSON simplifié pour le front) | `GID_2` = `code_departement` | à venir |
+
+- **Casse** : la propriété du GeoJSON est en casse normale (`Bassin arachidier`), la colonne des marts en majuscules (`BASSIN ARACHIDIER`). Comparer en majuscules des deux côtés (`toUpperCase()` côté front). Les 6 libellés correspondent ensuite exactement.
+- Le GeoJSON des zones est un fichier statique servi par le front : il n'est pas chargé dans Snowflake.
+- Les contours de zone ne servent qu'à l'affichage : les valeurs d'une zone se calculent depuis les départements (voir « Additivité »), jamais en recopiant une valeur de zone sur les départements.
+- GADM : usage non commercial uniquement, citation obligatoire (« GADM, version 4.1, https://gadm.org »).

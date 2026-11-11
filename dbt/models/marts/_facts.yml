@@ -167,7 +167,11 @@ models:
       proba_cycle_couvert_pct + 0,4 x proba_besoin_eau_couvert_pct du cycle
       moyen), calculé par la source ; niveau : adaptée > 80, à risque > 50,
       déconseillée <= 50. Score nul pour 'irrigation requise' et
-      'non évaluée (culture pluriannuelle)'.
+      'non évaluée (culture pluriannuelle)'. Colonnes de l'équipe, à côté de
+      celles de la source (inchangées) : _calc = calcul décadaire brut par
+      cycle (int_couverture_eau_cycle) ; _final = cycle moyen de la source, et
+      pour les cycles court et long, cycle moyen de la source + écart calculé
+      entre le cycle et le cycle moyen.
     columns:
       - name: id_adequation_culture
         data_tests: [not_null, unique]
@@ -201,6 +205,37 @@ models:
           - accepted_values:
               arguments:
                 values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
+      - name: proba_besoin_eau_couvert_calc_pct
+        description: >
+          Part des années 1991-2020 où la pluie efficace du cycle couvre au
+          moins 80 % du besoin en eau (approximation décadaire FAO, validée sur
+          le cycle moyen). Calcul brut, gardé pour la traçabilité. NULL pour
+          Guédiawaye (pas de données décadaires) et les cultures irriguées ou
+          pluriannuelles.
+      - name: nb_annees_calc
+        description: Nombre d'années utilisées pour proba_besoin_eau_couvert_calc_pct.
+      - name: proba_besoin_eau_couvert_final_pct
+        description: >
+          Cycle moyen : valeur de la source. Cycles court et long : valeur de
+          la source pour le cycle moyen + (calcul du cycle - calcul du cycle
+          moyen), bornée entre 0 et 100.
+      - name: score_adequation_final
+        description: round(0,6 x proba_cycle_couvert_pct + 0,4 x proba_besoin_eau_couvert_final_pct).
+      - name: niveau_adequation_final
+        description: >
+          Mêmes seuils que la source (> 80 adaptée, > 50 à risque) appliqués au
+          score final ; valeur de la source pour 'irrigation requise' et
+          'non évaluée' ; NULL pour les cycles court et long de Guédiawaye.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
+      - name: methode_eau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['FAO décadaire v1, ancrage sur le cycle moyen de la source']
 
   - name: fact_adequation_variete
     description: >

@@ -9,9 +9,17 @@
 -- Les colonnes propres à un type sont NULL pour l'autre.
 --
 -- Règle validée : comparer les options sur proba_cycle_couvert_pct (rang_option), pas sur
--- le score. Le score des cycles court et long reprend la part « eau » du cycle moyen
--- (note_score). Seuils du niveau (source) : cultures adaptée > 80, à risque > 50 ;
--- variétés adaptée >= 80.
+-- le score.
+--
+-- Cycles : valeurs principales = valeurs finales de l'équipe (fact_adequation_culture,
+-- colonnes _final : cycle moyen = source ; cycles court et long = cycle moyen de la source
+-- + écart décadaire calculé entre le cycle et le cycle moyen). Les valeurs de la source
+-- restent à côté (suffixe _source) ; la source reprend la part « eau » du cycle moyen pour
+-- les cycles court et long. Sans données décadaires (cycles court et long de Guédiawaye),
+-- le niveau principal reprend celui de la source
+-- (methode_niveau = 'source, sans données décadaires').
+-- Seuils : cultures adaptée > 80, à risque > 50 (source et calcul) ; variétés adaptée >= 80
+-- (source).
 
 with cycles as (
 
@@ -22,12 +30,23 @@ with cycles as (
         a.classe_cycle as option,
         a.cycle_jours,
         a.proba_cycle_couvert_pct,
-        a.score_adequation,
-        a.proba_besoin_eau_couvert_pct,
-        a.niveau_adequation,
+        a.score_adequation_final as score_adequation,
+        a.proba_besoin_eau_couvert_final_pct as proba_besoin_eau_couvert_pct,
+        a.nb_annees_calc,
+        coalesce(a.niveau_adequation_final, a.niveau_adequation) as niveau_adequation,
         case
-            when a.classe_cycle in ('courte', 'longue') and a.score_adequation is not null
-                then 'score calculé avec la part eau du cycle moyen'
+            when a.niveau_adequation in ('irrigation requise', 'non évaluée (culture pluriannuelle)')
+                then 'source'
+            when a.niveau_adequation_final is null then 'source, sans données décadaires'
+            else a.methode_eau
+        end as methode_niveau,
+        a.score_adequation as score_adequation_source,
+        a.proba_besoin_eau_couvert_pct as proba_besoin_eau_couvert_pct_source,
+        a.niveau_adequation as niveau_adequation_source,
+        case
+            when a.score_adequation_final is null then null
+            when a.classe_cycle = 'moyenne' then 'probabilité eau de la source'
+            else 'probabilité eau ancrée sur le cycle moyen de la source (écart décadaire entre cycles)'
         end as note_score,
         cast(null as varchar) as tolerance_secheresse,
         cast(null as varchar) as disponibilite_semences,
@@ -47,7 +66,12 @@ varietes as (
         a.proba_cycle_couvert_pct,
         cast(null as float) as score_adequation,
         cast(null as float) as proba_besoin_eau_couvert_pct,
+        cast(null as integer) as nb_annees_calc,
         a.niveau_adequation,
+        'source' as methode_niveau,
+        cast(null as float) as score_adequation_source,
+        cast(null as float) as proba_besoin_eau_couvert_pct_source,
+        a.niveau_adequation as niveau_adequation_source,
         cast(null as varchar) as note_score,
         v.tolerance_secheresse::varchar as tolerance_secheresse,
         v.disponibilite_semences::varchar as disponibilite_semences,
@@ -90,11 +114,18 @@ select
         )
     ) as rang_option,
 
-    -- Score (cycles seulement) et niveau
+    -- Valeurs principales : score (cycles seulement) et niveau
     o.score_adequation,
     o.proba_besoin_eau_couvert_pct,
+    o.nb_annees_calc,
     o.niveau_adequation,
+    o.methode_niveau,
     o.note_score,
+
+    -- Valeurs de la source, pour comparaison
+    o.score_adequation_source,
+    o.proba_besoin_eau_couvert_pct_source,
+    o.niveau_adequation_source,
 
     -- Variété seulement
     o.tolerance_secheresse,

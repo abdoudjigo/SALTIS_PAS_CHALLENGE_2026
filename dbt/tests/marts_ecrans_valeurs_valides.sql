@@ -57,7 +57,9 @@ union all
 
 select code_departement || '|' || culture || '|' || option, 'choix : colonne propre à un autre type renseignée'
 from {{ ref('mart_choix_cultures') }}
-where (type_option = 'VARIETE' and (score_adequation is not null or proba_besoin_eau_couvert_pct is not null or note_score is not null))
+where (type_option = 'VARIETE' and (score_adequation is not null or proba_besoin_eau_couvert_pct is not null or note_score is not null
+                                   or score_adequation_source is not null or proba_besoin_eau_couvert_pct_source is not null
+                                   or nb_annees_calc is not null))
    or (type_option = 'CYCLE' and (tolerance_secheresse is not null or disponibilite_semences is not null or zones_recommandees is not null))
 
 union all

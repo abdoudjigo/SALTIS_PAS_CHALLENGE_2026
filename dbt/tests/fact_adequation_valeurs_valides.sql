@@ -39,6 +39,9 @@ from culture
 where proba_cycle_couvert_pct not between 0 and 100
    or proba_besoin_eau_couvert_pct not between 0 and 100
    or score_adequation not between 0 and 100
+   or proba_besoin_eau_couvert_calc_pct not between 0 and 100
+   or proba_besoin_eau_couvert_final_pct not between 0 and 100
+   or score_adequation_final not between 0 and 100
 
 union all
 
@@ -74,3 +77,50 @@ where score_adequation is not null
         when score_adequation > 50 then 'à risque'
         else 'déconseillée'
       end
+
+union all
+
+-- Valeurs finales : niveau cohérent avec le score final (mêmes seuils que la source),
+-- niveau de la source repris pour 'irrigation requise' et 'non évaluée'
+select id_adequation_culture, 'niveau final incohérent avec le score final'
+from culture
+where niveau_adequation_final is distinct from case
+        when niveau_adequation in ('irrigation requise', 'non évaluée (culture pluriannuelle)')
+            then niveau_adequation
+        when score_adequation_final is null then null
+        when score_adequation_final > 80 then 'adaptée'
+        when score_adequation_final > 50 then 'à risque'
+        else 'déconseillée'
+      end
+
+union all
+
+-- Score final recalculé depuis ses composantes
+select id_adequation_culture, 'score final différent de round(0,6 x cycle + 0,4 x eau finale)'
+from culture
+where score_adequation_final is not null
+  and score_adequation_final <> round(0.6 * proba_cycle_couvert_pct + 0.4 * proba_besoin_eau_couvert_final_pct)
+
+union all
+
+-- Cycle moyen : probabilité finale égale à celle de la source (cultures évaluées)
+select id_adequation_culture, 'cycle moyen : probabilité finale différente de la source'
+from culture
+where classe_cycle = 'moyenne'
+  and niveau_adequation not in ('irrigation requise', 'non évaluée (culture pluriannuelle)')
+  and proba_besoin_eau_couvert_final_pct is distinct from proba_besoin_eau_couvert_pct
+
+union all
+
+-- Cycles court et long : proba moyen source + (calcul du cycle - calcul du cycle moyen), bornée
+select c.id_adequation_culture, 'cycle court ou long : probabilité finale différente de l''ancrage'
+from culture c
+join culture m
+    on m.id_departement = c.id_departement
+   and m.id_culture = c.id_culture
+   and m.classe_cycle = 'moyenne'
+where c.classe_cycle in ('courte', 'longue')
+  and c.proba_besoin_eau_couvert_final_pct is not null
+  and abs(c.proba_besoin_eau_couvert_final_pct
+          - least(greatest(m.proba_besoin_eau_couvert_pct
+                           + c.proba_besoin_eau_couvert_calc_pct - m.proba_besoin_eau_couvert_calc_pct, 0), 100)) > 0.01
