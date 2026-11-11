@@ -6,21 +6,20 @@ Ce document dit **quelles données sont disponibles** pour les modèles, **où l
 2. **Prévision de l'anomalie de rendement** (si le temps le permet) ;
 3. **AgroDistrib** : proposition de répartition des intrants d'une organisation (ministère, ONG) entre zones, régions ou départements.
 
-Pour toute question sur une donnée (colonne, valeur bizarre, besoin d'une nouvelle variable), s'adresser à l'**équipe données** (Aby, Abdoulaye) plutôt que de corriger soi-même.
+
+**Détail des colonnes** (unités, valeurs possibles, limites, exemples de requêtes) : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md). Décisions et état de la modélisation : [`docs/etat-modelisation.md`](../docs/etat-modelisation.md).
 
 ---
 
 ## 1. Comment accéder aux données
 
-### 1.1 Tout de suite : les fichiers CSV
+### 1.1 En secours : les fichiers CSV
 
-Les tables sont partagées dans le **dossier Drive commun** de l'équipe. Elles se déposent dans `data/modules/` du dépôt et ne vont **jamais dans Git**.
+Les tables sont partagées dans des fichiers CSV.
 
-Le préfixe indique le module : `a_` agroclimat, `b_` cultures, `c_` besoins et rendements, `d_` AgroDistrib. Le détail des colonnes est dans `dataset/README.md`.
+Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils ne servent qu'en secours : ils n'intègrent pas les règles et contrôles des tables `MART_*`.
 
-Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils suffisent pour explorer et commencer à modéliser.
-
-### 1.2 Ensuite : l'entrepôt Snowflake
+### 1.2 À utiliser : l'entrepôt Snowflake
 
 | Élément | Valeur |
 |---|---|
@@ -31,7 +30,7 @@ Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils 
 | Écriture des résultats ML | `SALTIS.ML` |
 | Écriture des scénarios AgroDistrib | `SALTIS.APP` |
 
-**Accès** : l'équipe données crée un utilisateur de service `SVC_ML`, qui pourra **lire** `MARTS` et **écrire** dans `ML`. La connexion se fait par **paire de clés**, sans mot de passe. Demander à l'équipe données l'identifiant du compte et la clé. Ces informations vont dans le fichier `.env` local, **jamais dans Git**. Ne jamais utiliser le compte personnel de quelqu'un d'autre.
+**Accès** : l'utilisateur **`USER_ML`**, avec le rôle **`R_ML`** (créés par Ibrahima), **lit** `SALTIS.MARTS` et **écrit** dans `SALTIS.ML`. Demander à Ibrahima les identifiants de connexion. Ils vont dans le fichier `.env` local, **jamais dans Git**. Ne jamais utiliser le compte personnel de quelqu'un d'autre.
 
 **Règle** : lire de préférence dans `MARTS`, qui contient les données nettoyées et testées. `RAW` ne sert qu'en dépannage.
 
@@ -39,18 +38,21 @@ Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils 
 
 | Table | Contenu | Statut |
 |---|---|---|
+| `MARTS.MART_ML_PREVISION_PLUIE` | **Table d'entraînement prête** pour le modèle de pluie (modèle 1) | ✅ prêt |
+| `MARTS.MART_TERRITOIRES_AGRODISTRIB` | **Table unique pour AgroDistrib** (tous les critères par département × culture cultivée) | ✅ prêt |
+| `MARTS.MART_VULNERABILITE_DEPARTEMENT` | Score de vulnérabilité par département (relatif, indicatif) | ✅ prêt |
+| `MARTS.MART_CARTE_AGROCLIMAT`, `MART_SUIVI_DECADAIRE`, `MART_CHOIX_CULTURES`, `MART_BESOINS` | Tables des écrans de l'application (carte, suivi décadaire, choix des cultures, besoins) | ✅ prêt |
 | `MARTS.FACT_SAISON_DEPARTEMENT` | Bilan de chaque saison des pluies | ✅ prêt |
-| `MARTS.FACT_RENDEMENT_DEPARTEMENT` | Superficies, productions, rendements | ✅ prêt |
+| `MARTS.FACT_RENDEMENT_DEPARTEMENT` | Superficies, productions, rendements (modèle 2) | ✅ prêt |
 | `MARTS.FACT_PLUVIOMETRIE_DECADAIRE` | Pluie observée décade par décade | ✅ prêt |
 | `MARTS.FACT_CLIMATOLOGIE_DECADAIRE` | Pluie habituelle par décade (1991–2020) | ✅ prêt |
-| `MARTS.DIM_GEOGRAPHIE`, `DIM_CULTURE`, `DIM_TEMPS`… | Référentiels | ✅ prêt |
-| `MARTS.MART_ML_PREVISION_PLUIE` | **Table d'entraînement prête** pour le modèle de pluie | 🔜 en cours |
-| `MARTS.FACT_ADEQUATION_CULTURE`, `FACT_FACTEURS_LIMITANTS`, `FACT_REFERENCE_AGRONOMIQUE`, `FACT_BESOIN_REFERENCE` | Adéquation, facteurs limitants, doses, besoins | 🔜 en cours |
-| `MARTS.MART_VULNERABILITE_DEPARTEMENT` | Score de vulnérabilité par département | 🔜 en cours |
-| `MARTS.MART_TERRITOIRES_AGRODISTRIB` | **Table unique pour AgroDistrib** (tous les critères par département × culture) | 🔜 en cours |
-| Schémas `ML` et `APP`, utilisateur `SVC_ML` | Écriture des résultats | 🔜 en cours |
+| `MARTS.FACT_ADEQUATION_CULTURE`, `FACT_ADEQUATION_VARIETE`, `FACT_FACTEURS_LIMITANTS`, `FACT_REFERENCE_AGRONOMIQUE`, `FACT_BESOIN_REFERENCE` | Adéquation, facteurs limitants, doses, besoins | ✅ prêt |
+| `MARTS.DIM_GEOGRAPHIE`, `DIM_REGION`, `DIM_ZONE_AGROECOLOGIQUE`, `DIM_CULTURE`, `DIM_VARIETE`, `DIM_INTRANT`, `DIM_TEMPS` | Référentiels | ✅ prêt |
+| Schéma `SALTIS.ML` | Écriture des résultats des modèles | ✅ prêt |
+| Rôle `R_ML` et utilisateur `USER_ML` | Accès Snowflake de l'équipe ML (lecture `MARTS`, écriture `ML`) | ✅ prêt |
+| Contours des départements (GADM 4.1) | Latitude, longitude et géométrie des départements | 🔜 en cours |
 
-**Conseil** : commencer sur les CSV, puis basculer sur les tables `MART_*` dès qu'elles sont prêtes. L'équipe données prévient quand c'est le cas.
+**Conseil** : travailler directement sur les tables `MART_*` de `MARTS`, nettoyées et testées. Les CSV ne servent qu'en secours.
 
 ---
 
@@ -75,13 +77,20 @@ Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils 
 
 | Source | Grain | Volume | Période |
 |---|---|---|---|
-| `a_predicteurs_saisonniers.csv`, puis `MART_ML_PREVISION_PLUIE` | département × année | 2 025 lignes (45 × 45 ans) | 1981–2025 |
+| **`MARTS.MART_ML_PREVISION_PLUIE`** (à utiliser) | département × année | 2 025 lignes (45 × 45 ans) | 1981–2025 |
+| `a_predicteurs_saisonniers.csv` (secours) | idem | idem | idem |
+
+`MART_ML_PREVISION_PLUIE` contient déjà tout ce qu'il faut, avec les codes du territoire (`code_departement`, `code_region`, `region`, `zone_agroecologique`) :
+
+- **`jeu`** : `ENTRAINEMENT` (≤ 2015, 1 575 lignes) ou `TEST` (2016–2025, 450 lignes). Le découpage est temporel : ne jamais mélanger les années au hasard ;
+- **`nb_variables_manquantes`** : nombre de variables explicatives vides sur la ligne (438 lignes en ont au moins une) ;
+- les variables connues fin mai et les cibles, décrites ci-dessous.
 
 **Cibles** :
 - `pluie_saison_mm` : cumul de juin à octobre ;
 - `classe_saison`.
 
-Elles sont identiques à celles de `FACT_SAISON_DEPARTEMENT`.
+Elles sont identiques à celles de `FACT_SAISON_DEPARTEMENT` (vérifié).
 
 **Variables connues fin mai** :
 
@@ -91,7 +100,7 @@ Elles sont identiques à celles de `FACT_SAISON_DEPARTEMENT`.
 | `indice_tna_mars_mai`, `indice_tsa_mars_mai` | Atlantique tropical nord et sud. **Même valeur pour tous les départements.** |
 | `indice_amo_mars_mai` | Oscillation atlantique. **Absente de 2023 à 2025** : la série s'arrête en 2022. |
 | `pluie_saison_n_moins_1_mm` | Pluie de l'année précédente. Absente en 1981. |
-| `humidite_sol_avril_mai_m3_m3` | **Toujours absente pour 6 départements côtiers** : Dakar, Guédiawaye, Pikine, Rufisque, Oussouye, Ziguinchor. |
+| `humidite_sol_avril_mai_m3_m3` | **Toujours absente pour 6 départements côtiers** : Dakar, Guédiawaye, Pikine, Rufisque, Oussouye, Ziguinchor. Absente aussi ponctuellement : Goudomp (4 années entre 1989 et 2003) et 8 départements en 1986. |
 | `pluie_normale_saison_mm` | Constante par département, calculée sur 1991–2020. |
 
 ### Points d'attention sur ces données
@@ -132,17 +141,17 @@ Dans `FACT_RENDEMENT_DEPARTEMENT`, filtrer sur **`rendement_kg_ha is not null`**
 
 ### Observations par culture
 
-| Culture | Observations |
-|---|---|
-| Arachide | 1 447 |
-| Mil | 1 368 |
-| Sorgho | 1 295 |
-| Niébé | 1 265 |
-| Maïs | 1 113 |
-| Riz irrigué | 889 (dépend de l'irrigation plus que de la pluie) |
-| Manioc | 453 (culture pluriannuelle) |
-| Sésame | 178 |
-| Pastèque, coton, tomate | 24, 5, 3 (trop peu) |
+| Culture | Rendements | dont anomalie renseignée |
+|---|---|---|
+| Arachide | 1 447 | 1 447 |
+| Mil | 1 368 | 1 368 |
+| Sorgho | 1 295 | 1 294 |
+| Niébé | 1 265 | 1 253 |
+| Maïs | 1 113 | 1 088 |
+| Riz irrigué | 889 (dépend de l'irrigation plus que de la pluie) | 811 |
+| Manioc | 453 (culture pluriannuelle) | 133 |
+| Sésame | 178 | 34 |
+| Pastèque, coton, tomate | 24, 5, 3 (trop peu) | 0 |
 
 ### Points d'attention sur ces données
 
@@ -164,25 +173,33 @@ Le décideur (ministère, ONG) saisit son intrant, la quantité, la campagne, le
 
 ### Données
 
-Tout est regroupé dans **une seule table**, `MARTS.MART_TERRITOIRES_AGRODISTRIB`, au grain **département × culture**. Elle est en préparation. En attendant, les mêmes informations se trouvent dans les CSV indiqués :
+Tout est regroupé dans **une seule table**, `MARTS.MART_TERRITOIRES_AGRODISTRIB`. **Grain : département × culture, seulement là où la culture existe** (superficie de référence renseignée et > 0) : **345 lignes, 43 départements** (Guédiawaye et Pikine n'ont aucune superficie agricole de référence). AgroDistrib ne répartit que sur ces couples.
 
-| Information | Utilité | CSV en attendant |
+| Critère | Colonnes | Additif ? |
 |---|---|---|
-| Superficie de référence par culture (moyenne des dernières campagnes) | Calcul du besoin | `c_besoins_departement_culture` |
-| Doses par hectare (NPK, urée, DAP, fumier, semences) et leur statut de validation | Calcul du besoin | `c_besoins_par_hectare` |
-| Rendement moyen, rendement atteignable, écart, facteur limitant principal | Potentiel de gain | `c_facteurs_limitants_zone_culture` |
-| Score et niveau d'adéquation de la culture | Capacité à valoriser l'intrant | `b_adequation_culture_departement` |
-| Probabilité de saison sèche (climatologie) | Risque climatique | `a_profil_agroclimatique_departement` |
-| Probabilité de saison sèche **prévue** | Risque climatique de la campagne | Sortie du modèle 1 (`SALTIS.ML`) |
-| pH, texture, réserve utile, carbone organique | Contraintes de sol | `a_profil_agroclimatique_departement` |
-| Score de vulnérabilité | Équité | à venir |
-| Région et zone de chaque département | Agrégation | toutes les tables |
+| Territoire et agrégation | `code_departement`, `departement`, `code_region`, `region`, `zone_agroecologique`, `culture` | — |
+| Besoin | `superficie_reference_ha` ; besoins en t : `besoin_azote_n_t`, `besoin_phosphate_p2o5_t`, `besoin_potasse_k2o_t`, `besoin_npk_15_15_15_t`, `besoin_uree_t`, `besoin_dap_t`, `besoin_fumier_t` ; `besoin_semences_applicable`, `besoin_semences_retenu_t` ; `statut_validation_engrais`, `statut_validation_semis` | **Oui** (superficie et besoins) |
+| Potentiel de gain | `niveau_source_potentiel` (toujours `ZONE`), `rendement_moyen_kg_ha`, `rendement_atteignable_kg_ha`, `ecart_rendement_kg_ha`, `potentiel_evalue`, `potentiel_gain_kg_ha` | Non |
+| Capacité à valoriser l'intrant | `meilleur_niveau_adequation`, `proba_cycle_couvert_moyen_pct`, `facteur_limitant_principal`, `proba_saison_seche_pct` (climatologie) | Non |
+| Contraintes de sol | `classe_texture`, `ph_eau`, `reserve_utile_mm`, `carbone_organique_g_kg` (département) ; `amendement_ph_recommande`, `fractionnement_azote_recommande` (zone) | Non |
+| Équité | `score_vulnerabilite`, `classe_vulnerabilite`, `score_alea_secheresse`, `confiance_rendement`, `methode_version_vulnerabilite` | Non |
+| Contexte | `part_cultures_pct` | Non |
 
-Les **stocks déclarés** et les **paramètres saisis** par le décideur sont dans `SALTIS.APP`, alimenté par l'application.
+Comment lire ces colonnes :
+
+- **Besoins** : les besoins d'une zone ou d'une région sont la **somme** de ses départements. Ne jamais additionner produits (NPK, urée, DAP) et éléments (N, P₂O₅, K₂O) : ils décrivent la même fertilisation. Un besoin vide veut dire « dose à saisir », jamais 0.
+- **Semences** : `besoin_semences_applicable` est faux pour le riz irrigué en Casamance (riz surtout pluvial, alors que la dose est celle du repiquage irrigué) ; `besoin_semences_retenu_t` y est vide. Toujours totaliser sur `besoin_semences_retenu_t`.
+- **Potentiel de gain** : `niveau_source_potentiel = 'ZONE'` signifie que le rendement moyen, l'atteignable et l'écart sont des valeurs de la **zone**, reprises sur chaque département. Ils servent à classer, ne s'additionnent jamais et ne distinguent pas les départements d'une même zone. `potentiel_gain_kg_ha` est vide quand le rendement de la zone est en fait une valeur nationale (`potentiel_evalue = false`) ; aucune ligne n'est concernée aujourd'hui.
+- **Vulnérabilité** : le détail du score (indicateurs, rangs, méthode) est dans `MARTS.MART_VULNERABILITE_DEPARTEMENT`. Le score est **relatif** (il compare les départements entre eux) et **NULL pour Dakar, Guédiawaye et Pikine** (rendements absents ou trop peu nombreux) ; dans `MART_TERRITOIRES_AGRODISTRIB`, seul Dakar est concerné (2 lignes), les deux autres n'y figurant pas.
+- **Probabilité de saison sèche prévue** : elle viendra de la sortie du modèle 1 (`SALTIS.ML`), à joindre sur `code_departement` et la campagne.
+
+Les **stocks déclarés** et les **paramètres saisis** par le décideur seront dans `SALTIS.APP`, alimenté par l'application.
+
+En secours, les mêmes informations se trouvent dans les CSV `c_besoins_departement_culture`, `c_besoins_par_hectare`, `c_facteurs_limitants_zone_culture`, `b_adequation_culture_departement` et `a_profil_agroclimatique_departement`, mais sans les règles ci-dessus (semences non applicables, potentiel non évalué, vulnérabilité).
 
 ### Points d'attention sur ces données
 
-- **Doses très partielles.** Seul le **mil** a une dose d'engrais dans toutes les zones (NPK 125 kg/ha + urée 93,75 kg/ha), et elle est encore **à confirmer**. Le maïs, le sorgho et le riz n'en ont que dans la Vallée. **L'arachide (1,18 million d'ha), le niébé et le sésame n'ont aucune dose** tant que les données de l'ISRA n'ont pas été reçues. Il faut prévoir que le décideur puisse saisir une dose manquante.
+- **Doses très partielles.** Sur les 345 couples de la table, 286 n'ont pas de dose d'engrais (besoin vide). Seul le **mil** a une dose d'engrais dans toutes les zones (NPK 125 kg/ha + urée 93,75 kg/ha), et elle est encore **à confirmer**. Le maïs, le sorgho et le riz n'en ont que dans la Vallée. **L'arachide (1,18 million d'ha), le niébé et le sésame n'ont aucune dose** tant que les données de l'ISRA n'ont pas été reçues. Il faut prévoir que le décideur puisse saisir une dose manquante.
 - **Statut des doses.** Chaque dose porte un statut (`VALIDEE`, `A_CONFIRMER`, `NON_VERIFIEE`, `A_COMPLETER`). Il doit apparaître dans les résultats.
 - **Superficies** : ce sont les moyennes des dernières campagnes connues (jusqu'en 2021), pas des superficies prévues pour la campagne.
 - **Facteurs limitants** : calculés par zone, pas par département. 33 couples zone × culture sur 72 indiquent « données insuffisantes ».
@@ -211,10 +228,9 @@ Le format exact des tables est fixé avec l'équipe données avant la première 
 
 ## 7. Ce qu'il faut demander à l'équipe données
 
-- L'accès Snowflake (`SVC_ML`, la clé, l'identifiant du compte).
-- La mise à disposition de `MART_ML_PREVISION_PLUIE` et de `MART_TERRITOIRES_AGRODISTRIB`.
+- L'accès Snowflake (`USER_ML` avec le rôle `R_ML`, identifiants de connexion) : auprès d'Ibrahima.
+- Les contours des départements (GADM 4.1), s'ils sont utiles aux modèles.
 - Les variables 2026 dès leur publication.
 - Toute nouvelle variable utile : elle sera ajoutée proprement dans les tables `MART_*`, pas bricolée dans le code ML.
 - La validation du format des tables de sortie avant la première écriture.
 
-**Rappel** : ni données, ni clés, ni identifiants dans Git.

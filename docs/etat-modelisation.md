@@ -193,7 +193,7 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
   - `mart_suivi_decadaire` : département × année × décade, 71 280 lignes (44 départements) ; observé, normale et écart côte à côte (décade et cumul), fourchette climatologique 1991-2020 du département, `libelle_decade` selon l'année ; `pluie_normale_mm` = moyenne 1991-2020 de `fact_climatologie_decadaire` (vérifié, 1 584/1 584) ;
   - `mart_choix_cultures` : département × culture × `type_option` (`CYCLE` / `VARIETE`) × option, 1 710 lignes (1 620 + 90), colonnes propres à un type NULL pour l'autre ; `rang_option` sur `proba_cycle_couvert_pct` (NULL pour le manioc et Sahel 177), `note_score` pour les cycles court et long ; unicité du grain testée ;
   - `mart_besoins` : département × culture depuis `dim_geographie`, 369 lignes (367 + Guédiawaye et Pikine avec « pas de superficie agricole de référence ») ; `besoin_semences_retenu_t` (riz pluvial de Casamance exclu, 9 lignes « non applicable (riz pluvial) »), `reference_anterieure_2015` (dernière année de référence < 2015 : 13 lignes), `irrigation_totale_m3` seulement si « irrigation requise » (41 lignes), libellés « dose à saisir » / « superficie de référence nulle » / « calculé » ;
-  - `mart_territoires_agrodistrib` : département × culture avec superficie de référence > 0, 345 lignes ; additifs : superficie et besoins ; non additifs : tout le reste. Potentiel de gain : valeurs de zone, `niveau_source_potentiel = 'ZONE'`, `potentiel_gain_kg_ha` NULL quand `est_rendement_national` (aucune ligne concernée aujourd'hui : les rendements nationaux recopiés portent sur des couples zone × culture sans superficie départementale) ; meilleur niveau d'adéquation, sol du département, recommandations de zone, vulnérabilité.
+  - `mart_territoires_agrodistrib` : département × culture avec superficie de référence > 0, 345 lignes (43 départements) ; `besoin_semences_applicable` et `besoin_semences_retenu_t` ; additifs : superficie et besoins ; non additifs : tout le reste. Potentiel de gain : valeurs de zone, `niveau_source_potentiel = 'ZONE'`, `potentiel_gain_kg_ha` NULL quand `est_rendement_national` (aucune ligne concernée aujourd'hui : les rendements nationaux recopiés portent sur des couples zone × culture sans superficie départementale) ; meilleur niveau d'adéquation, sol du département, recommandations de zone, vulnérabilité.
 - **Précision validée sur la règle 9** : elle interdit de recopier une valeur de zone sur les départements **puis de l'additionner** (double comptage). Porter une valeur de zone comme attribut non additif servant à classer est autorisé (spécification AgroDistrib) ; ces colonnes ne distinguent pas les départements d'une même zone.
 - **D, documentation** :
   - D1 : `dbt/README.md` réécrit (dimensions, faits, marts réellement construits, anciens marts supprimés) ; `README.md` (modules et marts) ; `docs/README-constellation.md` (hiérarchie corrigée : zone et région parallèles ; encadré d'état de mise en œuvre en tête : construit, non construit et pourquoi, faits ajoutés, marts par écran, anciens marts supprimés) ; coopératives retirées de `dataset/README.md` ; commentaire de `fact_saison_departement.sql` mis à jour ;
@@ -202,7 +202,7 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
 
 ### 3.6 Total
 
-- Après B2 et D : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits, 7 marts), 1 seed, **220 tests, tous OK** (`dbt build` complet : 261 nœuds, 0 erreur).
+- Après B2 et D : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits, 7 marts), 1 seed, **221 tests, tous OK**.
 
 ---
 
@@ -262,7 +262,7 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
 13. `fact_prevision_saisonniere` (département × campagne × version de modèle) quand le modèle ML existera. Ne jamais la mélanger avec `fact_saison_departement`.
 14. Potentiel de gain par département (option b, avec l'ISRA) : calculer un rendement atteignable par département depuis `fact_rendement_departement` (ex. 90e centile 1991-2015) pour distinguer les départements d'une même zone ; aujourd'hui, le potentiel est une valeur de zone (`niveau_source_potentiel = 'ZONE'`).
 
-Plan restant de la passation : **C1 à C3, plateforme Snowflake** (schémas `SALTIS.APP` et `SALTIS.ML`, rôles et utilisateurs de service `SVC_API` / `SVC_ML` par paire de clés, DDL de `SALTIS.APP`, puis déclaration de ces tables comme sources dbt et réalignement de `stg_organisations` et `stg_intrants`). Non commencé : scripts Snowflake mis en attente sur consigne.
+Plan restant de la passation : **C1 à C3, plateforme Snowflake**. Le schéma `SALTIS.ML` (créé le 11/11/2026), le rôle `R_ML` et l'utilisateur `USER_ML` (lecture `MARTS`, écriture `ML`) ont été créés par Ibrahima. Restent : le schéma `SALTIS.APP` (absent au 11/11/2026), l'accès de l'API, le DDL de `SALTIS.APP`, puis la déclaration de ces tables comme sources dbt et le réalignement de `stg_organisations` et `stg_intrants`.
 
 ---
 
@@ -304,6 +304,7 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 
 - `api/` appartient à Anthony : l'équipe données n'y modifie rien. L'endpoint `/saisons` de `api/main.py` lit `marts_marts.mart_saisons`, supprimé en T0. Il devra être rebranché sur `mart_carte_agroclimat` après B2.
 - Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql` (section 7).
+- **Marts reconstruits depuis une version ancienne du code** : le 11/11/2026 vers 02:51 UTC, `SALTIS.MARTS` a été reconstruit sans la colonne `besoin_semences_applicable` de `mart_territoires_agrodistrib`, pourtant présente dans le commit `c109ae1`. Reconstruit depuis `dev/aby` le 11/11/2026 (262 nœuds, 0 erreur). Tant que la construction n'est pas faite depuis une seule branche, chaque `dbt build` lancé depuis une autre copie du dépôt écrase `SALTIS.MARTS` : convenir de qui construit, et depuis quelle branche.
 ### Questions pour l'ISRA
 
 - Arachide : confirmer la dose « 150 kg/ha de 6-20-10 », citée seulement dans le texte du statut (`note_source`), sans dose chiffrée.
