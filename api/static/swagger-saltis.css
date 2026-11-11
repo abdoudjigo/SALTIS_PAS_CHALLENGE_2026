@@ -1,0 +1,90 @@
+/* Thème Swagger « Assaman & Suuf » : ciel (bleu) et terre (vert, ocre). */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --saltis-vert: #00853f;
+  --saltis-vert-fonce: #00612e;
+  --saltis-ciel: #1f6fb2;
+  --saltis-ocre: #c8811a;
+  --saltis-fond: #f6f8f5;
+  --saltis-texte: #1d2a22;
+}
+
+body {
+  margin: 0;
+  background: var(--saltis-fond);
+  border-top: 6px solid transparent;
+  border-image: linear-gradient(90deg, var(--saltis-vert) 0 33%, #fdef42 33% 66%, #e31b23 66% 100%) 1;
+}
+
+.swagger-ui,
+.swagger-ui .info .title,
+.swagger-ui .opblock-tag,
+.swagger-ui .opblock .opblock-summary-description {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--saltis-texte);
+}
+
+.swagger-ui .wrapper { max-width: 1200px; }
+
+/* En-tête */
+.swagger-ui .information-container {
+  background: linear-gradient(135deg, #ffffff 0%, #eef6f0 60%, #e8f1fa 100%);
+  border: 1px solid #dfe8e1;
+  border-radius: 14px;
+  margin: 24px auto 8px;
+  padding: 8px 28px 4px;
+  box-shadow: 0 2px 10px rgba(0, 60, 30, 0.06);
+}
+.swagger-ui .info { margin: 24px 0; }
+.swagger-ui .info .title { font-size: 2.1rem; font-weight: 700; color: var(--saltis-vert-fonce); }
+.swagger-ui .info .title small { background: var(--saltis-ciel); border-radius: 8px; }
+.swagger-ui .info .title small.version-stamp { background: var(--saltis-vert); }
+.swagger-ui .info .markdown p,
+.swagger-ui .info .markdown li { font-size: 0.95rem; line-height: 1.55; }
+.swagger-ui .info .markdown h3 { color: var(--saltis-vert-fonce); margin-top: 1.4em; }
+.swagger-ui .info .markdown table { border-collapse: collapse; margin: 0.6em 0; }
+.swagger-ui .info .markdown th,
+.swagger-ui .info .markdown td { border: 1px solid #dfe8e1; padding: 6px 10px; text-align: left; }
+.swagger-ui .info .markdown th { background: #eef6f0; }
+.swagger-ui .info .markdown code { background: #eef3ef; color: var(--saltis-vert-fonce); border-radius: 4px; padding: 1px 5px; }
+.swagger-ui .info .markdown pre { background: #14231a; border-radius: 10px; }
+.swagger-ui .info .markdown pre code { background: transparent; color: #d7f5e2; }
+
+/* Bandeau d'autorisation et filtre */
+.swagger-ui .scheme-container { background: transparent; box-shadow: none; padding: 12px 0; }
+.swagger-ui .btn.authorize { border-color: var(--saltis-vert); color: var(--saltis-vert); border-radius: 8px; }
+.swagger-ui .btn.authorize svg { fill: var(--saltis-vert); }
+.swagger-ui .filter .operation-filter-input { border: 1px solid #cfdcd3; border-radius: 8px; padding: 8px 12px; }
+
+/* Groupes de routes */
+.swagger-ui .opblock-tag {
+  font-weight: 650;
+  font-size: 1.2rem;
+  border-bottom: none;
+  border-left: 5px solid var(--saltis-vert);
+  background: #ffffff;
+  border-radius: 10px;
+  margin: 18px 0 8px;
+  padding: 10px 16px;
+  box-shadow: 0 1px 4px rgba(0, 60, 30, 0.05);
+}
+.swagger-ui .opblock-tag small { font-weight: 400; color: #5b6b61; font-size: 0.85rem; }
+.swagger-ui .opblock-tag-section:nth-of-type(n + 2):nth-of-type(-n + 3) .opblock-tag { border-left-color: var(--saltis-ciel); }
+.swagger-ui .opblock-tag-section:nth-of-type(n + 6):nth-of-type(-n + 7) .opblock-tag { border-left-color: var(--saltis-ocre); }
+.swagger-ui .opblock-tag-section:last-of-type .opblock-tag { border-left-color: #6b7a70; }
+
+/* Opérations */
+.swagger-ui .opblock { border-radius: 10px; overflow: hidden; box-shadow: none; }
+.swagger-ui .opblock.opblock-get { background: #f1f8f3; border-color: #b9dcc4; }
+.swagger-ui .opblock.opblock-get .opblock-summary-method { background: var(--saltis-vert); border-radius: 6px; }
+.swagger-ui .opblock.opblock-get .opblock-summary { border-color: #b9dcc4; }
+.swagger-ui .opblock.opblock-post { background: #fbf5ec; border-color: #ead2a8; }
+.swagger-ui .opblock.opblock-post .opblock-summary-method { background: var(--saltis-ocre); border-radius: 6px; }
+.swagger-ui .opblock .opblock-summary-path { font-weight: 600; }
+.swagger-ui .btn.execute { background: var(--saltis-vert); border-color: var(--saltis-vert); border-radius: 8px; }
+.swagger-ui .btn { border-radius: 8px; }
+
+/* Schémas */
+.swagger-ui section.models { border-radius: 10px; border-color: #dfe8e1; background: #ffffff; }
+.swagger-ui section.models h4 { color: var(--saltis-vert-fonce); }
