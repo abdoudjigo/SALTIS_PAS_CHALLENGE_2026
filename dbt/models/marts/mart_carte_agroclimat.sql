@@ -35,6 +35,9 @@ select
     g.code_region,
     g.region,
     g.zone_agroecologique,
+    g.zone_secondaire,
+    g.latitude,
+    g.longitude,
 
     -- Temps
     s.campagne_agricole,

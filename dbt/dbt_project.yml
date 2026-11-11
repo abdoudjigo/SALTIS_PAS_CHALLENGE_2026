@@ -18,6 +18,8 @@ seeds:
 
 vars:
   # Passer à true une fois SALTIS.RAW.GEO_DEPARTEMENTS chargée (GADM 4.1) :
-  # active stg_geo_departements, latitude/longitude dans dim_geographie
-  # et le test geo_departements_correspondance.
+  # active stg_geo_departements (contours des départements), les centroïdes
+  # GADM dans dim_geographie (latitude_centroide_gadm, longitude_centroide_gadm)
+  # et le test geo_departements_correspondance. latitude et longitude viennent
+  # du seed ref_departements, indépendamment de cette variable.
   geo_departements_charge: false
