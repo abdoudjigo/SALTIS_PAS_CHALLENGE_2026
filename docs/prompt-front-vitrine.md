@@ -30,13 +30,36 @@ Le back est terminé et solide. **Le front doit maintenant porter le projet.** P
 - Une phrase courte, grande, en français : quelque chose comme « Le ciel et la terre, enfin réunis pour chaque champ du Sénégal », puis deux boutons, « Découvrir » et « Se connecter ».
 - Quand la souris bouge, ou quand le téléphone s'incline, le globe réagit légèrement (parallaxe) et les particules s'écartent un peu.
 
-**Plan 2 — L'inscription et la connexion.**
-- Le même décor continue derrière le formulaire, sans rupture : ciel en haut, terre en bas, pluie fine, plantes qui poussent.
-- Le formulaire flotte en verre dépoli, très lisible.
+**Plan 2 — L'inscription et la connexion.** (le fonctionnement existant et ce qu'il faut garder sont détaillés plus bas, section « Connexion et inscription »)
+- Depuis la landing, « Se connecter » et « Créer un compte » ouvrent leur formulaire **sans quitter le décor** : la caméra du globe recule ou se décale, le formulaire apparaît par-dessus, ciel en haut, terre en bas, pluie fine, plantes qui poussent.
+- Le formulaire flotte en verre dépoli, très lisible. Sur téléphone, il occupe la largeur de l'écran, et le décor reste visible au-dessus et en dessous.
+- **Connexion** : email, mot de passe (avec le bouton pour l'afficher ou le masquer), message d'erreur clair dans le décor (« Email ou mot de passe incorrect »), bouton qui montre l'attente (la pluie s'intensifie au lieu d'un rond qui tourne).
+- **Inscription d'un producteur** : nom, email, mot de passe (8 caractères minimum), **département de ses champs**. Le choix du département est le moment fort : une petite carte du Sénégal où l'on touche son département, qui s'allume, avec la liste déroulante accessible juste en dessous comme alternative (clavier, lecteur d'écran, petit téléphone).
+- **Réussite** : le formulaire se dissout en gouttes, et l'on enchaîne directement sur le plan 3. Pour un producteur, la plongée se termine **sur son propre département**.
 - Pendant la saisie, on **précharge en silence** la carte et les données de l'étape suivante, pour que la transition soit instantanée.
 
+**Plan 2 bis — Le mot de bienvenue : la mascotte.**
+- Juste après la connexion ou l'inscription, avant la plongée, **un agriculteur sénégalais** apparaît et souhaite la bienvenue sur la plateforme. Il n'a rien d'un personnage de dessin animé. Il est **crédible et digne** : tenue de travail, chapeau de paille, une houe ou une poignée d'épis de mil, regard chaleureux. On doit croire qu'il existe.
+- Il est **animé** : il lève la main, sourit, puis désigne le globe derrière lui comme pour dire « suivez-moi ». Le mouvement est léger, en boucle courte, fluide sur téléphone.
+- **Sa bulle de texte est personnalisée** avec les vraies informations du compte (`user.nom`, rôle, département) :
+  - producteur : « Dalal ak jàmm, Awa ! Bienvenue sur Assaman & Suuf. Allons voir ce que le ciel prépare pour vos champs de Kaolack. » ;
+  - organisation : « Bienvenue, Fatou. Voyons ensemble où vos intrants seront les plus utiles cette campagne. » ;
+  - conseiller et administrateur : un message adapté au même ton.
+
+  « Dalal ak jàmm » veut dire « bienvenue » en wolof. Le reste est en français. Fais vérifier l'orthographe wolof par l'équipe.
+- Le texte s'écrit progressivement, comme une voix. Un bouton « Commencer » lance la plongée (plan 3), et un lien discret « Passer » permet de sauter l'accueil.
+- **Version longue à la première connexion**, version courte (une ligne, quelques secondes) aux connexions suivantes. Elle ne se rejoue pas à chaque rechargement de page.
+- La mascotte peut revenir avec parcimonie comme **guide** : un conseil dans un état vide, un encouragement quand la saison est bonne, une explication au premier passage sur un écran. Jamais de manière envahissante.
+- **Comment la produire** : propose les options avec leurs avantages et leur poids, et fais valider avant de choisir :
+  - illustration vectorielle animée (Rive ou Lottie) dessinée pour le projet ;
+  - personnage 3D léger ;
+  - vidéo courte d'un vrai agriculteur filmé avec son accord écrit (droit à l'image).
+
+  Pas de visage généré qui sonne faux, pas de banque d'images. Prévois aussi une **agricultrice** : au Sénégal, une grande part du travail agricole est faite par des femmes, et c'est un message fort pour ce public. On peut alterner, ou choisir selon le profil.
+- Respecte « réduire les animations » : la mascotte apparaît alors immobile, avec son texte.
+
 **Plan 3 — L'arrivée : de l'Afrique au Sénégal.**
-- À la connexion, pas de changement de page brutal : la caméra **plonge** depuis le globe, traverse l'atmosphère, survole l'Afrique de l'Ouest et se pose sur le **Sénégal en 3D** (relief exagéré, le pays est plat), lumière rasante.
+- À la connexion, pas de changement de page brutal : la caméra **plonge** depuis le globe. Cette plongée se joue **à l'arrivée après une connexion ou une inscription**, pas à chaque rechargement de page (un utilisateur déjà connecté qui revient arrive directement sur la carte, avec un bouton pour rejouer la plongée). La caméra traverse l'atmosphère, survole l'Afrique de l'Ouest et se pose sur le **Sénégal en 3D** (relief exagéré, le pays est plat), lumière rasante.
 - Les **6 zones agroécologiques** s'allument l'une après l'autre avec leur nom.
 - Les **45 départements** se lèvent en volumes 3D : la hauteur est la pluie de la saison et la couleur le risque de la saison (normal, sécheresse, excès de pluie, les deux). Ce sont les **vraies données**.
 
@@ -58,6 +81,7 @@ Le back est terminé et solide. **Le front doit maintenant porter le projet.** P
 
 - **Lis d'abord**, sans rien modifier :
   - `app/README.md` (le front existant) ;
+  - `app/src/App.tsx`, `app/src/auth/`, `app/src/pages/Connexion.tsx`, `Inscription.tsx` et `AuthLayout.tsx` (la connexion et l'inscription, détaillées plus bas) ;
   - `api/README.md` (les routes expliquées) ;
   - `docs/contrat-donnees.md` (les colonnes) ;
   - `docs/guide-api.md`.
@@ -70,7 +94,72 @@ Le back est terminé et solide. **Le front doit maintenant porter le projet.** P
   - latitude et longitude des 45 départements, dans la carte agroclimatique et le référentiel des départements ;
   - contours des 6 zones : `app/public/geo/zones_agroecologiques.geojson` (jointure sur le nom de zone, en majuscules) ;
   - contours des départements (GADM 4.1) **pas encore disponibles**. Tant qu'ils manquent, utilise des colonnes ou des points 3D sur les coordonnées. Prévois qu'un GeoJSON simplifié des départements les remplacera sans tout refaire.
+- **Il n'existe pas encore de landing page** : aujourd'hui, `/` est une route protégée (l'accueil de l'application). Un visiteur non connecté est renvoyé directement sur `/connexion`. La landing est donc à créer comme **page publique**. Propose comment l'organiser dans `src/App.tsx` (par exemple : `/` affiche la landing aux visiteurs et l'accueil de l'application aux utilisateurs connectés), sans casser les liens existants ni la redirection après connexion.
 - **Le vent mondial** est un décor de contexte (prévisions mondiales fournies par Mapbox), pas une donnée du projet. Il vit sur le globe. Dès qu'on est au Sénégal, ce sont nos données qui parlent.
+
+### Connexion et inscription : ce qui existe, ce qu'il faut garder
+
+Le **fond** de l'authentification est déjà bien construit. Tu refais **l'apparence et la mise en scène**, pas la mécanique. Lis ces fichiers avant de proposer quoi que ce soit.
+
+**Les fichiers**
+
+| Fichier | Rôle |
+|---|---|
+| `src/types/auth.ts` | Les types : `Role` (`PRODUCTEUR`, `CONSEILLER`, `ORGANISATION`, `ADMIN`), `TypeOrganisation` (`ONG`, `ETAT`, `SEMENCIER`), `Utilisateur` (id, email, nom, rôle, organisation, `code_departement`), `Session` (`access_token`, `token_type: 'bearer'`, `user`), `DonneesInscription` (nom, email, password, `code_departement`) |
+| `src/auth/session.ts` | Stocke la session (jeton + utilisateur) dans `localStorage` sous la clé `assaman.session`, avec un repli en mémoire en navigation privée. Prévient les abonnés à chaque changement. **Seul endroit qui touche au stockage de la session** : si l'API passe un jour à un cookie httpOnly, seuls ce fichier et `src/api/client.ts` changent |
+| `src/auth/AuthContext.tsx` | Fournit `user`, `estConnecte`, `login`, `register` et `logout` à toute l'application (`useAuth()`). À l'ouverture, revalide le profil avec `GET /auth/me` (rôle modifié, compte désactivé). À la déconnexion, **vide le cache des données** (TanStack Query) pour qu'aucune donnée d'un compte ne reste visible pour le suivant |
+| `src/auth/RouteProtegee.tsx` | Garde des routes : non connecté → redirection vers `/connexion` en mémorisant la page demandée (`state.depuis`) ; connecté sans le droit → écran « Accès réservé » |
+| `src/auth/roles.ts` | Libellés des rôles et table `ACCES` (qui voit quoi) : AgroDistrib pour les ONG, les services de l'État et l'admin ; offre de semences pour les semenciers et l'admin (si `VITE_ACTIVER_SEMENCIERS=true`) ; administration pour l'admin. Tout le reste est ouvert à tout utilisateur connecté |
+| `src/api/client.ts` | Ajoute `Authorization: Bearer <jeton>` à chaque appel. Sur une réponse **401**, efface la session (retour à la connexion) avec le message « Session expirée, reconnectez-vous ». Transforme les erreurs en messages lisibles |
+| `src/api/index.ts` | `api.login`, `api.register`, `api.moi` : les trois appels d'authentification |
+| `src/pages/Connexion.tsx` | Formulaire email et mot de passe. Après la connexion, renvoie vers la page demandée avant la redirection (`state.depuis`), sinon vers `/`. En mode exemple, affiche des **boutons de comptes de démonstration** (connexion en un clic) |
+| `src/pages/Inscription.tsx` | **Inscription libre réservée aux producteurs** : nom, email, département (liste tirée des référentiels), mot de passe de 8 caractères minimum. Les comptes d'organisation (ONG, État) et de conseiller sont créés par un administrateur : le dire clairement sur l'écran |
+| `src/pages/AuthLayout.tsx` | Mise en page actuelle des deux écrans. **Le panneau visuel est masqué sur téléphone** (`hidden lg:flex`) : c'est exactement ce qu'il faut changer, le décor doit exister sur téléphone aussi |
+| `src/api/mock/comptes.ts`, `src/api/mock/serveur.ts` | Mode exemple : 6 comptes de démonstration (mot de passe `demo2026`), inscription enregistrée dans le navigateur, erreurs réalistes (400 identifiants faux, 409 email déjà utilisé, 422 champs manquants), jeton factice `demo-<id>` |
+
+**Le contrat attendu de l'API d'authentification**
+
+- `POST /auth/login`, corps `{ email, password }` → `Session`.
+- `POST /auth/register`, corps `{ nom, email, password, code_departement }` → `Session`, avec le rôle `PRODUCTEUR`.
+- `GET /auth/me`, avec le jeton → `Utilisateur`.
+- Erreurs au format FastAPI `{ detail: "..." }`.
+
+**Important : ce back n'existe pas encore.** L'authentification relève de la base de l'application (PostgreSQL), pas de Snowflake. Elle sera mise en place plus tard. **Le front doit être prêt dès maintenant** : il respecte ce contrat et fonctionne en mode exemple. Le jour où le back sera branché, seuls quelques réglages devront changer, pas les écrans. L'API actuelle (`api/`) n'expose que les données des marts : elle n'a **aucune route `/auth`**. Le format d'erreur de nos routes de données est `{ "erreur": { "code", "message", "aide" } }`, que `client.ts` ne lit pas encore. Conséquences :
+1. **N'invente pas de back d'authentification** et ne modifie pas `api/`. Signale-le dans ton rapport.
+2. Aujourd'hui, `VITE_USE_MOCK` bascule **tout** d'un coup (authentification et données). Pour le site déployé, on veut des **vraies données** avec des **comptes de démonstration** tant que le back d'authentification n'existe pas. Propose une solution propre, par exemple deux réglages distincts (authentification d'exemple, données réelles), et fais-la valider avant de l'appliquer.
+3. Fais lire à `client.ts` les deux formats d'erreur (`detail` de FastAPI et `erreur.message` de notre API), pour que l'utilisateur voie toujours une phrase claire, jamais « Erreur 404 ».
+
+**Ce qu'il faut garder, quel que soit le nouveau design**
+
+- Toute la mécanique ci-dessus : `useAuth`, `RouteProtegee`, `sessionStore`, la table `ACCES`, la revalidation par `/auth/me`, le vidage du cache à la déconnexion, la redirection vers la page demandée après la connexion, la déconnexion automatique sur 401.
+- Les **boutons de comptes de démonstration**, mais mis en scène :
+  - par exemple « Entrer comme… » avec un producteur de Kaolack, une ONG, un service de l'État, un conseiller ;
+  - un clic suffit ;
+  - c'est ce que les visiteurs du site déployé utiliseront le plus ;
+  - n'affiche pas le profil semencier si `VITE_ACTIVER_SEMENCIERS=false`.
+- Les bons attributs de formulaire :
+  - de vrais `<label>` ;
+  - `autocomplete` (`email`, `current-password`, `new-password`, `name`) pour que les gestionnaires de mots de passe et le remplissage automatique du téléphone fonctionnent ;
+  - `type="email"` pour le bon clavier sur téléphone ;
+  - messages d'erreur annoncés aux lecteurs d'écran (`role="alert"`).
+- La règle des 8 caractères minimum, vérifiée avant l'envoi avec un message clair.
+- Un utilisateur déjà connecté qui ouvre `/connexion` ou `/inscription` est renvoyé vers l'application.
+
+**Sécurité**
+
+- **Le mot de passe ne quitte jamais le formulaire** autrement que dans l'appel `login` ou `register` : ni dans `localStorage`, ni dans l'URL, ni dans les journaux de la console.
+- Aucun jeton dans l'URL.
+- Aucune information sensible dans les messages d'erreur. Par exemple, « Email ou mot de passe incorrect », sans préciser lequel des deux.
+- Le profil chargé après connexion ne sert qu'à l'affichage. Les vrais contrôles d'accès seront faits par le back.
+
+**Après la connexion, selon le profil**
+
+- **Producteur** : la plongée se termine sur **son département** (`code_departement`), et la fiche s'ouvre sur ses cultures.
+- **Conseiller** : même chose sur son département de rattachement s'il en a un, sinon vue du Sénégal.
+- **Organisation (ONG, État)** : vue du Sénégal, puis mise en avant d'AgroDistrib.
+- **Administrateur** : vue du Sénégal, avec accès à l'administration.
+
+La déconnexion (dans la barre de l'application) ramène sur la landing, avec une transition douce inverse : la caméra remonte vers le globe.
 
 ### Règles non négociables
 
@@ -142,12 +231,21 @@ Le back est terminé et solide. **Le front doit maintenant porter le projet.** P
 
    Attends la validation.
 2. **Construis un plan de l'histoire à la fois**, dans cet ordre :
-   1. landing (globe, vent, pluie, fleurs) ;
-   2. connexion ;
-   3. plongée Afrique → Sénégal avec les vraies données ;
-   4. film de la saison ;
-   5. fiche département ;
-   6. AgroDistrib.
+   1. landing (globe, vent, pluie, fleurs), en page publique ;
+   2. connexion, inscription et comptes de démonstration, dans le même décor, avec la mécanique existante conservée. Teste ces parcours à chaque étape :
+      - connexion réussie ;
+      - mauvais mot de passe ;
+      - email déjà utilisé à l'inscription ;
+      - mot de passe trop court ;
+      - retour vers la page demandée après la connexion ;
+      - déconnexion, puis vérification que le cache est vidé ;
+      - session expirée ;
+      - accès refusé à AgroDistrib pour un producteur ;
+   3. mot de bienvenue avec la mascotte : version longue à la première connexion, version courte ensuite, texte selon le profil ;
+   4. plongée Afrique → Sénégal avec les vraies données ;
+   5. film de la saison ;
+   6. fiche département ;
+   7. AgroDistrib.
 3. **À la fin de chaque plan** :
    - lance le front et décris ce qu'on voit ;
    - joins une vérification sur téléphone (petit et grand format, vertical et horizontal) : ce qu'on voit, ce qui a été adapté, la fluidité mesurée ;
