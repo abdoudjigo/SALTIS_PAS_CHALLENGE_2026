@@ -6,7 +6,6 @@ Ce document dit **quelles données sont disponibles** pour les modèles, **où l
 2. **Prévision de l'anomalie de rendement** (si le temps le permet) ;
 3. **AgroDistrib** : proposition de répartition des intrants d'une organisation (ministère, ONG) entre zones, régions ou départements.
 
-Pour toute question sur une donnée (colonne, valeur bizarre, besoin d'une nouvelle variable), s'adresser à l'**équipe données** (Aby, Abdoulaye) plutôt que de corriger soi-même.
 
 **Détail des colonnes** (unités, valeurs possibles, limites, exemples de requêtes) : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md). Décisions et état de la modélisation : [`docs/etat-modelisation.md`](../docs/etat-modelisation.md).
 
@@ -16,11 +15,9 @@ Pour toute question sur une donnée (colonne, valeur bizarre, besoin d'une nouve
 
 ### 1.1 En secours : les fichiers CSV
 
-Les tables sont partagées dans le **dossier Drive commun** de l'équipe. Elles se déposent dans `data/modules/` du dépôt et ne vont **jamais dans Git**.
+Les tables sont partagées dans des fichiers CSV.
 
-Le préfixe indique le module : `a_` agroclimat, `b_` cultures, `c_` besoins et rendements, `d_` AgroDistrib. Le détail des colonnes est dans `dataset/README.md`.
-
-Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils permettent d'explorer en attendant l'accès Snowflake, mais n'intègrent pas les règles et contrôles des tables `MART_*`.
+Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils ne servent qu'en secours : ils n'intègrent pas les règles et contrôles des tables `MART_*`.
 
 ### 1.2 À utiliser : l'entrepôt Snowflake
 
@@ -33,7 +30,7 @@ Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils 
 | Écriture des résultats ML | `SALTIS.ML` |
 | Écriture des scénarios AgroDistrib | `SALTIS.APP` |
 
-**Accès** : l'équipe données crée un utilisateur de service `SVC_ML`, qui pourra **lire** `MARTS` et **écrire** dans `ML`. La connexion se fait par **paire de clés**, sans mot de passe. Demander à l'équipe données l'identifiant du compte et la clé. Ces informations vont dans le fichier `.env` local, **jamais dans Git**. Ne jamais utiliser le compte personnel de quelqu'un d'autre.
+**Accès** : l'utilisateur **`USER_ML`**, avec le rôle **`R_ML`** (créés par Ibrahima), **lit** `SALTIS.MARTS` et **écrit** dans `SALTIS.ML`. Demander à Ibrahima les identifiants de connexion. Ils vont dans le fichier `.env` local, **jamais dans Git**. Ne jamais utiliser le compte personnel de quelqu'un d'autre.
 
 **Règle** : lire de préférence dans `MARTS`, qui contient les données nettoyées et testées. `RAW` ne sert qu'en dépannage.
 
@@ -51,13 +48,11 @@ Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils 
 | `MARTS.FACT_CLIMATOLOGIE_DECADAIRE` | Pluie habituelle par décade (1991–2020) | ✅ prêt |
 | `MARTS.FACT_ADEQUATION_CULTURE`, `FACT_ADEQUATION_VARIETE`, `FACT_FACTEURS_LIMITANTS`, `FACT_REFERENCE_AGRONOMIQUE`, `FACT_BESOIN_REFERENCE` | Adéquation, facteurs limitants, doses, besoins | ✅ prêt |
 | `MARTS.DIM_GEOGRAPHIE`, `DIM_REGION`, `DIM_ZONE_AGROECOLOGIQUE`, `DIM_CULTURE`, `DIM_VARIETE`, `DIM_INTRANT`, `DIM_TEMPS` | Référentiels | ✅ prêt |
-| Schéma `ML` | Écriture des résultats des modèles | 🔜 en cours |
-| Utilisateur `SVC_ML` (paire de clés) | Accès Snowflake de l'équipe ML | 🔜 en cours |
+| Schéma `SALTIS.ML` | Écriture des résultats des modèles | ✅ prêt |
+| Rôle `R_ML` et utilisateur `USER_ML` | Accès Snowflake de l'équipe ML (lecture `MARTS`, écriture `ML`) | ✅ prêt |
 | Contours des départements (GADM 4.1) | Latitude, longitude et géométrie des départements | 🔜 en cours |
 
-Le schéma `APP` (stocks déclarés, paramètres et scénarios AgroDistrib) est alimenté par l'application ; il sera créé avec elle.
-
-**Conseil** : travailler directement sur les tables `MART_*` de `MARTS`, nettoyées et testées. Les CSV ne servent qu'en secours, tant que l'accès `SVC_ML` n'est pas ouvert.
+**Conseil** : travailler directement sur les tables `MART_*` de `MARTS`, nettoyées et testées. Les CSV ne servent qu'en secours.
 
 ---
 
@@ -233,11 +228,9 @@ Le format exact des tables est fixé avec l'équipe données avant la première 
 
 ## 7. Ce qu'il faut demander à l'équipe données
 
-- L'accès Snowflake (`SVC_ML`, la clé, l'identifiant du compte).
-- La création du schéma `ML`.
+- L'accès Snowflake (`USER_ML` avec le rôle `R_ML`, identifiants de connexion) : auprès d'Ibrahima.
 - Les contours des départements (GADM 4.1), s'ils sont utiles aux modèles.
 - Les variables 2026 dès leur publication.
 - Toute nouvelle variable utile : elle sera ajoutée proprement dans les tables `MART_*`, pas bricolée dans le code ML.
 - La validation du format des tables de sortie avant la première écriture.
 
-**Rappel** : ni données, ni clés, ni identifiants dans Git.
