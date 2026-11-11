@@ -1,37 +1,66 @@
 # Modèles dbt
 
-dbt transforme les tables agricoles chargées dans `SALTIS.RAW` en deux couches :
+dbt transforme les tables agricoles chargées dans `SALTIS.RAW` en une constellation de faits et de dimensions, puis en marts prêts pour l'API, le front et le ML :
 
-- `models/staging/` : un modèle `stg_` par table source. Ces modèles sélectionnent explicitement les colonnes attendues et gardent les noms de colonnes du fichier source.
-- `models/marts/` : modèles métier `mart_` regroupés selon les quatre modules de la plateforme.
+- `models/staging/` : un modèle `stg_` par table source (vues dans `SALTIS.STAGING`). Ces modèles sélectionnent explicitement les colonnes attendues et gardent les noms de colonnes du fichier source.
+- `models/intermediate/` : calculs intermédiaires (vues dans `SALTIS.INTERMEDIATE`).
+- `models/marts/` : dimensions `dim_`, faits `fact_` et marts `mart_` (tables dans `SALTIS.MARTS`).
+- `seeds/` : petits référentiels du projet (`ref_intrants`), chargés dans `SALTIS.STAGING`.
 
-Les modèles `stg_` sont des vues dans `SALTIS.STAGING`. Les modèles `mart_` sont des tables dans `SALTIS.MARTS`. Les modèles ne chargent pas les CSV : les tables sources doivent déjà exister dans `SALTIS.RAW` avec leurs en-têtes correctement définis.
+Les modèles ne chargent pas les CSV : les tables sources doivent déjà exister dans `SALTIS.RAW` avec leurs en-têtes correctement définis.
 
-## Marts et leur contenu
+- **Décisions, règles, état détaillé de chaque modèle et points ouverts** : [`docs/etat-modelisation.md`](../docs/etat-modelisation.md).
+- **Contrat de données des marts** (grain, colonnes, unités, limites, exemples de requêtes) : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md).
 
-| Module | Modèle | Grain (une ligne par...) | Utilité |
+## Dimensions
+
+| Modèle | Grain | Lignes |
+|---|---|---|
+| `dim_temps` | jour (1980-2035), avec décade 1-36 et campagne agricole | 20 454 |
+| `dim_geographie` | département (code GADM, région, `code_region`, zone) | 45 |
+| `dim_region` | région administrative | 14 |
+| `dim_zone_agroecologique` | zone agroécologique | 6 |
+| `dim_culture` | culture | 12 |
+| `dim_variete` | variété documentée | 3 |
+| `dim_intrant` | intrant de référence (seed `ref_intrants`) | 9 |
+
+Zone et région sont deux regroupements **parallèles** des départements (Louga, Matam et Tambacounda couvrent deux zones) : il n'y a pas de hiérarchie zone → région. `dim_organisation` et `dim_scenario_allocation` sont désactivées en attendant les tables de l'application.
+
+## Faits
+
+| Module | Modèle | Grain | Lignes |
 |---|---|---|---|
-| A. Agroclimat | `mart_saisons` | département et année | Bilan de la saison, pluies, sécheresse et excès de pluie. `risque_saison` résume les alertes disponibles. |
-| A. Agroclimat | `mart_profil_agro` | département | Normales de pluie, probabilités climatiques et caractéristiques des sols. |
-| B. Cultures | `mart_adequation` | département, culture et classe de cycle | Comparaison des cultures et de leurs cycles selon l'adéquation calculée. |
-| B. Cultures | `mart_adequation_varietes` | département, culture et variété | Adéquation des variétés documentées au climat local. |
-| C. Besoins et rendements | `mart_besoins` | département et culture | Doses, besoins estimés en intrants, semences et irrigation. |
-| C. Besoins et rendements | `mart_rendements` | département, année et culture | Historique des rendements avec les indicateurs climatiques disponibles. |
-| C. Besoins et rendements | `mart_facteurs_limitants` | zone agroécologique et culture | Rendements atteignables, facteurs limitants et corrélations observées. |
-| D. AgroDistrib | `mart_agrodistrib` | département, scénario et produit | Besoin, allocation, couverture et déficit pour les scénarios fournis. |
+| A | `fact_saison_departement` | département × campagne (référence des variables de saison) | 2 025 |
+| A | `fact_pluviometrie_decadaire` | département × année × décade | 71 280 |
+| A | `fact_climatologie_decadaire` | niveau (département ou zone) × territoire × décade, normales 1991-2020 | 1 800 |
+| B | `fact_adequation_culture` | département × culture × classe de cycle | 1 620 |
+| B | `fact_adequation_variete` | département × variété | 90 |
+| C | `fact_rendement_departement` | département × campagne × culture | 22 905 |
+| C | `fact_facteurs_limitants` | zone × culture | 72 |
+| C | `fact_reference_agronomique` | zone × culture × intrant × source (doses de référence) | 141 |
+| C | `fact_besoin_reference` | département × culture (besoins de référence historiques) | 367 |
 
-Les modèles de mart exposent les données utiles avec une liste explicite de colonnes, conservent les grains des tables sources et ne fabriquent pas de prévisions ou de recommandations nouvelles. L'adéquation et les scénarios sont ceux déjà calculés dans les données d'entrée.
+## Marts
 
-## Évolution multidimensionnelle proposée
+| Module | Modèle | Grain | Lignes |
+|---|---|---|---|
+| A | `mart_carte_agroclimat` | département × campagne | 2 025 |
+| A | `mart_suivi_decadaire` | département × année × décade | 71 280 |
+| B | `mart_choix_cultures` | département × culture × option (cycle ou variété) | 1 710 |
+| C | `mart_besoins` | département × culture (45 départements) | 369 |
+| D | `mart_territoires_agrodistrib` | département × culture cultivée | 345 |
+| D | `mart_vulnerabilite_departement` | département (score relatif) | 45 |
+| ML | `mart_ml_prevision_pluie` | département × année | 2 025 |
 
-La constellation analytique est une évolution à construire à partir des modèles `stg_`. Son architecture cible, les dimensions, faits, grains et liaisons proposés sont décrits dans le [README de la modélisation multidimensionnelle](../docs/README-constellation.md). Les modèles `dim_` et `fct_` n'existent pas encore.
+Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_adequation_varietes`, `mart_rendements`, `mart_facteurs_limitants` et `mart_agrodistrib` (copies du staging) ont été supprimés ; `mart_besoins` a été reconstruit sur les faits. Les marts ne fabriquent pas de prévisions : l'adéquation est celle calculée dans les données d'entrée, et la vulnérabilité est un score relatif et indicatif.
 
 ## Limites à garder en tête
 
-- Les prévisions saisonnières ne sont pas encore produites par un modèle ML ; les tables de prédicteurs sont seulement disponibles dans la couche staging.
-- Les variétés référencées sont incomplètes et les doses de plusieurs cultures restent à documenter ou faire valider par l'ISRA et l'ANCAR.
-- Les besoins consolidés et les scénarios de répartition sont partiels. Le scénario fourni est une démonstration basée sur une disponibilité nationale estimée, et non un inventaire de stocks réels.
-- Les rendements historiques ont leurs propres limites de couverture, notamment les campagnes disponibles et le type de superficie renseigné par la source.
+- Les prévisions saisonnières ne sont pas encore produites par un modèle ML ; le jeu de données est prêt (`mart_ml_prevision_pluie`).
+- Les variétés référencées sont incomplètes et les doses de plusieurs cultures restent à documenter ou faire valider par l'ISRA et l'ANCAR (aucune dose validée aujourd'hui).
+- Les besoins sont des besoins de référence historiques, pas prévisionnels. Les stocks, scénarios et allocations d'AgroDistrib attendent les tables de l'application ; les anciennes simulations (`D_SCENARIOS_REPARTITION`) ne sont pas de vrais scénarios.
+- Les rendements historiques ont leurs propres limites de couverture : campagnes observées de 1981 à 2021, superficie récoltée jusqu'en 2015 puis semée.
+- Les contours des départements (GADM 4.1) ne sont pas encore chargés ; tout est prêt derrière la variable `geo_departements_charge`.
 - Pour fonctionner, chaque table de `SALTIS.RAW` doit avoir des colonnes portant les noms des en-têtes du CSV correspondant. Si Snowflake crée des colonnes comme `C1`, `C2`, le chargement du fichier doit être corrigé avant d'exécuter le modèle `stg_` associé.
 
 ## Exécuter les modèles

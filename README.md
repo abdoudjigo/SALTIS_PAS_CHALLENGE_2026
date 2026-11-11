@@ -9,16 +9,18 @@ Les agriculteurs doivent savoir **comment sera la pluie de la campagne** (courte
 ## Les 4 modules
 | Module | Question | Tables (dbt marts) |
 |---|---|---|
-| A. Suivi & anticipation agroclimatique | Quelle pluie, quelle saison ? | `mart_saisons`, `mart_profil_agro` |
-| B. Choix cultures & variétés | Que semer, avec quel cycle ? | `mart_adequation`, `mart_adequation_varietes` |
-| C. Besoins & rendements | Combien d'intrants, quels facteurs limitants ? | `mart_besoins`, `mart_rendements`, `mart_facteurs_limitants` |
-| D. AgroDistrib | Comment répartir les intrants ? | `mart_agrodistrib` |
+| A. Suivi & anticipation agroclimatique | Quelle pluie, quelle saison ? | `mart_carte_agroclimat`, `mart_suivi_decadaire` |
+| B. Choix cultures & variétés | Que semer, avec quel cycle ? | `mart_choix_cultures` |
+| C. Besoins & rendements | Combien d'intrants, quels facteurs limitants ? | `mart_besoins` (et les faits `fact_rendement_departement`, `fact_facteurs_limitants`) |
+| D. AgroDistrib | Comment répartir les intrants ? | `mart_territoires_agrodistrib`, `mart_vulnerabilite_departement` |
+
+Prévision de la pluie (ML) : `mart_ml_prevision_pluie`. Détail des colonnes : [`docs/contrat-donnees.md`](./docs/contrat-donnees.md).
 
 ## Architecture
 ```
 sources (CHIRPS, NASA POWER, SoilGrids, DAPSA…)
    └─ CSV ──► Snowflake SALTIS.RAW
-                 └─ dbt/ (staging → marts) ──► Snowflake SALTIS.STAGING / SALTIS.MARTS
+                 └─ dbt/ (staging → intermediate → faits, dimensions, marts) ──► Snowflake SALTIS.STAGING / INTERMEDIATE / MARTS
                                                    ├─ ml/   (prévision pluie, rendement)
                                                    └─ app/  (front carte Mapbox)
 
@@ -58,6 +60,8 @@ Get-Content .env | ForEach-Object {
 `dbt.ps1` (à la racine) lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
 
 Le profil Snowflake utilise par défaut le rôle `SYSADMIN`, l'entrepôt `SALTIS_WH` et la base `SALTIS`. Les modèles configurés avec `+schema: staging` et `+schema: marts` sont créés dans `SALTIS.STAGING` et `SALTIS.MARTS`; le schéma `RAW` est déclaré comme source et n'est pas modifié par dbt. La description des transformations, des grains et des limites des modèles est dans [`dbt/README.md`](./dbt/README.md).
+
+**État de la modélisation** (décisions validées, règles, état des modèles, points à signaler, questions pour l'ISRA) : [`docs/etat-modelisation.md`](./docs/etat-modelisation.md).
 
 ## Données
 Les gros fichiers ne vont **pas** dans Git (voir `.gitignore`). Les tables `a_*`, `b_*`, `c_*`, `d_*` se partagent via un dossier Drive commun, à déposer dans `data/modules/`. Détail des colonnes : `docs/data-dictionary.md`.

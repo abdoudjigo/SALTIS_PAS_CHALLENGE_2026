@@ -126,7 +126,7 @@ Les indices mars–mai 2026 (ONI, TNA, TSA), la pluie 2025 et l'humidité du sol
 
 **Cible** : `anomalie_rendement_pct`, l'écart du rendement à sa tendance. 7 428 valeurs ; médiane +2,5 % ; quelques **valeurs extrêmes** (jusqu'à +1 349 %).
 
-Dans `FACT_RENDEMENT_DEPARTEMENT`, filtrer sur `est_observe = true`.
+Dans `FACT_RENDEMENT_DEPARTEMENT`, filtrer sur **`rendement_kg_ha is not null`** (8 040 lignes), et non sur `est_observe`. `est_observe = true` (8 244 lignes) signifie qu'au moins une valeur a été publiée : il inclut 204 lignes sans rendement, dont 58 avec seulement une superficie, 14 avec seulement une production et 132 avec une superficie et une production mais sans rendement publié. Les 7 428 anomalies sont toutes sur des lignes avec un rendement.
 
 **Variables de saison** : dans `FACT_SAISON_DEPARTEMENT`, à joindre sur département et campagne. Les variables propres à chaque culture (`indice_satisfaction_eau_pct`, `deficit_hydrique_mm`) sont dans le fait de rendement.
 

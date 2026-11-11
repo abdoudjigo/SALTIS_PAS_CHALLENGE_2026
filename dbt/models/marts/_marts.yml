@@ -132,3 +132,202 @@ models:
               arguments:
                 to: ref('dim_culture')
                 field: id_culture
+
+  # ------------------------------------------------------------------
+  # Marts
+  # ------------------------------------------------------------------
+
+  - name: mart_vulnerabilite_departement
+    description: >
+      Score de vulnérabilité agricole par département, RELATIF et INDICATIF
+      (méthode v1) : rang centile 0-100 parmi les départements, 100 = le plus
+      vulnérable. 60 % aléa sécheresse (alertes sécheresse 1991-2020, CV des
+      pluies, pluie de l'année sèche en sens inverse) + 40 % sensibilité des
+      rendements (variabilité et tendance, 1991-2015). Classes par quintiles,
+      relatives : elles comparent les départements entre eux. Score NULL si
+      une dimension manque (Guédiawaye, Pikine). Excès de pluie, probabilité
+      de saison sèche, séquence sèche de 15 jours et part des cultures sont
+      affichés hors score. À valider avec les techniciens.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: score_alea_secheresse
+        data_tests: [not_null]
+      - name: nb_dimensions_disponibles
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+                quote: false
+      - name: classe_vulnerabilite
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['très faible (relatif)', 'faible (relatif)', 'moyenne (relatif)', 'élevée (relatif)', 'très élevée (relatif)']
+      - name: confiance_rendement
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['faible', 'normale']
+      - name: methode_version
+        data_tests: [not_null]
+
+  - name: mart_ml_prevision_pluie
+    description: >
+      Jeu de données du modèle de prévision de la pluie de saison, par
+      département et année (1981-2025). Variables connues fin mai seulement
+      (indices océaniques mars-mai ONI, TNA, TSA, AMO ; pluie N-1 ; humidité
+      du sol avril-mai ; normale 1991-2020). Cibles pluie_saison_mm et
+      classe_saison issues de fact_saison_departement. jeu : ENTRAINEMENT
+      (<= 2015) / TEST (2016-2025). Les indices océaniques sont identiques
+      pour tous les départements d'une même année ; l'AMO s'arrête en 2022
+      (nulle de 2023 à 2025) ; les valeurs nulles restent nulles.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: annee
+        data_tests: [not_null]
+      - name: jeu
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ENTRAINEMENT', 'TEST']
+      - name: pluie_saison_mm
+        data_tests: [not_null]
+      - name: classe_saison
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['très sèche', 'sèche', 'normale', 'humide', 'très humide']
+
+  - name: mart_carte_agroclimat
+    description: >
+      Écran carte agroclimatique : bilan de chaque saison par département
+      et campagne (fact_saison_departement), normale, alertes,
+      risque_saison et vulnérabilité (relative). Un seul écran carte avec
+      des filtres ; le détail de la vulnérabilité est dans
+      mart_vulnerabilite_departement.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: campagne_agricole
+        data_tests: [not_null]
+      - name: risque_saison
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['sécheresse et excès de pluie', 'sécheresse', 'excès de pluie', 'normal']
+
+  - name: mart_suivi_decadaire
+    description: >
+      Écran de suivi décade par décade : pluie observée, normale 1991-2020
+      et écart côte à côte, pour la décade et en cumul depuis le 1er juin,
+      avec la fourchette climatologique du département. 44 départements
+      (Guédiawaye absent).
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: numero_decade_annee
+        data_tests: [not_null]
+      - name: libelle_decade
+        data_tests: [not_null]
+      - name: pluie_mm
+        data_tests: [not_null]
+
+  - name: mart_choix_cultures
+    description: >
+      Écran choix des cultures et des variétés : une ligne par département,
+      culture et option (type_option CYCLE ou VARIETE). Comparer sur
+      proba_cycle_couvert_pct (rang_option), pas sur le score ; le score des
+      cycles court et long utilise la part eau du cycle moyen (note_score).
+      Colonnes propres à un type NULL pour l'autre.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: type_option
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['CYCLE', 'VARIETE']
+      - name: option
+        data_tests: [not_null]
+      - name: niveau_adequation
+        data_tests: [not_null]
+
+  - name: mart_besoins
+    description: >
+      Écran besoins en intrants : besoins de référence historiques, pas
+      prévisionnels, par département et culture. Les 45 départements
+      apparaissent (Guédiawaye et Pikine : « pas de superficie agricole de
+      référence »). Totaliser les semences sur besoin_semences_retenu_t
+      (riz pluvial de Casamance exclu). Dose inconnue : besoin NULL
+      (« dose à saisir »).
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: irrigation_requise
+        data_tests: [not_null]
+
+  - name: mart_territoires_agrodistrib
+    description: >
+      Critères par département et culture pour AgroDistrib, seulement là où
+      la culture existe (superficie de référence > 0). Additifs : superficie
+      et besoins. Non additifs : tout le reste. Potentiel de gain : valeurs
+      de zone (niveau_source_potentiel = 'ZONE'), qui ne s'additionnent
+      jamais et ne distinguent pas les départements d'une même zone.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: culture
+        data_tests: [not_null]
+      - name: superficie_reference_ha
+        data_tests: [not_null]
+      - name: niveau_source_potentiel
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ZONE']
+      - name: potentiel_evalue
+        data_tests: [not_null]
