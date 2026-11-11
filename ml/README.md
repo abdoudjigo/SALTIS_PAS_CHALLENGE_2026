@@ -47,10 +47,10 @@ Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils 
 | `MARTS.FACT_PLUVIOMETRIE_DECADAIRE` | Pluie observée décade par décade | ✅ prêt |
 | `MARTS.FACT_CLIMATOLOGIE_DECADAIRE` | Pluie habituelle par décade (1991–2020) | ✅ prêt |
 | `MARTS.FACT_ADEQUATION_CULTURE`, `FACT_ADEQUATION_VARIETE`, `FACT_FACTEURS_LIMITANTS`, `FACT_REFERENCE_AGRONOMIQUE`, `FACT_BESOIN_REFERENCE` | Adéquation, facteurs limitants, doses, besoins | ✅ prêt |
-| `MARTS.DIM_GEOGRAPHIE`, `DIM_REGION`, `DIM_ZONE_AGROECOLOGIQUE`, `DIM_CULTURE`, `DIM_VARIETE`, `DIM_INTRANT`, `DIM_TEMPS` | Référentiels | ✅ prêt |
+| `MARTS.DIM_GEOGRAPHIE`, `DIM_REGION`, `DIM_ZONE_AGROECOLOGIQUE`, `DIM_CULTURE`, `DIM_VARIETE`, `DIM_INTRANT`, `DIM_TEMPS` | Référentiels, dont les coordonnées des départements (`DIM_GEOGRAPHIE`) et les paramètres agronomiques des cultures (`DIM_CULTURE`) | ✅ prêt |
 | Schéma `SALTIS.ML` | Écriture des résultats des modèles | ✅ prêt |
 | Rôle `R_ML` et utilisateur `USER_ML` | Accès Snowflake de l'équipe ML (lecture `MARTS`, écriture `ML`) | ✅ prêt |
-| Contours des départements (GADM 4.1) | Latitude, longitude et géométrie des départements | 🔜 en cours |
+| Contours des départements (GADM 4.1) | Géométrie des départements (les coordonnées sont déjà dans `DIM_GEOGRAPHIE`) | 🔜 en cours |
 
 **Conseil** : travailler directement sur les tables `MART_*` de `MARTS`, nettoyées et testées. Les CSV ne servent qu'en secours.
 
@@ -68,6 +68,7 @@ Ces fichiers ont le même contenu que les tables `SALTIS.RAW` de Snowflake. Ils 
 | **Normales** | Calculées sur 1991–2020. |
 | **Classes de saison** | `très sèche`, `sèche`, `normale`, `humide`, `très humide`, définies à partir du SPI. |
 | **Valeurs manquantes** | Elles restent vides dans toutes les tables, jamais remplacées par zéro. |
+| **Coordonnées** | `latitude` et `longitude` de chaque département (degrés décimaux, WGS 84) dans `DIM_GEOGRAPHIE` (et `MART_CARTE_AGROCLIMAT`), pour 45 départements sur 45. `zone_secondaire` signale les 8 départements de transition entre deux zones : c'est une information, pas un regroupement. |
 
 ---
 
@@ -138,6 +139,19 @@ Les indices mars–mai 2026 (ONI, TNA, TSA), la pluie 2025 et l'humidité du sol
 Dans `FACT_RENDEMENT_DEPARTEMENT`, filtrer sur **`rendement_kg_ha is not null`** (8 040 lignes), et non sur `est_observe`. `est_observe = true` (8 244 lignes) signifie qu'au moins une valeur a été publiée : il inclut 204 lignes sans rendement, dont 58 avec seulement une superficie, 14 avec seulement une production et 132 avec une superficie et une production mais sans rendement publié. Les 7 428 anomalies sont toutes sur des lignes avec un rendement.
 
 **Variables de saison** : dans `FACT_SAISON_DEPARTEMENT`, à joindre sur département et campagne. Les variables propres à chaque culture (`indice_satisfaction_eau_pct`, `deficit_hydrique_mm`) sont dans le fait de rendement.
+
+**Paramètres des cultures** : dans `DIM_CULTURE`, à joindre sur `id_culture`, pour les 12 cultures :
+
+| Colonne | Contenu |
+|---|---|
+| `kc_ini`, `kc_mid`, `kc_end` | Coefficients culturaux FAO-56 (début, mi-saison, fin de cycle) |
+| `t_base_c` | Température de base de la culture, en °C (7 à 12), utile pour les degrés-jours |
+| `cycle_min_jours`, `cycle_max_jours` | Durée de cycle la plus courte et la plus longue (égales aux cycles court et long de `FACT_ADEQUATION_CULTURE`) |
+| `nom_fao` | Libellé FAOSTAT de la culture |
+
+Ce sont des valeurs de référence par culture, identiques partout. Elles ne varient ni par département ni par année.
+
+**Couverture en eau par cycle** : `FACT_ADEQUATION_CULTURE` contient maintenant `proba_besoin_eau_couvert_final_pct` pour les 3 cycles. Pour le cycle moyen, c'est la valeur de la source ; les cycles court et long y ajoutent l'écart calculé entre cycles (approximation décadaire). Le calcul brut reste dans `proba_besoin_eau_couvert_calc_pct`. Il s'agit d'une probabilité climatique sur 1991-2020, constante d'une année à l'autre : elle peut décrire un département, pas une campagne donnée.
 
 ### Observations par culture
 
