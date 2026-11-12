@@ -8,3 +8,4 @@ uvicorn
 scikit-learn
 xgboost
 ruff
+snowflake-connector-python[pandas] 
