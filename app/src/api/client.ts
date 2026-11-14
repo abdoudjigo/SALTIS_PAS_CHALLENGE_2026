@@ -27,7 +27,7 @@ export interface OptionsRequete {
 }
 
 function construireUrl(chemin: string, params?: Params) {
-  const url = new URL(config.apiUrl + chemin)
+  const url = new URL(config.apiUrl + chemin, window.location.origin)
   Object.entries(params ?? {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v))
   })

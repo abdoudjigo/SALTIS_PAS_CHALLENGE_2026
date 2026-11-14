@@ -1,14 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { DonneesInscription, Utilisateur } from '../types/auth'
+import type { Utilisateur } from '../types/auth'
 import { sessionStore } from './session'
 
 interface ValeurAuth {
   user: Utilisateur | null
   estConnecte: boolean
   login: (email: string, password: string) => Promise<Utilisateur>
-  register: (donnees: DonneesInscription) => Promise<Utilisateur>
   logout: () => void
 }
 
@@ -43,17 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user
   }, [])
 
-  const register = useCallback(async (donnees: DonneesInscription) => {
-    const res = await api.register(donnees)
-    sessionStore.set(res)
-    return res.user
-  }, [])
-
   const logout = useCallback(() => sessionStore.clear('deconnexion'), [])
 
   const valeur = useMemo<ValeurAuth>(
-    () => ({ user: session?.user ?? null, estConnecte: Boolean(session?.access_token), login, register, logout }),
-    [session, login, register, logout],
+    () => ({ user: session?.user ?? null, estConnecte: Boolean(session?.access_token), login, logout }),
+    [session, login, logout],
   )
   return <AuthContext.Provider value={valeur}>{children}</AuthContext.Provider>
 }

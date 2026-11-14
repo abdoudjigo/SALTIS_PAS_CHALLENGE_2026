@@ -17,6 +17,12 @@ class Parametres(BaseSettings):
     snowflake_warehouse: str = "SALTIS_WH"
     snowflake_database: str = "SALTIS"
     snowflake_schema_marts: str = "MARTS"
+    # Résultats des modèles d'IA (ml/), chargés par ml/charger_snowflake.py. Facultatifs : absents, l'API sert les marts seuls.
+    snowflake_schema_ml: str = "ML"
+
+    # IA vocale (wolof) : Space Hugging Face voix/space/ (ex. « akai/assaman-suuf-voix ») ; vide = voix wolof désactivée
+    voix_space: str = ""
+    hf_token: SecretStr = SecretStr("")
 
     # Serveur (python -m api)
     api_host: str = "127.0.0.1"

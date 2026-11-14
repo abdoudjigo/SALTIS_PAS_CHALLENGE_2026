@@ -1,20 +1,15 @@
 # Front — Assaman & Suuf
 
-Application web (PWA installable) de la plateforme : carte agroclimatique, suivi décadaire, choix des cultures, besoins en intrants, vulnérabilité, AgroDistrib et offre de semences.
+Application web (PWA installable) de la plateforme. Une **landing** présente le projet ; deux portes (**Agriculteur**, **ONG et services de l'État**) ouvrent la **scène** : une carte plein écran du Sénégal, pilotée par un dock de fonctionnalités, nourrie par l'API (`python -m api`) et les modèles d'IA (`ml/`). Cahier des charges : [`docs/v1-cahier-des-charges.md`](../docs/v1-cahier-des-charges.md).
 
 | Élément | Choix |
 |---|---|
 | Framework | React 19 + Vite 8, **TypeScript** strict |
-| Style | Tailwind CSS 4 (thème « Ciel & Terre » dans `src/index.css`) |
-| Carte | Mapbox GL 3 via `react-map-gl` (chargée seulement sur les écrans carte) |
-| Données | TanStack Query (cache, rechargement en arrière-plan, mode hors ligne) |
-| Graphiques | Recharts |
+| Style | Tailwind CSS 4 (thème « Ciel & Terre » dans `src/index.css`) ; polices IBM Plex Sans et Source Serif 4, auto-hébergées |
+| Carte | Mapbox GL 3 (style Standard : globe, volumes 3D, arcs) |
+| Données | TanStack Query |
 | PWA | `vite-plugin-pwa` (installation, cache hors ligne, mise à jour proposée) |
-| Routage | React Router 7, un fichier JS par écran (chargement à la demande) |
-
-Aujourd'hui le front tourne sur des **données d'exemple** intégrées (`VITE_USE_MOCK=true`), avec exactement les colonnes des marts décrites dans [`docs/contrat-donnees.md`](../docs/contrat-donnees.md), typées dans [`src/types/marts.ts`](src/types/marts.ts). Brancher la vraie API = passer `VITE_USE_MOCK=false`, sans toucher aux écrans.
-
----
+| Routage | React Router 7, un fichier JS par page (chargement à la demande) |
 
 ## 1. Démarrage local
 
@@ -29,16 +24,9 @@ npm run dev                    # http://localhost:5173
 
 Ou depuis la racine : `make front-install` puis `make front`.
 
-Comptes de démonstration (mode exemple), mot de passe `demo2026` ; ils sont aussi proposés en un clic sur l'écran de connexion :
+Pour les vraies données, lancer aussi l'API depuis la racine : `venv/bin/python -m api` (port 8080). Elle sert les marts de Snowflake et les prévisions des modèles (`ml/sorties/`).
 
-| Email | Profil | Ce qu'il voit |
-|---|---|---|
-| `producteur@demo.sn` | Producteur (Kaolack) | Carte, suivi, cultures, besoins, vulnérabilité |
-| `conseiller@demo.sn` | Conseiller agricole | Idem |
-| `ong@demo.sn` | Organisation (ONG) | + AgroDistrib (stocks, répartition) |
-| `etat@demo.sn` | Organisation (service de l'État) | + AgroDistrib |
-| `semencier@demo.sn` | Association de producteurs de semences | + Offre de semences (pas d'AgroDistrib) |
-| `admin@demo.sn` | Administrateur | Tout + Administration |
+On entre dans la scène par une des deux portes de la landing : **Agriculteur**, ou **ONG et services de l'État**. Pas de compte à créer.
 
 ### Variables d'environnement (`app/.env.local`)
 
@@ -49,7 +37,6 @@ Comptes de démonstration (mode exemple), mot de passe `demo2026` ; ils sont aus
 | `VITE_AUTH_DEMO`, `VITE_DONNEES_DEMO` | Réglages séparés, facultatifs (chacun vaut `VITE_USE_MOCK` par défaut). Site déployé sans back d'authentification : `VITE_AUTH_DEMO=true` (comptes de démonstration) et `VITE_DONNEES_DEMO=false` (données de l'API) | `true`, `false` |
 | `VITE_MAPBOX_TOKEN` | Token **public** Mapbox (`pk.…`). Vide = carte simplifiée sans fond | `pk.eyJ…` |
 | `VITE_MAPBOX_STYLE` | Style Mapbox (facultatif) | `mapbox://styles/mapbox/light-v11` |
-| `VITE_ACTIVER_SEMENCIERS` | `false` masque le profil semencier et son écran si la cible est retirée | `true` |
 | `VITE_EMAIL_CONTACT` | Adresse de contact des pages publiques (Contact, Confidentialité). Vide = « bientôt » | `contact@exemple.sn` |
 | `VITE_LIEN_LINKEDIN`, `VITE_LIEN_FACEBOOK`, `VITE_LIEN_X`, `VITE_LIEN_YOUTUBE` | Réseaux sociaux du pied de page. Vide = affiché « bientôt » | `https://…` |
 
@@ -74,38 +61,59 @@ Le job `front` du CI (`.github/workflows/ci.yml`) lance `lint` et `build` (donc 
 
 ```text
 app/
-├── public/                 icônes PWA, _redirects et _headers (Cloudflare Pages / Netlify)
-│   └── geo/                (à créer) departements.geojson : contours GADM simplifiés
+├── public/                 logo (logo.svg, favicon.svg), icônes PWA, geo/ (contours GADM et zones)
 ├── src/
+│   ├── pages/
+│   │   ├── Landing.tsx     la landing : globe, récit (zones, ciel, terre, décision), deux portes, sources
+│   │   ├── Scene.tsx       la scène : carte plein écran + dock + fenêtre de résultats
+│   │   └── site/           pages du site : À propos, Méthode, Données, Contact, Mentions légales, page introuvable
+│   ├── landing/            en-tête « île », pied de page, portes, bandeau des sources de données
+│   ├── scene/              moteur de carte (Carte.tsx), dock, fenêtre, briques d'interface (ui.tsx), couleurs
+│   │   └── modes/          une fonctionnalité du dock par fichier
 │   ├── api/
-│   │   ├── index.ts        SEUL point d'entrée des données (une fonction typée par route)
-│   │   ├── client.ts       fetch + jeton + délai + erreurs FastAPI → messages lisibles
-│   │   └── mock/           données d'exemple déterministes et faux serveur (mêmes routes)
-│   ├── auth/               session (JWT), contexte, rôles, routes protégées
-│   ├── components/
-│   │   ├── layout/         coque de l'app (menu latéral, barre mobile, bandeaux, mise à jour PWA)
-│   │   ├── map/            CarteSenegal (Mapbox, ou SVG sans token), échelles et légende
-│   │   └── ui/             panneaux, badges, sélecteurs, squelettes de chargement, états vides
-│   ├── hooks/              requêtes TanStack Query, département sélectionné (partagé entre écrans)
-│   ├── lib/                formatage (NULL → « — », jamais 0), échelles de couleurs
-│   ├── pages/              un fichier par écran
-│   └── types/              types des marts (colonnes du contrat de données) et de l'authentification
-├── tsconfig.json           TypeScript strict (navigateur) ; tsconfig.node.json pour vite.config.ts
-├── vercel.json             build et réécritures SPA pour Vercel
+│   │   ├── index.ts        SEUL point d'entrée des données (une fonction typée par route de l'API)
+│   │   ├── client.ts       fetch + délai + erreurs → messages lisibles
+│   │   └── mock/           profils d'entrée, référentiel des intrants, stocks de démonstration (Répartir un stock)
+│   ├── auth/               session locale du profil choisi, route protégée de la scène
+│   ├── hooks/              requêtes TanStack Query (marts et prévisions)
+│   ├── lib/                formatage (NULL → « non disponible », jamais 0), mode léger
+│   └── types/              types des marts et des prévisions
 └── vite.config.ts          PWA, découpage des bundles, cache hors ligne
 ```
 
+### Les pages
+| Adresse | Page |
+|---|---|
+| `/` | Landing (visiteur) ou scène (après le choix d'une porte) |
+| `/a-propos` | Le défi, ce que fait la plateforme, nos principes, l'équipe |
+| `/methode` | Les modèles d'IA et leur fiabilité mesurée |
+| `/donnees` | Les sources, leur préparation, les limites, les licences |
+| `/contact` | Adresse (`VITE_EMAIL_CONTACT`) et réseaux (`config.reseaux`) |
+| `/mentions-legales` | Éditeur, données personnelles, crédits |
+
+### Entrer dans la scène
+Pas de compte ni de mot de passe : chaque porte ouvre un **profil** (`src/api/mock/comptes.ts`), sans nom de personne. La session reste dans le navigateur ; l'API n'a pas de comptes.
+
+### Les fonctionnalités du dock
+| Profil | Boutons |
+|---|---|
+| Agriculteur | Ma parcelle, La saison qui vient, Quand semer, Quelle culture, Mes besoins |
+| ONG et services de l'État | Préparer la campagne, La saison qui vient, Alerte récolte, Vulnérabilité, Besoins du pays, Répartir un stock |
+
+Partout : l'année se **tape** à partir de 2026 (prévision) ou se **choisit** dans la liste des années passées (vérification). Le détail de chaque résultat est replié derrière « Voir le détail ».
+
 Règles du contrat de données appliquées dans l'interface :
 
-- une valeur NULL s'affiche « — » ou « dose à saisir », **jamais 0** ; les totaux ignorent les NULL et sont libellés « doses connues » ;
+- une valeur NULL s'affiche « non disponible » ou « dose à saisir », **jamais 0** ;
 - produits (NPK, urée, DAP) et éléments (N, P₂O₅, K₂O) ne sont jamais affichés dans un même total ;
-- semences : total sur `besoin_semences_retenu_t` (riz pluvial de Casamance « non applicable ») ;
-- vulnérabilité affichée comme **relative** ; besoins affichés comme **de référence**, pas prévisionnels ;
-- AgroDistrib : quantité proposée et quantité validée distinctes, méthode et version de l'algorithme affichées, allocation jamais supérieure au besoin ; campagne proposée par défaut : 2026 (`config.campagneParDefaut`).
+- vulnérabilité affichée comme **relative et indicative** ;
+- chaque prévision dit d'où elle vient (océan ou tendance) et sa fiabilité.
 
-### Associations de producteurs de semences (option B)
+### Les deux mascottes (scène)
+Chaque fenêtre de résultats a deux mascottes : le garçon **FR** lit l'essentiel en français (synthèse du navigateur, `src/scene/lecture.ts`), la fille **WLF** le lit en wolof (texte préparé dans `aEcouterWo`, voix du Space Hugging Face). Détail : [`voix/README.md`](../voix/README.md).
 
-La cible est encore à confirmer (`docs/etat-modelisation.md`). Le front applique l'option B : une association (organisation de type `SEMENCIER`) déclare les variétés et quantités qu'elle peut fournir, et voit les départements où chaque variété est adaptée (lignes `VARIETE` de `MART_CHOIX_CULTURES`). Elle n'a **pas** de scénario de répartition : AgroDistrib reste réservé aux ONG et aux services de l'État. Si l'équipe retire la cible, `VITE_ACTIVER_SEMENCIERS=false` masque le profil et l'écran sans autre modification.
+### Bandeau des sources (landing)
+`src/landing/Sources.tsx` : les sources défilent (pause au survol, arrêt si « réduire les animations »). Chaque source est une signature typographique. Pour afficher un logo officiel, déposer le fichier dans `public/logos/` et renseigner `logo` dans la liste, **avec l'accord de l'organisme** (les logos sont des marques).
 
 ### Carte et contours GADM
 
@@ -253,8 +261,11 @@ La prévision saisonnière se calcule **une fois par campagne** (fin mai, quand 
 
 ## 5. Reste à faire
 
-- Brancher la vraie API (routes de la section 3), puis retirer le bandeau « données d'exemple » (automatique avec `VITE_USE_MOCK=false`).
-- Contours GADM dans `public/geo/departements.geojson`.
-- Écran de prévision saisonnière quand le modèle ML sera disponible.
-- Administration : création de comptes, rôles et organisations (routes `/admin/*` à définir avec l'API).
-- Associations de producteurs de semences : confirmer la cible (option B en place, désactivable) ; rapprocher l'offre déclarée des besoins en semences quand l'API exposera les besoins par variété (`id_variete` nullable prévu dans les besoins).
+- Logos officiels des sources de données, avec l'accord des organismes (`src/landing/Sources.tsx`).
+- Doses d'engrais validées (attendues de l'ISRA) : aujourd'hui « dose à saisir » pour la plupart des cultures.
+- Prévision océan de 2027 : ajouter les indices de mars-mai 2027 dans `ml/entrees/indices_ocean.csv` fin mai 2027.
+
+## Historique de la refonte (branche `dev/front-djigo`)
+
+- Landing, scène, logo, modèles d'IA branchés (13/11/2026).
+- 14/11/2026 : l'ancienne application (tableau de bord, pages par écran, connexion, inscription, administration, offre de semences, dossier `vitrine/`, pages publiques) est **supprimée**. Les pages du site sont réécrites (`src/pages/site/`), les profils de démonstration n'ont plus de noms de personnes, le bandeau des sources est ajouté à la landing.

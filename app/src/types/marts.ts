@@ -14,6 +14,8 @@ export interface Territoire {
 export interface Departement extends Territoire {
   latitude: number
   longitude: number
+  /** département de transition entre deux zones : une information, jamais une clé d'agrégation */
+  zone_secondaire?: string | null
 }
 
 export interface Intrant {

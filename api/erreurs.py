@@ -32,6 +32,8 @@ def reponses_erreurs(*statuts: int) -> dict[int | str, dict]:
         403: "Administration désactivée (API_ADMIN_TOKEN non défini)",
         404: "Territoire, culture ou période inconnu",
         409: "Préchargement déjà en cours",
-        503: "Cache pas encore prêt (préchargement en cours) ou indisponible",
+        413: "Audio trop long (30 secondes au plus)",
+        422: "Audio vide ou rien d'entendu",
+        503: "Cache pas encore prêt (préchargement en cours) ou indisponible ; voix wolof non configurée",
     }
     return {s: {"model": ReponseErreur, "description": descriptions[s]} for s in statuts}

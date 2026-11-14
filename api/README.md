@@ -189,6 +189,41 @@ Le score va de 0 à 100 (100 = le plus vulnérable) et mélange deux choses :
 
 Le score est **relatif** : il compare les départements entre eux, ce n'est pas une mesure absolue. Il est aussi **indicatif**, car il reste à faire valider par les techniciens. La classe (`classe_vulnerabilite`) découpe le classement en 5 groupes de taille proche. Trois départements n'ont pas de score (`null`, en fin de liste) : Guédiawaye et Pikine, faute de rendements, et Dakar, faute de données suffisantes. Leur aléa sécheresse reste affiché.
 
+### IA · Prévisions : les 4 modèles d'IA
+
+Les résultats des modèles de `ml/` (voir [`ml/MODELES.md`](../ml/MODELES.md)) sont lus dans **`SALTIS.ML`**. **Tant que `SALTIS.ML` n'est pas chargé, l'API les lit directement dans `ml/sorties/*.csv`** (`source_locale.py`) : `python -m api` suffit pour tout servir. S'il n'y a ni table ni fichier, ces routes répondent `404` (`prevision_indisponible`) et les marts restent servis.
+
+| Route | Modèle → bouton | On obtient |
+|---|---|---|
+| `/previsions/saison/{annee}` | 1 → « La saison qui vient » | les 45 départements : probabilités sèche / normale / humide, pluie prévue et sa fourchette |
+| `/previsions/saison/departements/{code}` | 1 | les prévisions d'un département, année par année (1981-2025) |
+| `/previsions/annees-semblables/{code}/{annee}?moment=` | 2 → « Comment finira la saison » | les 3 années passées les plus semblables et comment leur saison a fini, à chaque moment (`FIN_MAI` … `FIN_AOUT`) |
+| `/previsions/rendement/{code}/{annee}?culture=` | 3 → « Quelle culture » | la fourchette de rendement par culture, aux 4 moments |
+| `/previsions/alerte-recolte/{annee}?moment=FIN_JUILLET&culture=` | 3 → « Alerte récolte » | tous les départements, du risque de chute de récolte le plus fort au plus faible |
+| `/previsions/semis/departements/{code}?annee=&culture=` | 4 → « Quand semer » | pour chaque décade de semis : les deux risques, le risque total, la décade conseillée. Sans `annee` : année type |
+| `/previsions/semis/carte?culture=ARACHIDE&annee=` | 4 | la décade conseillée dans chaque département, pour colorier la carte |
+| `/previsions/fiabilite?modele=M1` | tous | la fiabilité de chaque modèle comparée à une prévision simple |
+
+Ce qu'il faut afficher honnêtement (rappelé dans `meta.avertissements`) :
+- **modèle 1** : le gain est modeste, donc on affiche toujours les 3 probabilités et la fourchette, jamais une classe seule ;
+- **modèle 2** : fiable à partir de `FIN_JUILLET` ; à `FIN_MAI`, ses probabilités sont vides et on affiche celles du modèle 1 ;
+- **modèle 3** : une prévision de l'année seulement là où `alerte_fiable` ou `rendement_fiable` est vrai ; ailleurs, c'est la récolte et le risque **habituels** du département. Les lignes `PROJECTION_NON_EVALUEE` (2022-2025) sont invérifiables ;
+- **modèle 4** : les seuils (pluie de semis, décade sèche) sont à valider avec les agronomes.
+
+Pour les mettre dans Snowflake (facultatif pour tester) :
+1. une fois : exécuter `snowflake/20_ml_resultats.sql` ;
+2. `venv/bin/python -m ml.charger_snowflake --confirmer` ;
+3. `POST /systeme/cache/rafraichir`, ou redémarrer l'API.
+
+### IA · Voix : poser sa question à voix haute
+
+| Route | On envoie | On obtient |
+|---|---|---|
+| `POST /voix/texte` | `{texte, code_departement?, annee?}` (français transcrit par le navigateur, ou wolof écrit) | la réponse en français et en wolof, et la vue de la carte |
+| `POST /voix/question?code_departement=&annee=` | l'audio brut en wolof (30 s au plus) | la transcription, la réponse, et la réponse parlée en wolof |
+
+La compréhension et les phrases types sont dans `voix/` (`comprendre.py`, `repondre.py`, `nombres.py`) ; les chiffres viennent du cache, jamais d'un texte inventé. Le wolof parlé passe par le Space Hugging Face `VOIX_SPACE`. Mise en ligne et limites : [`voix/README.md`](../voix/README.md).
+
 ### Système et cache : l'état de l'API
 
 | Route | Rôle | Jeton |
@@ -239,8 +274,9 @@ Disposition des clés : voir `cache/cles.py`.
 |---|---|
 | `main.py` | Application, CORS, chronométrage, erreurs |
 | `config.py` | Paramètres (`.env`) |
-| `marts.py` | Registre des marts exposés (table, schéma, ordre) |
-| `source_snowflake.py` | Lecture des marts (lecture seule, noms de tables issus du registre) |
+| `marts.py` | Registre des tables exposées : marts (`MARTS`, obligatoires) et résultats des modèles (`ML`, facultatifs) |
+| `source_snowflake.py` | Lecture des tables (lecture seule, noms de tables issus du registre) |
+| `source_locale.py` | Secours : prévisions lues dans `ml/sorties/*.csv` quand `SALTIS.ML` n'est pas chargé |
 | `schemas/` | Contrat de chaque mart (Pydantic) : documentation Swagger et validation au préchargement |
 | `cache/construction.py` | Validation, agrégats additifs, construction des réponses |
 | `cache/stockage.py` | Stockage Redis ou mémoire, versions, verrou |
@@ -254,7 +290,8 @@ Disposition des clés : voir `cache/cles.py`.
 - NULL est renvoyé tel quel, jamais remplacé par 0. Aucune clé md5 n'est exposée.
 - Les totaux (`/besoins/totaux`, `/agrodistrib/agregats`) ne somment que les colonnes additives. Un NULL est exclu de la somme et compté dans `valeurs_manquantes`, et le total est alors partiel. Les besoins d'une région ou d'une zone sont la somme de ses départements.
 - Chaque réponse porte ses limites d'usage dans `meta.avertissements`.
-- `MART_ML_PREVISION_PLUIE` n'est pas exposé : il le sera avec les prévisions du modèle ML.
+- `MART_ML_PREVISION_PLUIE` (table d'entraînement) n'est pas exposé : on expose ses prévisions (`/previsions`).
+- Les résultats des modèles (`SALTIS.ML`) sont facultatifs : leur absence ne bloque jamais les marts.
 
 ## Tests
 

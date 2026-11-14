@@ -1,0 +1,26 @@
+# DOMAINE : le nom de domaine (ex. assaman-suuf.com) → HTTPS automatique (Let's Encrypt).
+# Sans domaine : DOMAINE=:80 → le site en http://<IP du VPS> (micro et géolocalisation indisponibles sans HTTPS).
+{$DOMAINE::80} {
+	encode zstd gzip
+
+	# L'API, jamais exposée directement
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# Le site (application d'une seule page)
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+		@ressources path /assets/*
+		header @ressources Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

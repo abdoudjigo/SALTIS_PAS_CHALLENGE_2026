@@ -1,0 +1,51 @@
+# Production sur le VPS : voir deploy/README.md.
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Seuls les ports 80 et 443 (Caddy) sont ouverts ; l'API et Redis restent internes.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+      args:
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:?VITE_MAPBOX_TOKEN manquant dans .env}
+        VITE_EMAIL_CONTACT: ${VITE_EMAIL_CONTACT:-}
+    environment:
+      DOMAINE: ${DOMAINE:-:80}
+    ports: ["80:80", "443:443"]
+    volumes: [caddy-donnees:/data, caddy-config:/config]
+    depends_on: [api]
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      API_HOST: 0.0.0.0
+      CORS_ORIGINES: '["*"]'
+    volumes:
+      - api-donnees:/donnees
+      - voix-cache:/app/voix/cache
+    depends_on:
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    volumes: [redis-donnees:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  caddy-donnees:
+  caddy-config:
+  api-donnees:
+  voix-cache:
+  redis-donnees:
