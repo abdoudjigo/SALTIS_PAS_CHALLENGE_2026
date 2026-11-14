@@ -84,6 +84,7 @@ select
     b.besoin_uree_t,
     b.besoin_dap_t,
     b.besoin_fumier_t,
+    b.besoin_semences_applicable,
     iff(b.besoin_semences_applicable, b.besoin_semences_t, null) as besoin_semences_retenu_t,
     b.statut_validation_engrais,
     b.statut_validation_semis,

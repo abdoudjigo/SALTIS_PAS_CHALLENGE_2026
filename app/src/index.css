@@ -1,0 +1,224 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/fraunces';
+
+/* Palette « Ciel & Terre » : vert culture, ocre terre, bleu pluie */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-titre: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+
+  --color-sol: #f7f5ef;
+  --color-carte: #ffffff;
+  --color-trait: #e6e1d6;
+  --color-encre: #1d2a22;
+  --color-encre-douce: #5b6a60;
+
+  --color-vert-50: #eef6f0;
+  --color-vert-100: #d5eadb;
+  --color-vert-500: #2f7d4f;
+  --color-vert-700: #1f5f3a;
+  --color-vert-900: #12391f;
+
+  --color-terre-100: #f4e6d6;
+  --color-terre-500: #b7793f;
+  --color-terre-700: #8a5527;
+
+  --color-pluie-100: #dcecf8;
+  --color-pluie-500: #2d7fc1;
+  --color-pluie-700: #1b5a8e;
+
+  --color-soleil-100: #fdf0d2;
+  --color-soleil-500: #f2b544;
+
+  --color-nuit-700: #14204a;
+  --color-nuit-900: #070b1c;
+  --color-brume: #c9d8ea;
+
+  --color-alerte-100: #fbe1dc;
+  --color-alerte-500: #d2492f;
+  --color-alerte-700: #a3311c;
+
+  --animate-apparition: apparition 0.25s ease-out both;
+  @keyframes apparition {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-sol text-encre antialiased;
+    font-feature-settings: 'cv11', 'tnum';
+  }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-vert-500; }
+}
+
+@layer components {
+  .carte { @apply rounded-2xl border border-trait bg-carte shadow-[0_1px_2px_rgba(29,42,34,0.04)]; }
+  .champ {
+    @apply w-full rounded-xl border border-trait bg-white px-3 py-2.5 text-sm text-encre
+      transition placeholder:text-encre-douce/60 focus:border-vert-500 focus:ring-2 focus:ring-vert-100 focus:outline-none;
+  }
+  .etiquette { @apply mb-1.5 block text-xs font-medium tracking-wide text-encre-douce uppercase; }
+}
+
+/* Respecte la préférence « réduire les animations » */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.mapboxgl-popup-content { @apply rounded-xl! p-3! shadow-lg!; font-family: var(--font-sans); }
+
+/* --- Vitrine : décor « ciel et terre » (landing, connexion, inscription) ------------------ */
+.vitrine { --sol: clamp(110px, 24svh, 250px); }
+
+.decor-etoiles {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgb(255 255 255 / 0.8), transparent 60%),
+    radial-gradient(1px 1px at 37% 62%, rgb(255 255 255 / 0.55), transparent 60%),
+    radial-gradient(1.4px 1.4px at 58% 27%, rgb(253 240 210 / 0.8), transparent 60%),
+    radial-gradient(1px 1px at 76% 71%, rgb(255 255 255 / 0.6), transparent 60%),
+    radial-gradient(1px 1px at 88% 12%, rgb(255 255 255 / 0.7), transparent 60%),
+    radial-gradient(1.2px 1.2px at 24% 88%, rgb(201 216 234 / 0.7), transparent 60%);
+  background-size: 340px 340px, 270px 270px, 410px 410px, 230px 230px, 370px 370px, 300px 300px;
+}
+
+/* Sans globe (connexion lente, pas de WebGL) : un astre calme avec son atmosphère */
+.decor-astre {
+  width: min(92vw, 62svh);
+  aspect-ratio: 1;
+  top: 8svh;
+  left: 50%;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #2b5d8f, #14325c 46%, #0a1838 78%);
+  box-shadow: 0 0 0 1px rgb(143 185 230 / 0.35), 0 0 70px 6px rgb(143 185 230 / 0.28), inset -40px -50px 90px rgb(7 11 28 / 0.75);
+}
+@media (min-width: 768px) {
+  .decor-astre { width: min(50vw, 78svh); top: 9svh; left: 69%; }
+}
+
+/* Voile qui garde le texte lisible devant le globe */
+.decor-voile { background: linear-gradient(to top, rgb(7 11 28 / 0.96) 14%, rgb(7 11 28 / 0.78) 46%, transparent 74%); }
+@media (min-width: 768px) {
+  .decor-voile { background: linear-gradient(to right, rgb(7 11 28 / 0.88) 8%, rgb(7 11 28 / 0.45) 34%, transparent 56%); }
+}
+
+/* Champ d'arachide (photo) : fondu vers le ciel en haut, teinté par la nuit */
+/* Derrière un formulaire : le ciel s'assombrit un peu, le globe et le champ restent visibles */
+.decor-voile-formulaire { background: linear-gradient(to bottom, rgb(7 11 28 / 0.15), rgb(7 11 28 / 0.55) 55%, rgb(7 11 28 / 0.2)); }
+
+.decor-sol {
+  height: var(--sol);
+  filter: brightness(0.62) saturate(0.85);
+  mask-image: linear-gradient(to top, #000 45%, transparent);
+}
+/* La terre s'éveille sous la pluie */
+.decor-sol-eveil { animation: sol-eveil 4.5s ease-out 1.8s both; }
+@keyframes sol-eveil {
+  from { filter: brightness(0.22) saturate(0.4); }
+  to { filter: brightness(0.62) saturate(0.85); }
+}
+
+.vitrine-entree { animation: vitrine-entree 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--delai, 0s); }
+@keyframes vitrine-entree {
+  from { opacity: 0; translate: 0 14px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+/* Formulaires en verre dépoli, posés sur le décor */
+.verre {
+  border: 1px solid rgb(255 255 255 / 0.16);
+  background: rgb(10 16 38 / 0.72);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+.champ-nuit {
+  @apply min-h-12 w-full rounded-xl border border-white/20 bg-white/[0.06] px-3.5 text-base text-white transition
+    placeholder:text-white/35 focus:border-soleil-500 focus:ring-2 focus:ring-soleil-500/25 focus:outline-none;
+}
+.etiquette-nuit { @apply mb-1.5 block text-xs font-medium tracking-wide text-brume uppercase; }
+
+/* Réussite : le formulaire se dissout et tombe comme la pluie */
+.vitrine-dissolution { animation: vitrine-dissolution 0.7s cubic-bezier(0.5, 0, 0.9, 0.4) forwards; }
+@keyframes vitrine-dissolution {
+  to { opacity: 0; translate: 0 56px; filter: blur(10px); scale: 0.97 1.04; }
+}
+
+/* Département choisi sur la carte d'inscription */
+.point-choisi { animation: point-choisi 1.8s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes point-choisi {
+  from { opacity: 0.9; scale: 1; }
+  to { opacity: 0; scale: 3.2; }
+}
+
+/* Mascotte de bienvenue */
+.mascotte {
+  aspect-ratio: 320 / 420;
+  --angle-repos: 20deg;
+  --angle-designer: 16deg;
+  mask-image: linear-gradient(to top, transparent, #000 14%);
+  filter: drop-shadow(0 18px 30px rgb(0 0 0 / 0.45));
+}
+@media (min-width: 768px) {
+  .mascotte { --angle-designer: 66deg; }
+}
+.mascotte-bras { transform-origin: 232px 304px; rotate: var(--angle-repos); }
+.mascotte-animee { animation: mascotte-entree 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mascotte-animee .mascotte-buste { animation: mascotte-souffle 4.2s ease-in-out infinite alternate; }
+.mascotte-animee .mascotte-bras { animation: mascotte-salut 7s cubic-bezier(0.45, 0, 0.3, 1) 0.6s infinite both; }
+@keyframes mascotte-entree {
+  from { opacity: 0; translate: 0 48px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes mascotte-souffle {
+  from { translate: 0 0; }
+  to { translate: 0 -3px; }
+}
+/* Le bras se lève, salue trois fois, désigne le globe, puis redescend */
+@keyframes mascotte-salut {
+  0% { rotate: 158deg; }
+  12% { rotate: 14deg; }
+  18% { rotate: 34deg; }
+  24% { rotate: 14deg; }
+  30% { rotate: 34deg; }
+  36% { rotate: 14deg; }
+  48%, 84% { rotate: var(--angle-designer); }
+  100% { rotate: 158deg; }
+}
+
+/* Bulle de la mascotte : pointe vers le personnage */
+.bulle::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 3.5rem;
+  width: 18px;
+  height: 18px;
+  rotate: 45deg;
+  border-right: 1px solid rgb(255 255 255 / 0.16);
+  border-bottom: 1px solid rgb(255 255 255 / 0.16);
+  background: rgb(10 16 38 / 0.9);
+}
+@media (min-width: 768px) {
+  .bulle::after { bottom: 2.5rem; left: -9px; rotate: 135deg; }
+}
+.bulle-curseur {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: -0.12em;
+  background: #f2b544;
+  animation: bulle-curseur 0.9s steps(2) infinite;
+}
+@keyframes bulle-curseur { 50% { opacity: 0; } }
+
+/* Téléphone à l'horizontale : on garde le titre et les boutons, le décor se fait discret */
+@media (max-height: 480px) {
+  .vitrine { --sol: 90px; }
+  .vitrine-detail { display: none; }
+}
+
+.vitrine .mapboxgl-ctrl-attrib.mapboxgl-compact { background: rgb(255 255 255 / 0.5); }

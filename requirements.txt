@@ -5,7 +5,10 @@ python-dotenv
 dbt-snowflake
 fastapi
 uvicorn
+redis
+pydantic-settings
 scikit-learn
 xgboost
 ruff
 snowflake-connector-python[pandas] 
+

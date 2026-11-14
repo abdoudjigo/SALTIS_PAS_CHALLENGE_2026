@@ -263,8 +263,10 @@ models:
     description: >
       Écran choix des cultures et des variétés : une ligne par département,
       culture et option (type_option CYCLE ou VARIETE). Comparer sur
-      proba_cycle_couvert_pct (rang_option), pas sur le score ; le score des
-      cycles court et long utilise la part eau du cycle moyen (note_score).
+      proba_cycle_couvert_pct (rang_option), pas sur le score. Cycles : score,
+      probabilité eau et niveau principaux = valeurs finales de l'équipe (cycle
+      moyen de la source ; cycles court et long ancrés sur lui avec l'écart
+      décadaire entre cycles) ; valeurs de la source à côté (suffixe _source).
       Colonnes propres à un type NULL pour l'autre.
     columns:
       - name: code_departement
@@ -283,6 +285,14 @@ models:
       - name: option
         data_tests: [not_null]
       - name: niveau_adequation
+        data_tests: [not_null]
+      - name: methode_niveau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['FAO décadaire v1, ancrage sur le cycle moyen de la source', 'source', 'source, sans données décadaires']
+      - name: niveau_adequation_source
         data_tests: [not_null]
 
   - name: mart_besoins
@@ -322,6 +332,9 @@ models:
       - name: culture
         data_tests: [not_null]
       - name: superficie_reference_ha
+        data_tests: [not_null]
+      - name: besoin_semences_applicable
+        description: Faux pour le riz irrigué en Casamance (riz surtout pluvial) ; besoin_semences_retenu_t est alors NULL.
         data_tests: [not_null]
       - name: niveau_source_potentiel
         data_tests:

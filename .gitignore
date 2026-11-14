@@ -18,3 +18,9 @@ CLAUDE.md
 dataset/*
 !dataset/README.md
 output/*
+
+# Front (app/)
+app/dist/
+app/dev-dist/
+*.local
+venv

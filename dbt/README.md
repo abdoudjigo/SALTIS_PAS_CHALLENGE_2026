@@ -5,7 +5,7 @@ dbt transforme les tables agricoles chargées dans `SALTIS.RAW` en une constella
 - `models/staging/` : un modèle `stg_` par table source (vues dans `SALTIS.STAGING`). Ces modèles sélectionnent explicitement les colonnes attendues et gardent les noms de colonnes du fichier source.
 - `models/intermediate/` : calculs intermédiaires (vues dans `SALTIS.INTERMEDIATE`).
 - `models/marts/` : dimensions `dim_`, faits `fact_` et marts `mart_` (tables dans `SALTIS.MARTS`).
-- `seeds/` : petits référentiels du projet (`ref_intrants`), chargés dans `SALTIS.STAGING`.
+- `seeds/` : petits référentiels du projet (`ref_intrants`, `ref_departements`, `ref_cultures`), chargés dans `SALTIS.STAGING`.
 
 Les modèles ne chargent pas les CSV : les tables sources doivent déjà exister dans `SALTIS.RAW` avec leurs en-têtes correctement définis.
 
@@ -17,10 +17,10 @@ Les modèles ne chargent pas les CSV : les tables sources doivent déjà exister
 | Modèle | Grain | Lignes |
 |---|---|---|
 | `dim_temps` | jour (1980-2035), avec décade 1-36 et campagne agricole | 20 454 |
-| `dim_geographie` | département (code GADM, région, `code_region`, zone) | 45 |
+| `dim_geographie` | département (code GADM, région, `code_region`, zone, `zone_secondaire`, latitude et longitude du seed `ref_departements`) | 45 |
 | `dim_region` | région administrative | 14 |
 | `dim_zone_agroecologique` | zone agroécologique | 6 |
-| `dim_culture` | culture | 12 |
+| `dim_culture` | culture (avec Kc FAO-56, température de base et cycle min / max du seed `ref_cultures`) | 12 |
 | `dim_variete` | variété documentée | 3 |
 | `dim_intrant` | intrant de référence (seed `ref_intrants`) | 9 |
 
@@ -33,7 +33,7 @@ Zone et région sont deux regroupements **parallèles** des départements (Louga
 | A | `fact_saison_departement` | département × campagne (référence des variables de saison) | 2 025 |
 | A | `fact_pluviometrie_decadaire` | département × année × décade | 71 280 |
 | A | `fact_climatologie_decadaire` | niveau (département ou zone) × territoire × décade, normales 1991-2020 | 1 800 |
-| B | `fact_adequation_culture` | département × culture × classe de cycle | 1 620 |
+| B | `fact_adequation_culture` | département × culture × classe de cycle (colonnes de la source + couverture en eau par cycle : brute `_calc`, finale `_final` ancrée sur le cycle moyen de la source) | 1 620 |
 | B | `fact_adequation_variete` | département × variété | 90 |
 | C | `fact_rendement_departement` | département × campagne × culture | 22 905 |
 | C | `fact_facteurs_limitants` | zone × culture | 72 |

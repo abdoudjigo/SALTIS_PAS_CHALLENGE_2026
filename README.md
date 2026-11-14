@@ -22,19 +22,22 @@ sources (CHIRPS, NASA POWER, SoilGrids, DAPSA…)
    └─ CSV ──► Snowflake SALTIS.RAW
                  └─ dbt/ (staging → intermediate → faits, dimensions, marts) ──► Snowflake SALTIS.STAGING / INTERMEDIATE / MARTS
                                                    ├─ ml/   (prévision pluie, rendement)
-                                                   └─ app/  (front carte Mapbox)
-
-L'API et le chargeur Python historiques utilisent encore PostgreSQL; ils ne font pas partie de la cible Snowflake/dbt configurée ici.
+                                                   └─ api/  (FastAPI + cache Redis) ──► app/ (front carte Mapbox)
 ```
-Pas de Redis, Airflow ni Kafka : on n'en a pas besoin pour une démo en une semaine. `make` suffit pour orchestrer.
+L'API (`api/`) lit les marts de `SALTIS.MARTS` une seule fois, précalcule toutes ses réponses et les sert depuis un cache complet (en mémoire, ou **Redis** en option ; versionné, compressé) : Snowflake n'est jamais appelé pendant une requête. Détail : [`api/README.md`](./api/README.md). Le chargeur Python historique (`ingestion/`) utilise encore PostgreSQL.
+
+Pas d'Airflow ni de Kafka : on n'en a pas besoin pour une démo en une semaine. `make` suffit pour orchestrer.
 
 ## Démarrage rapide
 ```bash
 cp .env.example .env
 make install     # venv + dépendances
 make dbt-run     # construit staging + marts dans Snowflake
-make api         # http://localhost:8000/docs
+python -m api    # charge les marts puis sert l'API → http://localhost:8080/docs (Ctrl + C pour arrêter)
+make front-install && make front   # front React (données d'exemple) : http://localhost:5173
 ```
+
+Front (React, Tailwind, PWA, Mapbox), contrat d'API attendu et **déploiement gratuit du front, de l'API et du modèle ML** : [`app/README.md`](./app/README.md).
 
 ## Cible Snowflake pour dbt
 

@@ -7,7 +7,7 @@ Référence partagée de l'équipe pour le volet données : périmètre, décisi
 - Contrat de données des marts pour l'API et le front (grain, colonnes, unités, limites, exemples) : [`docs/contrat-donnees.md`](contrat-donnees.md).
 - Détail des colonnes des fichiers sources : [`dataset/README.md`](../dataset/README.md).
 
-État au 10/11/2026.
+État au 11/11/2026.
 
 ---
 
@@ -68,7 +68,7 @@ Sources futures citées dans la candidature, absentes de RAW aujourd'hui : ERA5-
 
 ## 3. État des modèles
 
-Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits, 7 marts), 1 seed, **tous les tests OK** (total en section 3.6).
+Résumé : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits, 7 marts), 3 seeds, **tous les tests OK** (total en section 3.6).
 
 ### 3.1 Préparation (étape 1, T0, corrections)
 
@@ -90,13 +90,18 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
 - **A1, géographie** :
   - `dim_region` (14 régions, `nb_departements`, `superficie_km2`) depuis `stg_profil_agroclimatique`, macro `cle_region` ; `id_region` ajouté à `dim_geographie` (qui utilise désormais les macros pour ses trois clés, mêmes valeurs). Aucun lien région → zone.
   - `code_region` dans `dim_region` et `dim_geographie`, déduit du code département (règle GADM `SEN.10.1_1` → `SEN.10_1`, à confirmer avec `GID_1`) ; test `tests/dim_region_code_region_coherent.sql` (14 codes ↔ 14 noms).
-  - Aucune coordonnée ni géométrie disponible : ni dans le dépôt, ni dans `SALTIS.RAW`, ni dans `../data_fr_bis.zip` (mêmes 17 CSV que `dataset/`). `departement_statique` et `stations_pluie_mois`, cités dans `docs/README-constellation.md`, n'ont jamais été livrés.
+  - À l'origine, aucune coordonnée ni géométrie : ni dans le dépôt, ni dans `SALTIS.RAW`, ni dans `../data_fr_bis.zip` (mêmes 17 CSV que `dataset/`). `departement_statique` et `stations_pluie_mois`, cités dans `docs/README-constellation.md`, n'ont jamais été livrés. Coordonnées et contours des zones fournis ensuite par Ibrahima (voir « Nouveaux référentiels » ci-dessous).
   - **Contours GADM préparés, non actifs** (l'équipe récupère GADM 4.1 Sénégal niveau 2) :
     - `snowflake/10_geo_departements.sql` : DDL de `RAW.GEO_DEPARTEMENTS` (`gid_2`, `gid_1`, `nom_departement`, `latitude_centroide`, `longitude_centroide`, `superficie_km2`, `geometrie GEOGRAPHY`) et exemple de chargement GeoJSON commenté ;
     - source `raw.geo_departements`, `stg_geo_departements`, branche latitude/longitude de `dim_geographie` (`gid_2 = code_departement`) et test `tests/geo_departements_correspondance.sql` (45 départements ↔ 45 `gid_2`, `gid_1 = code_region`) ;
-    - un seul interrupteur : variable `geo_departements_charge` (false) dans `dbt_project.yml`. La passer à true après chargement ; tant qu'elle vaut false, `latitude` et `longitude` n'existent pas dans `dim_geographie`.
+    - un seul interrupteur : variable `geo_departements_charge` (false) dans `dbt_project.yml`. La passer à true après chargement : GADM sert aux **contours des départements** et ajoute `latitude_centroide_gadm` / `longitude_centroide_gadm` à `dim_geographie`, sans remplacer `latitude` / `longitude` (seed `ref_departements`).
   - **Licence GADM** : usage non commercial uniquement, citation obligatoire (« GADM, version 4.1, https://gadm.org »). Le front utilisera un GeoJSON simplifié tiré du même fichier GADM (mêmes `GID_2`).
 - **Zone et région ne sont pas emboîtées** : un département appartient à une seule zone et à une seule région, mais Louga, Matam et Tambacounda s'étendent chacune sur deux zones. Zone et région sont deux regroupements parallèles des départements. Ne pas coder une hiérarchie zone → région.
+- **Nouveaux référentiels (Ibrahima, 11/11/2026)**, rangés dans `data/referentiels/` (dossier non ignoré par git) :
+  - `departements_zones_agroecologiques.csv` : codes, noms, régions et zones identiques à `dim_geographie` ; nouveaux : `lat`, `lon`, `zone_secondaire`. → seed `dbt/seeds/ref_departements.csv` (code, nom, zone, zone secondaire, latitude, longitude). `dim_geographie` gagne `latitude`, `longitude` (45/45) et `zone_secondaire` (8 départements de transition : Koungheul, Kébémer, Linguère, Louga, Saint-Louis, Bakel, Koupentoum, Tivaouane). **`zone_secondaire` est une information, jamais une clé d'agrégation.** `latitude`, `longitude` et `zone_secondaire` reportées dans `mart_carte_agroclimat`. Test `tests/ref_departements_correspondance.sql` (45 départements avec coordonnées, zone du fichier = zone de `dim_geographie`, emprise du Sénégal, zone secondaire ≠ zone principale).
+  - `besoins_cultures.csv` : 12 cultures et durées de cycle identiques ; nouveaux : `nom_fao`, `t_base_c`, `kc_ini`, `kc_mid`, `kc_end`. → seed `dbt/seeds/ref_cultures.csv` (fichier repris tel quel). `dim_culture` gagne `nom_fao`, `t_base_c`, `kc_ini`, `kc_mid`, `kc_end`, `cycle_min_jours` et `cycle_max_jours` (découpés de « 85-95 »). Test `tests/ref_cultures_correspondance.sql` (12 cultures, min et max = cycles court et long de `fact_adequation_culture` dans tous les départements, bornes des Kc et de la température de base).
+  - `zones_agroecologiques.geojson` : contours des 6 zones (pas des départements), hors dbt, copié dans `app/public/geo/zones_agroecologiques.geojson` ; jointure par `zone_agroecologique` en majuscules (section « Fonds de carte » de `contrat-donnees.md`).
+  - `doses_engrais.csv` et `doses_semis.csv` : identiques à `c_besoins_par_hectare` (72 zone × culture, doses et statuts) ; ce sont les référentiels d'origine. **Non chargés dans dbt** : base pour compléter les doses ISRA (section 6).
 - `dim_intrant` : réactivée sur le seed `seeds/ref_intrants.csv` (9 codes, teneurs NPK 15-15-15, urée 46-0-0, DAP 18-46-0 ; fumier, semences, éléments et eau sans teneur) ; `stg_intrants` reste désactivé. Seed construit dans `SALTIS.STAGING`. **Note pour C3** : `SALTIS.APP.intrants` reprendra ces 9 `code_intrant`.
 
 ### 3.3 Faits du module A (agroclimat)
@@ -134,6 +139,35 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
   - **Règle de seuils retenue (celle de la source)**, sur le score arrondi : `adaptée` si score > 80, `à risque` si score > 50 (et ≤ 80), `déconseillée` sinon (14 lignes pile à 80 ou 50). `dataset/README.md` corrigé (il annonçait ≥ 80). Variétés : seuil différent, `adaptée` dès `proba_cycle_couvert_pct` ≥ 80 (une ligne à 80,0 classée adaptée), conforme au README. Score nul seulement pour `irrigation requise` (riz irrigué, oignon, tomate : 405) et `non évaluée (culture pluriannuelle)` (manioc : 135).
   - `fact_adequation_variete` : département × variété, 90 lignes (45 × 2), `id_culture` conservé et testé égal à celui de `dim_variete`. Mil souna (type hâtif) absent (cycle inconnu) ; Sahel 177 sans `proba_cycle_couvert_pct` (irrigué). `cycle_jours` et `zones_recommandees` laissés à `dim_variete`.
   - tests OK : 21 génériques et `tests/fact_adequation_valeurs_valides.sql`. Après A2 : 107 tests OK, 29 modèles actifs.
+- **Couverture en eau des 3 cycles (11/11/2026)** : la source ne calcule `proba_besoin_eau_couvert_pct` que pour le cycle moyen et la reprend dans le score des cycles court et long. On la calcule nous-mêmes, **sans modifier les colonnes de la source**.
+  - `int_couverture_eau_cycle` (vue `INTERMEDIATE`), grain département × culture × `classe_cycle`, méthode `FAO décadaire v1` :
+    - années 1991-2020 ; décade de début = décade de l'année contenant `debut_saison_jour` (`decade_mois = least(ceil(jour / 10), 3)`) ;
+    - `ceil(cycle_jours / 10)` décades à partir de la décade de début. Le cycle peut dépasser la décade 30. **Au-delà de la décade 36, il se poursuit sur janvier de l'année suivante** : sans cela, le coton (15 à 18 décades) perdait les années à démarrage tardif, jusqu'à ne garder que 2 années dans le nord ;
+    - pluie efficace par décade : `0,8 × P − 25/3` si P > 25 mm, sinon `max(0,6 × P − 10/3, 0)` ;
+    - année couverte si la somme des pluies efficaces ≥ 0,8 × `besoin_eau_estime_mm` du cycle ;
+    - probabilité = 100 × années couvertes / années avec un début de saison et toutes les décades du cycle (`nb_annees_calc`, 28 à 30) ;
+    - NULL pour Guédiawaye (pas de données décadaires), `irrigation requise` et `non évaluée (culture pluriannuelle)`. 1 056 lignes calculées sur 1 620.
+  - Les sources sont lues en staging (`stg_saisons`, `stg_suivi_pluie`, `stg_adequation`). Ce sont les mêmes valeurs que les faits, mais `fact_adequation_culture` peut ainsi s'appuyer sur ce modèle sans créer de boucle.
+  - **Contrôle sur le cycle moyen** (test `tests/int_couverture_eau_cycle_controle_moyen.sql`, échec si écart moyen > 7 points ou corrélation < 0,95) : 352 couples, écart absolu moyen **4,95 points**, corrélation **0,984**, biais −3,5 points (calcul un peu plus sévère), écart maximal 30 points. Hors comparaison : manioc (la source met 0) et Guédiawaye.
+  - **Ancrage sur le cycle moyen de la source (version retenue)**. Le calcul brut du cycle moyen s'écarte de la source (biais de −3,5 points) et changeait 22 niveaux du cycle moyen sans raison agronomique. On ne garde donc du calcul décadaire que **l'écart entre cycles** :
+    - cycle moyen : `proba_besoin_eau_couvert_final_pct` = valeur de la source ;
+    - cycles court et long : proba finale = proba du cycle moyen (source) + (proba calculée du cycle − proba calculée du cycle moyen), bornée entre 0 et 100 (23 lignes atteignent une borne) ;
+    - `methode_eau` = `FAO décadaire v1, ancrage sur le cycle moyen de la source`.
+  - `fact_adequation_culture` gagne :
+    - `proba_besoin_eau_couvert_calc_pct` et `nb_annees_calc` : calcul brut, gardé pour la traçabilité et pour le contrôle B2 ;
+    - `proba_besoin_eau_couvert_final_pct` ;
+    - `score_adequation_final` (`round(0,6 × proba_cycle + 0,4 × proba finale)`) ;
+    - `niveau_adequation_final` (mêmes seuils que la source : > 80, > 50 ; niveau de la source pour `irrigation requise` et `non évaluée` ; NULL pour les cycles court et long de Guédiawaye) ;
+    - `methode_eau`.
+    1 064 lignes ont une valeur finale (1 056 + les 8 lignes du cycle moyen de Guédiawaye, reprises de la source).
+  - Effet : **25 lignes changent de niveau** sur 1 064 : 15 en cycle court, 0 en cycle moyen, 10 en cycle long. 15 vers mieux (9 déconseillée → à risque, 6 à risque → adaptée), 10 vers moins bien (3 adaptée → à risque, 7 à risque → déconseillée). Les cycles courts s'améliorent (14 hausses sur 15) ; les cycles longs se dégradent (9 baisses sur 10, dont 4 pour le sésame).
+  - Tests :
+    - probabilités et score finaux entre 0 et 100 ;
+    - score final recalculé depuis ses composantes ;
+    - cohérence score / niveau, valeurs acceptées du niveau ;
+    - **cycle moyen : proba finale = proba de la source** ;
+    - cycles court et long : proba finale = ancrage recalculé (à 0,01 près).
+    Le contrôle B2 (`int_couverture_eau_cycle_controle_moyen`) porte toujours sur le calcul brut.
 - **A3, étape 8** : `fact_facteurs_limitants` (module C)
   - grain : zone × culture, 72 lignes (6 × 12) ; clés `cle_zone`, `cle_culture` ;
   - colonnes : `nb_observations`, rendements moyen et atteignable, écart, `source_rendement`, `est_rendement_national`, facteur limitant principal, 4 corrélations, 3 recommandations de sol (booléens, depuis `oui`/`non`) ;
@@ -189,11 +223,11 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
   - tests OK : 8 génériques et `tests/mart_ml_prevision_pluie_valeurs_valides.sql` (grain, volume, découpage, indices par année, pluie N-1, variables obligatoires).
 
 - **B2, marts par écran** (pour l'API et le front ; contrat détaillé dans [`contrat-donnees.md`](contrat-donnees.md)). Tous à plat, codes lisibles, sans clé md5 ; tests génériques dans `_marts.yml` et `tests/marts_ecrans_valeurs_valides.sql`.
-  - `mart_carte_agroclimat` : département × campagne, 2 025 lignes ; variables de `fact_saison_departement`, normale du profil, `risque_saison` (règle à 4 valeurs : 943 normal, 629 excès, 363 sécheresse, 90 les deux), `score_vulnerabilite` et `classe_vulnerabilite` (un seul écran carte ; NULL pour Dakar, Guédiawaye, Pikine) ;
+  - `mart_carte_agroclimat` : département × campagne, 2 025 lignes ; `latitude`, `longitude` et `zone_secondaire` (seed `ref_departements`) ; variables de `fact_saison_departement`, normale du profil, `risque_saison` (règle à 4 valeurs : 943 normal, 629 excès, 363 sécheresse, 90 les deux), `score_vulnerabilite` et `classe_vulnerabilite` (un seul écran carte ; NULL pour Dakar, Guédiawaye, Pikine) ;
   - `mart_suivi_decadaire` : département × année × décade, 71 280 lignes (44 départements) ; observé, normale et écart côte à côte (décade et cumul), fourchette climatologique 1991-2020 du département, `libelle_decade` selon l'année ; `pluie_normale_mm` = moyenne 1991-2020 de `fact_climatologie_decadaire` (vérifié, 1 584/1 584) ;
-  - `mart_choix_cultures` : département × culture × `type_option` (`CYCLE` / `VARIETE`) × option, 1 710 lignes (1 620 + 90), colonnes propres à un type NULL pour l'autre ; `rang_option` sur `proba_cycle_couvert_pct` (NULL pour le manioc et Sahel 177), `note_score` pour les cycles court et long ; unicité du grain testée ;
+  - `mart_choix_cultures` : département × culture × `type_option` (`CYCLE` / `VARIETE`) × option, 1 710 lignes (1 620 + 90), colonnes propres à un type NULL pour l'autre ; `rang_option` sur `proba_cycle_couvert_pct` (NULL pour le manioc et Sahel 177) ; **valeurs principales = valeurs finales de l'équipe** (`score_adequation`, `proba_besoin_eau_couvert_pct`, `niveau_adequation`, depuis les colonnes `_final`), valeurs de la source à côté (`_source`, inchangées), `methode_niveau` (`FAO décadaire v1, ancrage sur le cycle moyen de la source` 1 064, `source` 630, `source, sans données décadaires` 16 pour les cycles court et long de Guédiawaye, qui gardent le niveau de la source), `note_score` (« probabilité eau de la source » pour le cycle moyen, « probabilité eau ancrée sur le cycle moyen de la source (écart décadaire entre cycles) » pour les cycles court et long) ; unicité du grain testée ;
   - `mart_besoins` : département × culture depuis `dim_geographie`, 369 lignes (367 + Guédiawaye et Pikine avec « pas de superficie agricole de référence ») ; `besoin_semences_retenu_t` (riz pluvial de Casamance exclu, 9 lignes « non applicable (riz pluvial) »), `reference_anterieure_2015` (dernière année de référence < 2015 : 13 lignes), `irrigation_totale_m3` seulement si « irrigation requise » (41 lignes), libellés « dose à saisir » / « superficie de référence nulle » / « calculé » ;
-  - `mart_territoires_agrodistrib` : département × culture avec superficie de référence > 0, 345 lignes ; additifs : superficie et besoins ; non additifs : tout le reste. Potentiel de gain : valeurs de zone, `niveau_source_potentiel = 'ZONE'`, `potentiel_gain_kg_ha` NULL quand `est_rendement_national` (aucune ligne concernée aujourd'hui : les rendements nationaux recopiés portent sur des couples zone × culture sans superficie départementale) ; meilleur niveau d'adéquation, sol du département, recommandations de zone, vulnérabilité.
+  - `mart_territoires_agrodistrib` : département × culture avec superficie de référence > 0, 345 lignes (43 départements) ; `besoin_semences_applicable` et `besoin_semences_retenu_t` ; additifs : superficie et besoins ; non additifs : tout le reste. Potentiel de gain : valeurs de zone, `niveau_source_potentiel = 'ZONE'`, `potentiel_gain_kg_ha` NULL quand `est_rendement_national` (aucune ligne concernée aujourd'hui : les rendements nationaux recopiés portent sur des couples zone × culture sans superficie départementale) ; meilleur niveau d'adéquation, sol du département, recommandations de zone, vulnérabilité.
 - **Précision validée sur la règle 9** : elle interdit de recopier une valeur de zone sur les départements **puis de l'additionner** (double comptage). Porter une valeur de zone comme attribut non additif servant à classer est autorisé (spécification AgroDistrib) ; ces colonnes ne distinguent pas les départements d'une même zone.
 - **D, documentation** :
   - D1 : `dbt/README.md` réécrit (dimensions, faits, marts réellement construits, anciens marts supprimés) ; `README.md` (modules et marts) ; `docs/README-constellation.md` (hiérarchie corrigée : zone et région parallèles ; encadré d'état de mise en œuvre en tête : construit, non construit et pourquoi, faits ajoutés, marts par écran, anciens marts supprimés) ; coopératives retirées de `dataset/README.md` ; commentaire de `fact_saison_departement.sql` mis à jour ;
@@ -202,7 +236,8 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
 
 ### 3.6 Total
 
-- Après B2 et D : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits, 7 marts), 1 seed, **220 tests, tous OK** (`dbt build` complet : 261 nœuds, 0 erreur).
+- Après B2 et D : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits, 7 marts), 1 seed, **221 tests, tous OK**.
+- Après les nouveaux référentiels et la couverture en eau (11/11/2026) : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits, 7 marts), 3 seeds (`ref_intrants`, `ref_departements`, `ref_cultures`), **238 tests, tous OK** (282 nœuds au `dbt build`).
 
 ---
 
@@ -223,7 +258,8 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
   - `'excès de pluie'` si seulement `alerte_exces_pluie` ;
   - `'normal'` sinon.
   Garder aussi `alerte_secheresse` et `alerte_exces_pluie` dans le mart. (L'ancien `mart_saisons` donnait la priorité à la sécheresse : règle abandonnée.)
-- **`mart_choix_cultures`** : comparer les cycles sur `proba_cycle_couvert_pct`, pas sur le score, et signaler que le score des cycles court et long utilise la part « eau » du cycle moyen.
+- **`mart_choix_cultures`** : comparer les cycles sur `proba_cycle_couvert_pct`, pas sur le score. Afficher le score et le niveau finaux (valeurs principales), avec `note_score` : le cycle moyen est celui de la source, les cycles court et long y ajoutent l'écart décadaire entre cycles ; les valeurs de la source (`_source`) servent à la comparaison.
+- **`zone_secondaire`** (`dim_geographie`, `mart_carte_agroclimat`) : information sur les départements de transition, à afficher ; jamais une clé d'agrégation (agréger par `zone_agroecologique`).
 - **`mart_besoins`** :
   - partir de `dim_geographie` (45 départements) : Guédiawaye et Pikine apparaissent avec « pas de superficie agricole de référence » ;
   - exclure des totaux de semences les lignes `besoin_semences_applicable = false` et afficher « non applicable (riz pluvial) » ;
@@ -262,7 +298,7 @@ Résumé : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits
 13. `fact_prevision_saisonniere` (département × campagne × version de modèle) quand le modèle ML existera. Ne jamais la mélanger avec `fact_saison_departement`.
 14. Potentiel de gain par département (option b, avec l'ISRA) : calculer un rendement atteignable par département depuis `fact_rendement_departement` (ex. 90e centile 1991-2015) pour distinguer les départements d'une même zone ; aujourd'hui, le potentiel est une valeur de zone (`niveau_source_potentiel = 'ZONE'`).
 
-Plan restant de la passation : **C1 à C3, plateforme Snowflake** (schémas `SALTIS.APP` et `SALTIS.ML`, rôles et utilisateurs de service `SVC_API` / `SVC_ML` par paire de clés, DDL de `SALTIS.APP`, puis déclaration de ces tables comme sources dbt et réalignement de `stg_organisations` et `stg_intrants`). Non commencé : scripts Snowflake mis en attente sur consigne.
+Plan restant de la passation : **C1 à C3, plateforme Snowflake**. Le schéma `SALTIS.ML` (créé le 11/11/2026), le rôle `R_ML` et l'utilisateur `USER_ML` (lecture `MARTS`, écriture `ML`) ont été créés par Ibrahima. Restent : le schéma `SALTIS.APP` (absent au 11/11/2026), l'accès de l'API, le DDL de `SALTIS.APP`, puis la déclaration de ces tables comme sources dbt et le réalignement de `stg_organisations` et `stg_intrants`.
 
 ---
 
@@ -279,6 +315,7 @@ RAW.ISRA_DOSES_ENGRAIS
         → fact_besoin_intrant
 ```
 
+- Base de travail pour les doses ISRA : `data/referentiels/doses_engrais.csv` et `data/referentiels/doses_semis.csv` (fournis par Ibrahima, identiques à `c_besoins_par_hectare` : 72 zone × culture, doses et statuts). Ce sont les référentiels d'origine. **Ils ne sont pas chargés dans dbt** : on les complète avec les doses ISRA, puis le fichier complété suit le circuit ci-dessus (`RAW.ISRA_DOSES_ENGRAIS`).
 - Une ligne par dose et par source : une dose ISRA n'écrase jamais une référence existante. On conserve la source, l'unité, le statut de validation et la date de réception.
 - Priorité de la dose retenue :
   1. ISRA validée propre à la zone ;
@@ -303,7 +340,9 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 ### À signaler
 
 - `api/` appartient à Anthony : l'équipe données n'y modifie rien. L'endpoint `/saisons` de `api/main.py` lit `marts_marts.mart_saisons`, supprimé en T0. Il devra être rebranché sur `mart_carte_agroclimat` après B2.
-- Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql` (section 7).
+- Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql` (section 7). Le front attend aussi une version simplifiée dans `app/public/geo/departements.geojson` (propriété `GID_2`).
+- Front (`app/`, 11/11/2026, React + TypeScript) : construit sur des données d'exemple aux colonnes des marts. Associations de producteurs de semences : **option B appliquée côté front** (offre de variétés déclarée + adéquation variétés × départements, sans scénario), désactivable par `VITE_ACTIVER_SEMENCIERS=false` si la cible est retirée ; la décision reste à confirmer par l'équipe. Routes attendues de l'API (authentification JWT, `/referentiels`, `/carte`, `/suivi`, `/choix-cultures`, `/besoins`, `/vulnerabilite`, `/agrodistrib/*`), CORS et cache : voir [`app/README.md`](../app/README.md), section 3. À reprendre par l'équipe API.
+- **Marts reconstruits depuis une version ancienne du code** : le 11/11/2026 vers 02:51 UTC, `SALTIS.MARTS` a été reconstruit sans la colonne `besoin_semences_applicable` de `mart_territoires_agrodistrib`, pourtant présente dans le commit `c109ae1`. Reconstruit depuis `dev/aby` le 11/11/2026 (262 nœuds, 0 erreur). Tant que la construction n'est pas faite depuis une seule branche, chaque `dbt build` lancé depuis une autre copie du dépôt écrase `SALTIS.MARTS` : convenir de qui construit, et depuis quelle branche.
 ### Questions pour l'ISRA
 
 - Arachide : confirmer la dose « 150 kg/ha de 6-20-10 », citée seulement dans le texte du statut (`note_source`), sans dose chiffrée.
@@ -312,7 +351,6 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 
 ### À signaler au producteur du dataset
 
-- Adéquation des cultures : la probabilité « eau » des cycles court et long reprend celle du cycle moyen ; à recalculer. Rien n'est corrigé dans dbt.
 - Besoins de référence : `annees_reference` très hétérogène (2019-2021 pour 279 lignes, mais jusqu'à 2003-2004 ou 2004-2008) ; mettre à jour les superficies de référence anciennes (antérieures à 2015).
 - Rendements et besoins : « Riz (irrigué) » regroupe aussi le riz pluvial de Casamance ; la dose de semis de 40 kg/ha (repiquage irrigué) ne vaut pas pour le riz pluvial. À séparer quand les données le permettront.
 - Facteurs limitants, Vallée du fleuve Sénégal × Sésame : rendement atteignable (723,88) inférieur au rendement moyen (750), écart −26,12 kg/ha.
