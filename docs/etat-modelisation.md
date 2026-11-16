@@ -4,10 +4,11 @@ Référence partagée de l'équipe pour le volet données : périmètre, décisi
 
 - Dépôt `abdoudjigo/assaman-suuf`, branche `develop` ; le travail de modélisation se fait sur `dev/aby`.
 - Données pour les modèles (accès, tables, variables) : [`ml/README.md`](../ml/README.md).
+- Modèles d'IA : [`ml/MODELES.md`](../ml/MODELES.md) ; comparaison des algorithmes : [`docs/rapport-comparaison-modeles.md`](rapport-comparaison-modeles.md).
 - Contrat de données des marts pour l'API et le front (grain, colonnes, unités, limites, exemples) : [`docs/contrat-donnees.md`](contrat-donnees.md).
 - Détail des colonnes des fichiers sources : [`dataset/README.md`](../dataset/README.md).
 
-État au 11/11/2026.
+État au 11/11/2026 pour les modèles dbt, au 16/11/2026 pour les modèles d'IA (section 3.7).
 
 ---
 
@@ -241,6 +242,18 @@ Résumé (19/11/2026) : 51 modèles actifs (20 staging, 3 intermediate, 8 dimens
 - Après les nouveaux référentiels et la couverture en eau (11/11/2026) : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits, 7 marts), 3 seeds (`ref_intrants`, `ref_departements`, `ref_cultures`), **238 tests, tous OK** (282 nœuds au `dbt build`).
 - **19/11/2026, doses PIA, prix et Cadre harmonisé** (sections 6 et 10) : nouveaux `ref_doses_pia`, `ref_prix_intrants` (seeds), `int_reference_dose`, `dim_prix_intrant`, `stg_cadre_harmonise`, `fact_cadre_harmonise`, `mart_cadre_harmonise_departement`. Volumes : `int_reference_dose` 345 candidates (280 retenues), `fact_reference_agronomique` 175, `fact_besoin_reference` 367 (249 avec formule d'engrais), `mart_besoins` 369, `mart_territoires_agrodistrib` 345, `dim_prix_intrant` 5, `fact_cadre_harmonise` 2 127 (25 cycles, 2014-2026), `mart_cadre_harmonise_departement` 45. Build ciblé : 319 nœuds, 0 erreur. Total : 51 modèles, 5 seeds, **348 tests**.
 
+### 3.7 Modèles d'IA (`ml/`)
+
+- **Comparaison des algorithmes (16/11/2026)** : 6 familles (linéaire régularisé, k plus proches voisins, forêt aléatoire, gradient boosting, XGBoost, réseau de neurones) comparées à des références, pour les trois parties de `ml/README.md`. Code et méthode dans `ml/comparaison/`, résultats dans `ml/sorties/comparaison_*.csv`, rapport dans [`rapport-comparaison-modeles.md`](rapport-comparaison-modeles.md).
+  - Validation temporelle (jamais d'années mélangées), réglages choisis sur la validation, test regardé une fois. Intervalles à 90 % calculés sur des années entières.
+  - **Pluie de saison** : linéaire régularisé retenu (test 2016-2025 : RMSE 111 mm contre 122 mm pour la normale, RPSS +0,22). Les 6 familles sont équivalentes en validation.
+  - **Rendement** : aucune famille ne bat la tendance (moyenne des 10 campagnes précédentes) ; pour la chute de la récolte, le linéaire est devant en validation, sans gain prouvé sur le test.
+  - **AgroDistrib** : pas de vérité observée, donc comparaison de 6 méthodes de répartition au prorata du besoin (cas : 20 000 t de NPK pour le mil). Prorata multicritère retenu, avec l'arbitrage rendement / équité α réglé par le décideur. Vulnérabilité et valeur indicative tirent en sens inverse (corrélation de rang −0,56).
+  - **Aucun moteur en service ne change** : `m1-v1` et `m3-v1` sont déjà linéaires régularisés. Les sorties servies par l'API n'ont pas été recalculées.
+- **Correspondance avec `ml/README.md`** : le modèle 1 correspond à la partie 1, le modèle 3 à la partie 2 (cible : rapport à la moyenne des 10 campagnes précédentes, pas `anomalie_rendement_pct`, dont la tendance utilise les années futures). AgroDistrib n'a pas encore de moteur servi.
+- **Modèle 2 (années semblables) retiré le 16/11/2026** : absent de `ml/README.md` et plus affiché. Retirés : `ml/m2_annees_semblables/`, ses sorties, la table `ANNEES_SEMBLABLES` de `snowflake/20_ml_resultats.sql` et de `ml/charger_snowflake.py`, la route `/previsions/annees-semblables` de l'API et son test. `SALTIS.ML` ne contenait aucune table : rien à supprimer dans Snowflake. **Modèle 4 (date de semis) gardé** comme complément hors README (« Quand semer », « Ma parcelle », « Surface », assistant vocal).
+- `pyarrow` ajouté à `requirements.txt` : `ml/commun/donnees.py` en a besoin pour les copies locales des marts (`ml/donnees/`, ignoré par git).
+
 ---
 
 ## 4. Règles d'usage pour les marts et l'aval
@@ -343,6 +356,12 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 - Front (`app/`, 11/11/2026, React + TypeScript) : construit sur des données d'exemple aux colonnes des marts. Associations de producteurs de semences : **option B appliquée côté front** (offre de variétés déclarée + adéquation variétés × départements, sans scénario), désactivable par `VITE_ACTIVER_SEMENCIERS=false` si la cible est retirée ; la décision reste à confirmer par l'équipe. Routes attendues de l'API (authentification JWT, `/referentiels`, `/carte`, `/suivi`, `/choix-cultures`, `/besoins`, `/vulnerabilite`, `/agrodistrib/*`), CORS et cache : voir [`app/README.md`](../app/README.md), section 3. À reprendre par l'équipe API.
 - **Marts reconstruits depuis une version ancienne du code** : le 11/11/2026 vers 02:51 UTC, `SALTIS.MARTS` a été reconstruit sans la colonne `besoin_semences_applicable` de `mart_territoires_agrodistrib`, pourtant présente dans le commit `c109ae1`. Reconstruit depuis `dev/aby` le 11/11/2026 (262 nœuds, 0 erreur). Tant que la construction n'est pas faite depuis une seule branche, chaque `dbt build` lancé depuis une autre copie du dépôt écrase `SALTIS.MARTS` : convenir de qui construit, et depuis quelle branche.
 - **Sécurité de la mise en production (16/11/2026)** : API (débit par adresse IP, tailles maximales, CORS fermé et `/docs` coupé en production, erreurs 500 sans détail, liste blanche des identifiants SQL : `api/securite.py`, `api/tests/test_securite.py`), Caddy (CSP, en-têtes), Docker Compose (Redis sur réseau privé, limites, contrôles de santé). Détail et réglages : [`deploy/README.md`](../deploy/README.md), section 6. À faire sur le VPS : `git pull` puis `docker compose -f docker-compose.prod.yml up -d --build`. `requirements-api.txt` et `requirements-voix.txt` ne fixent aucune version : à figer.
+- **Modèles d'IA, à trancher (16/11/2026)** (détail en section 8 du [rapport](rapport-comparaison-modeles.md)) :
+  - modèle 4 (date de semis), gardé : à ajouter à `ml/README.md` ;
+  - modèle 1 : garder ONI + TSA, ou ajouter le TNA (écart dans le bruit ; le TNA 2026 n'est pas dans `ml/entrees/indices_ocean.csv`) ;
+  - AgroDistrib : valider le prorata multicritère, la valeur de départ de α (0,5) et la définition de la « valeur indicative » d'une tonne ;
+  - cible du rendement à préciser dans `ml/README.md`.
+
 ### Questions pour l'ISRA
 
 - Arachide : confirmer la dose « 150 kg/ha de 6-20-10 », citée seulement dans le texte du statut (`note_source`), sans dose chiffrée.

@@ -1,0 +1,8 @@
+partie,cas,methode,type,stock_reparti_t,depasse_le_besoin,nb_departements_servis,couverture_min_pct,couverture_max_pct,gini_couverture,part_du_stock_aux_plus_vulnerables_pct,vulnerabilite_moyenne_d_une_tonne,valeur_indicative_d_une_tonne,stock_deplace_si_scores_perturbes_pct,gain_ciblage_vulnerabilite_pct,gain_valeur_indicative_pct,admissible,retenu
+3 - AgroDistrib,"20000 t de NPK 15-15-15, MIL (SOUNA), 41 départements, besoin 120318 t",Prorata du besoin,REFERENCE,20000.0,False,41,16.6,16.6,0.0,15.5,0.488,0.33,0.0,0.0,0.0,False,False
+3 - AgroDistrib,"20000 t de NPK 15-15-15, MIL (SOUNA), 41 départements, besoin 120318 t",Parts égales plafonnées,METHODE,20000.0,False,41,5.3,100.0,0.451,19.5,0.473,0.379,0.0,-3.1,14.8,False,False
+3 - AgroDistrib,"20000 t de NPK 15-15-15, MIL (SOUNA), 41 départements, besoin 120318 t",Prorata pondéré par la vulnérabilité,METHODE,20000.0,False,41,9.5,24.6,0.12,18.8,0.51,0.316,1.2,4.5,-4.2,False,False
+3 - AgroDistrib,"20000 t de NPK 15-15-15, MIL (SOUNA), 41 départements, besoin 120318 t",Prorata pondéré par la valeur indicative,METHODE,20000.0,False,41,12.4,26.1,0.11,12.9,0.473,0.351,1.0,-3.1,6.4,False,False
+3 - AgroDistrib,"20000 t de NPK 15-15-15, MIL (SOUNA), 41 départements, besoin 120318 t",Prorata multicritère (valeur et vulnérabilité),METHODE,20000.0,False,41,12.7,21.6,0.059,16.1,0.493,0.332,0.8,1.0,0.6,True,True
+3 - AgroDistrib,"20000 t de NPK 15-15-15, MIL (SOUNA), 41 départements, besoin 120318 t",Priorité stricte (glouton),METHODE,20000.0,False,17,0.0,100.0,0.593,27.1,0.455,0.531,24.9,-6.8,60.9,False,False
+3 - AgroDistrib,"20000 t de NPK 15-15-15, MIL (SOUNA), 41 départements, besoin 120318 t",Optimisation linéaire bornée,METHODE,20000.0,False,41,8.3,49.9,0.389,19.0,0.478,0.417,11.9,-2.0,26.4,False,False

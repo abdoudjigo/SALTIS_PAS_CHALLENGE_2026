@@ -1,4 +1,4 @@
-// Hooks des prévisions (résultats des 4 modèles d'IA, SALTIS.ML). Même style que `donnees.ts`.
+// Hooks des prévisions (résultats des 3 modèles d'IA, SALTIS.ML). Même style que `donnees.ts`.
 // `etatPrevision` range chaque requête dans un état affichable : jamais d'erreur brute à l'écran.
 import { keepPreviousData, queryOptions, useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { api, ApiError } from '../api'

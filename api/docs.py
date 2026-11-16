@@ -65,6 +65,7 @@ TAGS = [
      "(`MART_CADRE_HARMONISE_DEPARTEMENT`, facultatif : 404 `cadre_harmonise_indisponible`). Licence CC BY. "
      "Couleurs : `/referentiels/phases-cadre-harmonise`."},
     {"name": "IA · Prévisions", "description": "Résultats des 4 modèles d'IA (`SALTIS.ML`) : saison qui vient, années semblables, "
+    {"name": "IA · Prévisions", "description": "Résultats des 3 modèles d'IA (`SALTIS.ML`) : saison qui vient, "
      "rendement et alerte récolte, date de semis, et leur fiabilité. Voir `ml/MODELES.md`."},
     {"name": "IA · Voix", "description": "Question parlée (wolof) ou écrite (français) → réponse courte tirée des données, "
      "en français et en wolof, avec la vue de la carte à afficher. Voir `voix/README.md`."},

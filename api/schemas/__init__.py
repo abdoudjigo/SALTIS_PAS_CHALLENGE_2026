@@ -11,6 +11,11 @@ from .referentiels import CultureRef, DepartementRef, EtatCache, InfoVersion, In
 
 __all__ = [
     "Agregat", "AnneeSemblable", "Besoin", "CadreHarmonise", "IntrantRef", "PhaseCadreHarmonise", "PrixIntrant", "CarteAgroclimat", "CarteOpportunite", "ChoixCulture", "CultureRef", "DepartementRef", "EtatCache",
+from .previsions import EvaluationModele, PrevisionRendement, PrevisionSaison, RisqueSemis
+from .referentiels import CultureRef, DepartementRef, EtatCache, InfoVersion, Periodes, RegionRef, Sante, Tache, ZoneRef
+
+__all__ = [
+    "Agregat", "Besoin", "CarteAgroclimat", "ChoixCulture", "CultureRef", "DepartementRef", "EtatCache",
     "EvaluationModele", "InfoVersion", "Meta", "Periodes", "PrevisionRendement", "PrevisionSaison", "RegionRef", "Reponse",
     "ReponseErreur", "RisqueSemis", "Sante", "SuiviDecadaire", "Tache", "TerritoireAgrodistrib", "Vulnerabilite", "ZoneRef",
 ]

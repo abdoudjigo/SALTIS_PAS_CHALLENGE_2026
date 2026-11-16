@@ -8,14 +8,40 @@ Chaque modèle répond à **une question**. Les données disponibles sont décri
 
 L'utilisateur ne choisit jamais un modèle : il clique sur un bouton.
 
-## Les 4 modèles
+## Les 3 modèles
+
+Les numéros 1, 3 et 4 sont conservés. Le modèle 2 (années semblables), absent de `README.md` et plus affiché dans l'application, a été retiré le 16/11/2026 (code, sorties, route de l'API).
 
 | # | Modèle | Question | Fiabilité, en résumé | État |
 |---|---|---|---|---|
 | 1 | [Prévision de la saison](m1_prevision_saison/README.md) | Fin mai : la saison sera-t-elle sèche, normale ou humide ? | Modeste : un peu mieux que la moyenne des années passées | ✅ fait |
-| 2 | [Années semblables](m2_annees_semblables/README.md) | Quelles années passées ressemblent à celle-ci, et comment ont-elles fini ? | Bonne à partir de fin juillet, illustrative avant | ✅ fait |
 | 3 | [Rendement prévu et alerte récolte](m3_rendement/README.md) | Combien vais-je récolter ? Où la récolte risque-t-elle de chuter ? | Faible : prouvée seulement pour l'alerte arachide à partir de fin juillet | ✅ fait |
 | 4 | [Date de semis](m4_date_semis/README.md) | À quelle décade semer pour courir le moins de risque ? | Meilleure que la fréquence passée (faux départ : AUC 0,83 contre 0,76) | ✅ fait |
+
+## Correspondance avec `README.md` (16/11/2026)
+
+[`README.md`](README.md) décrit **trois** modèles : la pluie, le rendement et AgroDistrib. Ce dossier contient les deux premiers, plus un complément (la date de semis).
+
+| Partie de `README.md` | Dans ce dossier | Écart |
+|---|---|---|
+| 1. Prévision de la pluie de saison | Modèle 1 (`m1_prevision_saison`) | Aucun : mêmes données (`MART_ML_PREVISION_PLUIE`), mêmes cibles, même découpage |
+| 2. Anomalie de rendement | Modèle 3 (`m3_rendement`) | La cible n'est pas `anomalie_rendement_pct` mais le rapport rendement / moyenne des 10 campagnes précédentes : la tendance de la source est ajustée sur toute la série, années futures comprises. 5 cultures pluviales, jusqu'en 2015 (rupture de 2016) |
+| 3. AgroDistrib | Absent jusqu'ici. Méthodes de répartition comparées dans [`comparaison/agrodistrib.py`](comparaison/agrodistrib.py) | Pas encore de moteur servi par l'API : `SALTIS.APP` (stocks, scénarios) n'existe pas |
+| — | Modèle 4 (`m4_date_semis`) | **Complément hors `README.md`**, gardé (décision du 16/11/2026) : il sert « Quand semer », « Ma parcelle », « Surface » et l'assistant vocal. Non comparé |
+
+## Quel algorithme pour chaque partie (16/11/2026)
+
+Six familles de modèles ont été comparées à des prévisions de référence, avec la même validation temporelle pour toutes. Méthode : [`comparaison/README.md`](comparaison/README.md). Résultats : [`docs/rapport-comparaison-modeles.md`](../docs/rapport-comparaison-modeles.md).
+
+| Partie | Tâche | Algorithme retenu | Résultat sur le test |
+|---|---|---|---|
+| 1. Pluie de saison | Pluie en mm | Linéaire régularisé (ridge) | RMSE 111 mm ; gain prouvé sur la normale 1991-2020 (122 mm), non prouvé sur la moyenne des 15 dernières saisons (118 mm) |
+| 1. Pluie de saison | Classe de saison | Linéaire régularisé (logistique) | RPSS +0,22, gain prouvé sur la climatologie |
+| 2. Rendement | Rendement en kg/ha | Linéaire régularisé parmi les 6 ; aucun ne bat la tendance | Les 6 familles font 5 à 10 % moins bien que la tendance |
+| 2. Rendement | Chute de la récolte | Linéaire régularisé (logistique) | Gain prouvé en validation (+0,08), absent sur le test |
+| 3. AgroDistrib | Répartition d'un stock | Prorata multicritère, arbitrage α du décideur | Pas de vérité observée : comparaison sur critères |
+
+**Conséquence : aucun moteur ne change.** Les modèles 1 et 3 en service (`m1-v1`, `m3-v1`) sont déjà des modèles linéaires régularisés. XGBoost, le gradient boosting, la forêt aléatoire, les plus proches voisins et le réseau de neurones ne font mieux nulle part de façon prouvée. Leurs sorties (`sorties/prevision_*.csv`) n'ont pas été recalculées.
 
 ## Les boutons (décision du 13/11/2026)
 
@@ -25,7 +51,6 @@ L'utilisateur ne choisit jamais un modèle : il clique sur un bouton.
 | Bouton | Modèle | Profil |
 |---|---|---|
 | La saison qui vient | 1 | Agriculteur, ONG |
-| Comment finira la saison | 2 | Agriculteur, ONG |
 | Quelle culture | 3 (rendement attendu) | Agriculteur |
 | Alerte récolte | 3 (risque de chute) | ONG |
 | Quand semer | 4 | Agriculteur |
@@ -52,7 +77,7 @@ Nos observations s'arrêtent en 2025. L'utilisateur tape l'année qu'il veut pr�
 
 La prévision de tendance est remplacée par la prévision océan dès que les indices de mai de l'année sont publiés : ajouter la ligne dans `entrees/indices_ocean.csv`, puis relancer les modèles.
 
-Les modèles 3 (récolte, `PROJECTION_NON_EVALUEE`) et 4 (semis) utilisent ces probabilités pour les mêmes années. Le modèle 2 (années semblables) n'est plus affiché dans l'application (jugé redondant).
+Les modèles 3 (récolte, `PROJECTION_NON_EVALUEE`) et 4 (semis) utilisent ces probabilités pour les mêmes années.
 
 **Ce qui existe ailleurs** : aucun modèle public de Hugging Face ne fait de prévision saisonnière pour le Sahel (GraphCast, Aurora, Prithvi WxC prévoient à 10 jours). Le centre régional AGRHYMET utilise la même approche que notre modèle 1 (statistique et apprentissage sur les températures de l'océan, outil WAS_S2S / bibliothèque `wass2s`).
 
@@ -72,9 +97,9 @@ ml/
   MODELES.md             ce fichier
   commun/                lecture des marts, mesures de fiabilité
   m1_prevision_saison/   un dossier par modèle : entrainer.py + README.md
-  m2_annees_semblables/
   m3_rendement/
   m4_date_semis/
+  comparaison/           6 familles de modèles comparées aux références, par partie (README.md)
   sorties/               résultats (CSV)
   donnees/               copies locales des tables (ignoré par git)
 ```
@@ -83,7 +108,6 @@ ml/
 Depuis la racine du dépôt, dans cet ordre (le 4 utilise la sortie du 1) :
 ```bash
 venv/bin/python -m ml.m1_prevision_saison.entrainer    # quelques secondes
-venv/bin/python -m ml.m2_annees_semblables.entrainer   # ~25 s
 venv/bin/python -m ml.m3_rendement.entrainer           # ~30 s
 venv/bin/python -m ml.m4_date_semis.entrainer          # quelques secondes
 ```
@@ -105,10 +129,9 @@ ml/m*/entrainer.py ──► ml/sorties/*.csv ──► ml/charger_snowflake.py 
 | Table `SALTIS.ML` | Fichier | Route de l'API |
 |---|---|---|
 | `PREVISION_SAISONNIERE` | `prevision_saison.csv` | `/previsions/saison/…` |
-| `ANNEES_SEMBLABLES` | `annees_semblables.csv` | `/previsions/annees-semblables/…` |
 | `PREVISION_RENDEMENT` | `prevision_rendement.csv` | `/previsions/rendement/…`, `/previsions/alerte-recolte/…` |
 | `RISQUE_SEMIS` | `risque_semis.csv` | `/previsions/semis/…` |
-| `EVALUATION_MODELES` | les 4 `evaluation_m*.csv`, une ligne par mesure | `/previsions/fiabilite` |
+| `EVALUATION_MODELES` | les 3 `evaluation_m*.csv` (modèles 1, 3 et 4), une ligne par mesure | `/previsions/fiabilite` |
 
 Le chargement ajoute à chaque table les colonnes du territoire (`code_region`, `region`, `zone_agroecologique`), pour qu'elle soit à plat comme les marts. Chaque table est vidée puis remplie : elle contient toujours la dernière version des modèles. Le détail des routes est dans [`api/README.md`](../api/README.md).
 
@@ -118,15 +141,9 @@ Le chargement ajoute à chaque table les colonnes du territoire (`code_region`, 
 | Fichier | Grain | Lignes |
 |---|---|---|
 | `prevision_saison.csv` (1) | département × année, 1981-2035 | 2 475 |
-| `annees_semblables.csv` (2) | département × année × moment × 3 années semblables, 1991-2026 | 19 035 |
 | `prevision_rendement.csv` (3) | département × culture × année × moment (5 cultures), années à venir 2026-2035 à fin mai | 14 036 |
 | `risque_semis.csv` (4) | département × année × culture × décade de semis (8 cultures), 2016-2035 | 59 136 |
-| `evaluation_m1.csv` … `evaluation_m4.csv` | fiabilité de chaque modèle | — |
+| `evaluation_m1.csv`, `evaluation_m3.csv`, `evaluation_m4.csv` | fiabilité de chaque modèle | — |
 
-## Quel moteur pour « La saison qui vient » et « Comment finira la saison »
-| Moment | Bouton | Probabilités affichées |
-|---|---|---|
-| Fin mai | La saison qui vient | Modèle 1 (les années semblables en illustration) |
-| Fin juin à fin août | Comment finira la saison | Modèle 2 |
-
-Le modèle 3 suit les mêmes quatre moments. Ses colonnes `rendement_fiable` et `alerte_fiable` disent, par moment et par culture, s'il fait mieux que la référence. Sinon, l'application présente sa sortie comme la fourchette et le risque habituels du département.
+## Les moments de la saison
+« La saison qui vient » (modèle 1) est une prévision de fin mai. Le modèle 3 est mis à jour à quatre moments : fin mai, fin juin, fin juillet, fin août. Ses colonnes `rendement_fiable` et `alerte_fiable` disent, par moment et par culture, s'il fait mieux que la référence. Sinon, l'application présente sa sortie comme la fourchette et le risque habituels du département.

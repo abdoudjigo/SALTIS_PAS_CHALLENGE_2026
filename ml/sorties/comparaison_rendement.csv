@@ -1,0 +1,18 @@
+partie,tache,type,modele,val_nb_lignes,val_mae_kg_ha,val_gain_mae_vs_tendance,val_gain_mae_bas,val_gain_mae_haut,test_nb_lignes,test_mae_kg_ha,test_gain_mae_vs_tendance,test_gain_mae_bas,test_gain_mae_haut,val_brier,val_brier_skill_score,val_bss_bas,val_bss_haut,val_auc,test_brier,test_brier_skill_score,test_bss_bas,test_bss_haut,test_auc,reglage,meilleur_en_validation,equivalent_au_meilleur,surcout_vs_meilleur_bas,surcout_vs_meilleur_haut,retenu
+2 - rendement,rendement (kg/ha),REFERENCE,Tendance (moyenne des 10 campagnes précédentes),4200,242.2,0.0,0.0,0.0,4896,228.1,0.0,0.0,0.0,,,,,,,,,,,,,,,,
+2 - rendement,rendement (kg/ha),REFERENCE,"Passé de la culture (médiane, fréquence des chutes)",4200,245.7,-0.014,-0.038,0.01,4896,228.3,-0.001,-0.017,0.017,,,,,,,,,,,,,,,,
+2 - rendement,chute de la récolte,REFERENCE,"Passé de la culture (médiane, fréquence des chutes)",4200,,,,,4896,,,,,0.2111,0.0,0.0,0.0,0.475,0.1728,0.0,0.0,0.0,0.52,,,,,,
+2 - rendement,rendement (kg/ha),ACTUEL,Modèle actuel m3-v1 (12 seuils logistiques),4200,240.3,0.008,-0.015,0.034,4896,227.1,0.004,-0.053,0.071,,,,,,,,,,,,,,,,
+2 - rendement,chute de la récolte,ACTUEL,Modèle actuel m3-v1 (12 seuils logistiques),4200,,,,,4896,,,,,0.1974,0.065,0.026,0.114,0.667,0.174,-0.007,-0.085,0.079,0.522,,,,,,
+2 - rendement,rendement (kg/ha),MODELE,Linéaire régularisé,4200,244.1,-0.008,-0.076,0.057,4896,247.7,-0.086,-0.173,0.0,,,,,,,,,,,penalite=1000,True,True,0.0,0.0,True
+2 - rendement,chute de la récolte,MODELE,Linéaire régularisé,4200,,,,,4896,,,,,0.1939,0.082,0.049,0.118,0.673,0.182,-0.053,-0.185,0.085,0.507,penalite=1,True,True,0.0,0.0,True
+2 - rendement,rendement (kg/ha),MODELE,k plus proches voisins,4200,251.3,-0.038,-0.098,0.024,4896,243.0,-0.065,-0.128,0.006,,,,,,,,,,,k=100,False,False,0.004,0.064,False
+2 - rendement,chute de la récolte,MODELE,k plus proches voisins,4200,,,,,4896,,,,,0.2038,0.035,-0.007,0.087,0.609,0.1757,-0.017,-0.067,0.037,0.533,k=100,False,True,-0.021,0.108,False
+2 - rendement,rendement (kg/ha),MODELE,Forêt aléatoire,4200,257.5,-0.063,-0.171,0.027,4896,239.0,-0.048,-0.111,0.02,,,,,,,,,,,"profondeur=3, feuille=20",False,False,0.023,0.093,False
+2 - rendement,chute de la récolte,MODELE,Forêt aléatoire,4200,,,,,4896,,,,,0.2046,0.031,-0.002,0.073,0.602,0.1702,0.015,-0.037,0.075,0.561,"profondeur=3, feuille=20",False,False,0.012,0.097,False
+2 - rendement,rendement (kg/ha),MODELE,Gradient boosting (scikit-learn),4200,255.1,-0.053,-0.159,0.036,4896,240.8,-0.056,-0.134,0.024,,,,,,,,,,,"profondeur=2, pas=0.03, arbres=100",False,False,0.016,0.081,False
+2 - rendement,chute de la récolte,MODELE,Gradient boosting (scikit-learn),4200,,,,,4896,,,,,0.2019,0.044,0.017,0.075,0.62,0.1722,0.004,-0.06,0.067,0.542,"profondeur=2, pas=0.03, arbres=100",False,False,0.011,0.078,False
+2 - rendement,rendement (kg/ha),MODELE,XGBoost,4200,257.6,-0.064,-0.171,0.029,4896,239.2,-0.049,-0.12,0.026,,,,,,,,,,,"profondeur=2, pas=0.03, arbres=100",False,False,0.023,0.09,False
+2 - rendement,chute de la récolte,MODELE,XGBoost,4200,,,,,4896,,,,,0.2028,0.04,0.01,0.073,0.612,0.1716,0.007,-0.059,0.074,0.551,"profondeur=2, pas=0.03, arbres=100",False,False,0.008,0.089,False
+2 - rendement,rendement (kg/ha),MODELE,Réseau de neurones,4200,254.0,-0.049,-0.138,0.039,4896,250.2,-0.097,-0.211,0.007,,,,,,,,,,,"couches=(8,), penalite=1.0",False,False,0.015,0.065,False
+2 - rendement,chute de la récolte,MODELE,Réseau de neurones,4200,,,,,4896,,,,,0.1985,0.06,0.033,0.093,0.66,0.1791,-0.036,-0.132,0.066,0.513,"couches=(8,), penalite=1.0",False,True,-0.002,0.045,False

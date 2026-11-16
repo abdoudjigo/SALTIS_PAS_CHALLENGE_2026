@@ -16,7 +16,6 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from ..marts import MARTS
 from ..schemas import (
     Agregat,
-    AnneeSemblable,
     Besoin,
     CadreHarmonise,
     CarteAgroclimat,
@@ -120,7 +119,6 @@ class Index(BaseModel):
     annees_suivi: list[int]
     # Modèles d'IA (vides tant que SALTIS.ML n'est pas chargé ; valeurs par défaut pour relire un ancien index)
     annees_prev_saison: list[int] = []
-    annees_semblables: list[int] = []
     annees_prev_rendement: list[int] = []
     cultures_prev_rendement: list[str] = []
     annees_semis: list[int] = []
@@ -293,7 +291,6 @@ def construire(
     prix: list[PrixIntrant] = marts.get("prix", [])
     cadre: list[CadreHarmonise] = marts.get("cadre_harmonise", [])
     prev_saison: list[PrevisionSaison] = marts.get("prev_saison", [])
-    semblables: list[AnneeSemblable] = marts.get("semblables", [])
     prev_rendement: list[PrevisionRendement] = marts.get("prev_rendement", [])
     semis: list[RisqueSemis] = marts.get("semis", [])
     evaluation: list[EvaluationModele] = marts.get("evaluation", [])
@@ -316,7 +313,6 @@ def construire(
         campagnes=sorted({x.campagne_agricole for x in carte}),
         annees_suivi=sorted({x.annee for x in suivi}),
         annees_prev_saison=sorted({x.annee for x in prev_saison}),
-        annees_semblables=sorted({x.annee for x in semblables}),
         annees_prev_rendement=sorted({x.annee for x in prev_rendement}),
         cultures_prev_rendement=sorted({x.culture for x in prev_rendement}),
         annees_semis=sorted({x.annee for x in semis if x.annee is not None}),
@@ -468,12 +464,16 @@ def construire(
             AV_VULNERABILITE,
         )
 
+<<<<<<< HEAD
     b.ajouter(cles.ref("intrants"), INTRANTS, IntrantRef, SOURCE_INTRANTS)
     b.ajouter(cles.ref("phases-cadre-harmonise"), PHASES_CH, PhaseCadreHarmonise, SOURCE_PHASES_CH)
     _construire_opportunites(b, opportunites)
     _construire_prix(b, prix)
     _construire_cadre_harmonise(b, cadre)
     _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, semblables, prev_rendement, semis,
+=======
+    _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, prev_rendement, semis,
+>>>>>>> be507b5 (feat(ml) : entrainement, evaluation et choix des modeles)
                            evaluation)
     return b.c
 
@@ -487,10 +487,6 @@ AV_PREV_SAISON = [
 AV_PREV_TENDANCE = [
     "Prévision de tendance : océan de mars-mai pas encore connu pour cette année ; pluie attendue = moyenne des 15 dernières saisons.",
     "Erreur mesurée sur 2016-2025 : 115 mm (normale seule : 122 mm). Remplacée par la prévision océan dès fin mai de l'année.",
-]
-AV_SEMBLABLES = [
-    "Comparaison avec les années passées du même département : fiable à partir de FIN_JUILLET.",
-    "FIN_MAI : probabilités vides, afficher celles de /previsions/saison (modèle 1) ; les années semblables illustrent.",
 ]
 AV_RENDEMENT = [
     "Gain faible : la prévision ne bat la référence que là où alerte_fiable ou rendement_fiable est vrai.",
@@ -514,7 +510,6 @@ def _construire_previsions(
     b: _Constructeur,
     prefixe_ml: str,
     prev_saison: list[PrevisionSaison],
-    semblables: list[AnneeSemblable],
     prev_rendement: list[PrevisionRendement],
     semis: list[RisqueSemis],
     evaluation: list[EvaluationModele],
@@ -529,14 +524,6 @@ def _construire_previsions(
     for code, lignes in _grouper(prev_saison, lambda x: x.code_departement).items():
         b.ajouter(cles.prev_saison_departement(code), lignes, PrevisionSaison, source["prev_saison"], {"code_departement": code},
                   AV_PREV_SAISON)
-
-    # Modèle 2 : département × année, tous moments ou un seul
-    for (code, annee), lignes in _grouper(semblables, lambda x: (x.code_departement, x.annee)).items():
-        filtres = {"code_departement": code, "annee": annee}
-        b.ajouter(cles.semblables(code, annee, None), lignes, AnneeSemblable, source["semblables"], filtres, AV_SEMBLABLES)
-        for moment, du_moment in _grouper(lignes, lambda x: x.moment_prevision).items():
-            b.ajouter(cles.semblables(code, annee, moment), du_moment, AnneeSemblable, source["semblables"],
-                      {**filtres, "moment": moment}, AV_SEMBLABLES)
 
     # Modèle 3 : un département (toutes cultures ou une), et la carte d'alerte (tous départements)
     for (code, annee), lignes in _grouper(prev_rendement, lambda x: (x.code_departement, x.annee)).items():

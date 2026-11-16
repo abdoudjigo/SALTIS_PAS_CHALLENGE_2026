@@ -12,7 +12,6 @@ from ..cache import cles
 from ..cache.construction import Index
 from ..erreurs import ErreurApi, reponses_erreurs
 from ..schemas import (
-    AnneeSemblable,
     EvaluationModele,
     PrevisionRendement,
     PrevisionSaison,
@@ -73,22 +72,6 @@ async def saison_departement(request: Request, code_departement: CodeDepartement
         _disponible(index.annees_prev_saison, "modèle 1")
 
     return await servir(request, cles.prev_saison_departement(code_departement), valider)
-
-
-# ============================================================ Modèle 2 : comment finira la saison
-
-
-@previsions.get("/annees-semblables/{code_departement}/{annee}", response_model=Reponse[list[AnneeSemblable]], responses=ERREURS,
-                summary="Comment finira la saison : les 3 années passées les plus semblables")
-async def annees_semblables(request: Request, code_departement: CodeDepartement, annee: Annee, moment: MomentQuery = None):
-    """À chaque moment (fin mai → fin août), les années passées du même département les plus proches et comment
-    leur saison a fini. **Modèle 2**, fiable à partir de `FIN_JUILLET` ; à `FIN_MAI`, probabilités vides."""
-
-    def valider(index: Index) -> None:
-        exiger_departement(index, code_departement)
-        _exiger_annee(annee, index.annees_semblables, "modèle 2")
-
-    return await servir(request, cles.semblables(code_departement, annee, moment), valider)
 
 
 # ============================================================ Modèle 3 : quelle culture / alerte récolte
@@ -172,5 +155,5 @@ async def semis_carte(
 @previsions.get("/fiabilite", response_model=Reponse[list[EvaluationModele]], responses=ERREURS,
                 summary="Fiabilité des modèles, comparée à une prévision simple")
 async def fiabilite(request: Request,
-                    modele: Annotated[Literal["M1", "M2", "M3", "M4"] | None, Query(description="Un seul modèle")] = None):
+                    modele: Annotated[Literal["M1", "M3", "M4"] | None, Query(description="Un seul modèle")] = None):
     return await servir(request, cles.evaluation(modele), lambda i: _disponible([True] if i.a_evaluation else [], "modèle"))

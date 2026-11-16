@@ -22,13 +22,6 @@ def resultats_ml() -> dict[str, list[dict]]:
              pluie_normale_mm=720.0, pluie_observee_mm=None, classe_observee=None)
         for t in (KOLDA, SAINT_LOUIS, GUEDIAWAYE) for a in (2023, 2024)
     ]
-    semblables = [
-        ligne("semblables", **KOLDA, **TRACE, annee=2024, moment_prevision=m, variables_utilisees="océan" if m == "FIN_MAI" else "océan + pluie tombée",
-             rang=r, annee_semblable=2010 + r, ressemblance_pct=90 - r, classe_saison_semblable="humide",
-             alerte_secheresse_semblable=False, proba_seche_pct=None if m == "FIN_MAI" else 15.4,
-             classe_prevue=None if m == "FIN_MAI" else "humide")
-        for m in ("FIN_MAI", "FIN_JUILLET") for r in (1, 2, 3)
-    ]
     rendement = [
         ligne("prev_rendement", **t, **TRACE, culture=c, annee=2012, moment_prevision="FIN_JUILLET", type_prevision="RETROSPECTIVE_TEST",
              tendance_kg_ha=800.0, rendement_bas_kg_ha=500.0, rendement_median_kg_ha=780.0, rendement_haut_kg_ha=1050.0,
@@ -46,7 +39,7 @@ def resultats_ml() -> dict[str, list[dict]]:
         ligne("evaluation", modele="M1", version_modele="m1-v1", periode="test 2016-2025", mesure="rpss_vs_climatologie", valeur=0.172),
         ligne("evaluation", modele="M4", version_modele="m4-v1", periode="test 2016-2025", risque="faux départ", mesure="auc_modele", valeur=0.83),
     ]
-    return {"prev_saison": saison, "semblables": semblables, "prev_rendement": rendement, "semis": semis, "evaluation": evaluation}
+    return {"prev_saison": saison, "prev_rendement": rendement, "semis": semis, "evaluation": evaluation}
 
 
 @pytest.fixture
@@ -73,14 +66,6 @@ def test_saison_par_annee_et_par_departement(client_ml):
     assert client_ml.get(f"{V1}/saison/1950").json()["erreur"]["code"] == "annee_inconnue"
     histo = client_ml.get(f"{V1}/saison/departements/SEN.7.1_1").json()
     assert [d["annee"] for d in histo["donnees"]] == [2023, 2024]
-
-
-def test_annees_semblables_par_moment(client_ml):
-    tous = client_ml.get(f"{V1}/annees-semblables/SEN.7.1_1/2024").json()
-    assert tous["meta"]["nb_elements"] == 6
-    fin_mai = client_ml.get(f"{V1}/annees-semblables/SEN.7.1_1/2024", params={"moment": "FIN_MAI"}).json()["donnees"]
-    assert [d["rang"] for d in fin_mai] == [1, 2, 3] and fin_mai[0]["proba_seche_pct"] is None
-    assert client_ml.get(f"{V1}/annees-semblables/SEN.7.1_1/2024", params={"moment": "MIDI"}).status_code == 422
 
 
 def test_rendement_et_alerte(client_ml):
