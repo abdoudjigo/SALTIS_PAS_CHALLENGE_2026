@@ -26,6 +26,11 @@ async def gerer_cache_indisponible(_: Request, exc: CacheIndisponible) -> JSONRe
                     {"Retry-After": "10"})
 
 
+async def gerer_erreur_inattendue(_: Request, exc: Exception) -> JSONResponse:
+    # Le détail (trace) part dans les journaux du serveur, jamais dans la réponse.
+    return _reponse(500, "erreur_interne", "Erreur interne du serveur.", "Réessayer ; si l'erreur persiste, prévenir l'équipe.")
+
+
 def reponses_erreurs(*statuts: int) -> dict[int | str, dict]:
     descriptions = {
         401: "Jeton d'administration absent ou invalide",
@@ -33,6 +38,7 @@ def reponses_erreurs(*statuts: int) -> dict[int | str, dict]:
         404: "Territoire, culture ou période inconnu",
         409: "Préchargement déjà en cours",
         413: "Audio trop long (30 secondes au plus)",
+        429: "Trop de requêtes depuis cette adresse (voir l'en-tête Retry-After)",
         422: "Audio vide ou rien d'entendu",
         503: "Cache pas encore prêt (préchargement en cours) ou indisponible ; voix wolof non configurée",
     }

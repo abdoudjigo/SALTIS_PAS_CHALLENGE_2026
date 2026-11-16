@@ -4,8 +4,8 @@ import { useEntrer, type Profil } from './entrer'
 const PORTES: { profil: Profil; icone: typeof Sprout; titre: string; phrase: string; points: string[]; teinte: string; fond: string }[] = [
   {
     profil: 'agriculteur', icone: Sprout, titre: 'Agriculteur', teinte: 'text-vert-700', fond: 'bg-vert-50',
-    phrase: 'Votre parcelle, vue du ciel jusqu’au sol.',
-    points: ['Sa parcelle : le sol, les risques, la campagne', 'La saison qui vient, et quand semer', 'Quelle culture, avec quel cycle', 'Ses besoins pour sa culture, sa surface, son année'],
+    phrase: 'Votre parcelle, du ciel au sol.',
+    points: ['Votre parcelle : le sol, les risques, la campagne', 'La saison qui vient, et quand semer', 'Quelle culture, avec quel cycle', 'Vos besoins selon la culture, la surface et l’année'],
   },
   {
     profil: 'organisation', icone: Truck, titre: 'ONG et services de l’État', teinte: 'text-terre-700', fond: 'bg-terre-100',
@@ -28,7 +28,7 @@ export function Portes({ compact = false }: { compact?: boolean }) {
             disabled={enCours !== null}
             onClick={() => void entrer(p.profil)}
             style={{ '--delai': `${i * 0.08}s` } as React.CSSProperties}
-            className="porte surgir group flex flex-col rounded-[28px] border border-trait bg-white p-6 text-left shadow-[0_20px_50px_-34px_rgba(29,42,34,0.35)] disabled:opacity-60 sm:p-8"
+            className="porte surgir group flex flex-col rounded-3xl border border-trait bg-white p-6 text-left disabled:opacity-60 sm:p-8"
           >
             <span className={`grid size-12 place-items-center rounded-2xl ${p.fond} ${p.teinte}`}>
               <p.icone className="size-6" aria-hidden />

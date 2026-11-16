@@ -61,6 +61,17 @@ Après une mise à jour des marts dans Snowflake (`dbt build`), redémarrer seul
 | Arrêter | `docker compose -f docker-compose.prod.yml down` |
 | Place disque | `docker system df` ; nettoyer les anciennes images : `docker image prune` |
 
+## 6. Sécurité (revue du 16/11/2026)
+| Sujet | Ce qui est en place |
+|---|---|
+| Réseau | Seuls 80 et 443 sont ouverts. Redis est sur un réseau Docker privé (`prive`, sans sortie internet) que seule l'API rejoint. `REDIS_PASSWORD` dans `.env` (facultatif, lettres et chiffres : `openssl rand -hex 24`) ajoute un mot de passe |
+| Conteneurs | API sans droits root et sans capacité Linux ; Caddy avec la seule capacité d'écouter sur 80/443 ; `no-new-privileges`, limites de mémoire et de processus, journaux bornés (3 × 10 Mo), contrôles de santé |
+| En-têtes (Caddy) | HSTS, CSP (site + Mapbox seulement), `X-Frame-Options: DENY`, `Permissions-Policy` (micro et géolocalisation pour le site seulement). **Un nouveau service externe dans le front (police, carte, vidéo) doit être ajouté à la CSP de `deploy/Caddyfile`** |
+| API | CORS fermé (`CORS_ORIGINES=[]` : même origine), documentation `/docs` coupée (`API_DOCS=false`), débit par adresse IP (1 200 requêtes/min, 60 questions écrites/min, 20 reconnaissances ou synthèses vocales/min, 10 essais de jeton d'administration/min), corps JSON ≤ 64 Ko, audio ≤ 5 Mo, une seule synthèse vocale à la fois, 400 voix gardées au plus |
+| Secrets | Tous dans `.env` (jamais dans git ni dans les images). Jeton Mapbox : public par nature, à **restreindre au domaine** dans le compte Mapbox |
+
+Les limites se règlent dans `.env` (`LIMITE_REQUETES_PAR_MINUTE`, `LIMITE_VOIX_TEXTE_PAR_MINUTE`, `LIMITE_VOIX_SYNTHESE_PAR_MINUTE` ; 0 = sans limite) : à relever si tout un jury partage la même adresse IP et atteint un plafond (réponse 429).
+
 ## Fichiers
 | Fichier | Rôle |
 |---|---|

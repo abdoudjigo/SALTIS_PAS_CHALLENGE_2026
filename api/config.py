@@ -38,8 +38,19 @@ class Parametres(BaseSettings):
 
     # HTTP
     api_admin_token: SecretStr = SecretStr("")
+    # CORS : « * » pour le développement ; en production le site et l'API ont la même origine (docker-compose.prod.yml : []).
     cors_origines: list[str] = ["*"]
     http_max_age_s: int = 60
+    # Documentation interactive (/docs, /redoc, /openapi.json) : coupée en production (API_DOCS=false)
+    api_docs: bool = True
+
+    # Sécurité : débit par adresse IP et par minute (0 = sans limite), taille des corps JSON
+    limite_requetes_par_minute: int = Field(1200, ge=0)
+    limite_voix_texte_par_minute: int = Field(60, ge=0)
+    limite_voix_synthese_par_minute: int = Field(20, ge=0, description="Reconnaissance et synthèse vocales (coûteuses)")
+    limite_admin_par_minute: int = Field(10, ge=0)
+    taille_max_json_octets: int = Field(64 * 1024, ge=1024)
+    voix_cache_max_fichiers: int = Field(400, ge=0, description="Voix gardées sur disque (au-delà, la voix n'est plus enregistrée)")
 
 
 @lru_cache

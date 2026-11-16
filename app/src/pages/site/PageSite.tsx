@@ -24,19 +24,19 @@ export function PageSite({ titre, chapeau, children }: { titre: string; chapeau:
       <header className="sticky top-0 z-40 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="ile ile-serree flex w-full max-w-4xl items-center gap-2 rounded-full py-1.5 pr-1.5 pl-3">
           <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="Assaman & Suuf, accueil">
-            <img src="/favicon.svg" alt="" className="size-8" />
+            <img src="/favicon.svg" alt="" className="size-8 rounded-[10px]" />
             <span className="font-titre text-lg font-semibold whitespace-nowrap text-white max-sm:hidden">Assaman & Suuf</span>
           </Link>
           <nav aria-label="Pages" className="ml-auto flex items-center overflow-x-auto [scrollbar-width:none]">
             {PAGES_SITE.map((p) => (
               <NavLink key={p.to} to={p.to}
-                className={({ isActive }) => clsx('inline-flex min-h-11 items-center rounded-full px-3 text-sm whitespace-nowrap transition',
-                  isActive ? 'bg-white/[0.14] text-white' : 'text-white/75 hover:text-white')}>
+                className={({ isActive }) => clsx('inline-flex min-h-10 items-center rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition',
+                  isActive ? 'bg-white/[0.14] text-white' : 'text-white/65 hover:text-white')}>
                 {p.libelle}
               </NavLink>
             ))}
           </nav>
-          <Link to="/#entrer" className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-soleil-500 px-4 text-sm font-semibold text-vert-900 transition hover:brightness-105 max-[420px]:hidden">
+          <Link to="/#entrer" className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-soleil-500 pr-3 pl-4 text-sm font-semibold text-vert-900 transition hover:bg-soleil-100 active:scale-[0.98] max-[420px]:hidden">
             Entrer <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>

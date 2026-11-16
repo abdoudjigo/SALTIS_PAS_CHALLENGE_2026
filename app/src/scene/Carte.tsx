@@ -87,11 +87,18 @@ interface PropsCarte {
   /** l'utilisateur manipule la carte (déplacement, zoom, rotation) : vrai au début, faux à la fin */
   onManipulation?: (enCours: boolean) => void
   className?: string
+  /** Landing : palette claire de la vitrine, quelle que soit la lumière (le globe du hero est de nuit) */
+  vitrine?: boolean
 }
 
 const VIDE = { type: 'FeatureCollection' as const, features: [] }
 const PRESETS: Record<Ambiance, string> = { clair: 'day', jour: 'day', aube: 'dawn', crepuscule: 'dusk', nuit: 'night' }
 const SOMBRES: Ambiance[] = ['crepuscule', 'nuit']
+/** Brume de la vitrine : l'espace reste blanc comme la page ; la nuit, seul le globe s'assombrit, avec un halo doux */
+const brume = (a: Ambiance): mapboxgl.FogSpecification =>
+  a === 'nuit'
+    ? { color: '#c9d9ee', 'high-color': '#8fb0d6', 'space-color': '#ffffff', 'horizon-blend': 0.05, 'star-intensity': 0 }
+    : { color: '#ffffff', 'high-color': CIEL_VIF, 'space-color': '#ffffff', 'horizon-blend': 0.07, 'star-intensity': 0 }
 const GRIS: Rvb = [170, 176, 182]
 const DUREE_TEINTE_MS = 750
 /** Miroir du token --color-alerte-500, et durée d'un battement d'alerte */
@@ -113,7 +120,7 @@ function elementRepere(r: Repere) {
   return el
 }
 
-export default function Carte({ vue, contours, contoursZones, departements, depart, interactive = true, onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onManipulation, className }: PropsCarte) {
+export default function Carte({ vue, contours, contoursZones, departements, depart, interactive = true, onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onManipulation, className, vitrine = false }: PropsCarte) {
   const conteneur = useRef<HTMLDivElement>(null)
   const carteRef = useRef<mapboxgl.Map | null>(null)
   const [prete, setPrete] = useState(false)
@@ -130,7 +137,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     const el = conteneur.current
     if (!el) return
     const v = vueRef.current
-    const clair = v.ambiance === 'clair'
+    const clair = vitrine || v.ambiance === 'clair'
     const carte = new mapboxgl.Map({
       container: el,
       accessToken: config.mapboxToken,
@@ -143,6 +150,9 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       interactive,
       attributionControl: false,
       maxPitch: 75,
+      // Étiquettes : fondu court, pour que les noms suivent la caméra sans traîner
+      fadeDuration: 150,
+      performanceMetricsCollection: false,
       config: {
         basemap: {
           lightPreset: PRESETS[v.ambiance],
@@ -161,7 +171,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     if (v.camera.marge) carte.setPadding({ top: 0, right: 0, bottom: 0, left: 0, ...v.camera.marge })
 
     carte.on('style.load', () => {
-      if (clair) carte.setFog({ color: '#ffffff', 'high-color': CIEL_VIF, 'space-color': '#ffffff', 'horizon-blend': 0.07, 'star-intensity': 0 })
+      if (clair) carte.setFog(brume(v.ambiance))
 
       carte.addSource('zones', { type: 'geojson', data: VIDE, promoteId: 'cle' })
       carte.addSource('departements', { type: 'geojson', data: VIDE, promoteId: 'GID_2' })
@@ -256,10 +266,20 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     }
     let survole = ''
     let zoneSurvolee = ''
-    carte.on('mousemove', (e) => {
-      if (!carte.getLayer('dep-survol')) return
-      const { code = '', zone = '' } = sous(e.point)
-      carte.getCanvas().style.cursor = code || rappels.current.onPoint || (zone && rappels.current.onZone) ? 'pointer' : ''
+    let curseur = ''
+    // Le pointeur émet bien plus d'événements que l'écran n'affiche d'images : une seule lecture de la carte par image
+    let pointeur: mapboxgl.Point | null = null
+    let imageSurvol = 0
+    const suivrePointeur = () => {
+      imageSurvol = 0
+      const point = pointeur
+      if (!point || !carte.getLayer('dep-survol')) return
+      const { code = '', zone = '' } = sous(point)
+      const forme = code || rappels.current.onPoint || (zone && rappels.current.onZone) ? 'pointer' : ''
+      if (forme !== curseur) {
+        curseur = forme
+        carte.getCanvas().style.cursor = forme
+      }
       if (zone !== zoneSurvolee) {
         zoneSurvolee = zone
         rappels.current.onSurvolZone?.(zone || null)
@@ -268,9 +288,16 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
         survole = code
         carte.setFilter('dep-survol', ['==', ['get', 'GID_2'], code])
       }
-      rappels.current.onSurvol?.(code ? { code, x: e.point.x, y: e.point.y } : null)
+      rappels.current.onSurvol?.(code ? { code, x: point.x, y: point.y } : null)
+    }
+    carte.on('mousemove', (e) => {
+      pointeur = e.point
+      if (!imageSurvol) imageSurvol = requestAnimationFrame(suivrePointeur)
     })
     carte.on('mouseout', () => {
+      pointeur = null
+      cancelAnimationFrame(imageSurvol)
+      imageSurvol = 0
       survole = ''
       if (carte.getLayer('dep-survol')) carte.setFilter('dep-survol', ['==', ['get', 'GID_2'], ''])
       rappels.current.onSurvol?.(null)
@@ -301,12 +328,13 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     const observateur = new ResizeObserver(() => carte.resize())
     observateur.observe(el)
     return () => {
+      cancelAnimationFrame(imageSurvol)
       observateur.disconnect()
       carteRef.current = null
       setPrete(false)
       carte.remove()
     }
-  }, [interactive])
+  }, [interactive, vitrine])
 
   // --- Données géographiques -------------------------------------------------------------------
   useEffect(() => {
@@ -337,11 +365,12 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     const carte = carteRef.current
     if (!carte || !prete) return
     carte.setConfigProperty('basemap', 'lightPreset', PRESETS[vue.ambiance])
+    if (vitrine) carte.setFog(brume(vue.ambiance))
     const sombre = SOMBRES.includes(vue.ambiance)
     carte.setPaintProperty('noms', 'text-color', sombre ? '#ffffff' : '#1d2a22')
     carte.setPaintProperty('noms', 'text-halo-color', sombre ? 'rgba(7,11,28,0.85)' : 'rgba(255,255,255,0.9)')
     carte.setPaintProperty('dep-trait', 'line-color', sombre ? 'rgba(255,255,255,0.55)' : '#ffffff')
-  }, [prete, vue.ambiance])
+  }, [prete, vue.ambiance, vitrine])
 
   // --- Caméra ----------------------------------------------------------------------------------
   const cleCamera = JSON.stringify(vue.camera)
@@ -397,6 +426,8 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     const depart = new Map(cles.map((c) => [c, opaciteZones.current.get(c) ?? 0]))
     const eveil = zonesVisibles && cles.every((c) => (depart.get(c) ?? 0) === 0)
     const cible = (c: string) => (!zonesVisibles ? 0 : accent ? (c === accent ? 0.82 : 0.16) : 0.58)
+    // Déjà en place (changement de chapitre sans zones, même accent) : aucune image à redessiner
+    if (opaciteZones.current.size && cles.every((c) => depart.get(c) === cible(c))) return
     const debut = performance.now()
     let image = 0
     const boucle = (t: number) => {
@@ -404,7 +435,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       cles.forEach((c, i) => {
         const p = Math.min(Math.max((t - debut - (eveil ? i * PAS_ZONE_MS : 0)) / 600, 0), 1)
         if (p < 1) fini = false
-        const o = (depart.get(c) ?? 0) + (cible(c) - (depart.get(c) ?? 0)) * adoucir(p)
+        const o = p >= 1 ? cible(c) : (depart.get(c) ?? 0) + (cible(c) - (depart.get(c) ?? 0)) * adoucir(p)
         opaciteZones.current.set(c, o)
         carte.setFeatureState({ source: 'zones', id: c }, { o })
       })
@@ -440,19 +471,25 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
         return [code, { c, h: relief ? Math.max(e?.hauteur ?? 0, 400) : 0 }] as const
       }),
     )
-    const departs = new Map([...cibles].map(([code, cible]) => [code, etats.current.get(code) ?? { c: cible.c, h: 0 }]))
+    // Seuls les départements dont la teinte ou la hauteur change sont animés : une sélection, un panneau
+    // qui se rafraîchit avec les mêmes couleurs ne redessinent pas les 45 départements pendant 750 ms
+    const mouvements = [...cibles].flatMap(([code, cible]) => {
+      const actuel = etats.current.get(code)
+      if (actuel && actuel.h === cible.h && actuel.c[0] === cible.c[0] && actuel.c[1] === cible.c[1] && actuel.c[2] === cible.c[2]) return []
+      return [{ code, cible, d: actuel ?? { c: cible.c, h: 0 } }]
+    })
+    if (!mouvements.length) return
     const debut = performance.now()
     let image = 0
     const boucle = (t: number) => {
       const p = Math.min(Math.max((t - debut) / DUREE_TEINTE_MS, 0), 1)
       const k = adoucir(p)
-      cibles.forEach((cible, code) => {
-        const d = departs.get(code)!
-        const c = melanger(d.c, cible.c, k)
-        const h = d.h + (cible.h - d.h) * k
+      for (const { code, cible, d } of mouvements) {
+        const c = p >= 1 ? cible.c : melanger(d.c, cible.c, k)
+        const h = p >= 1 ? cible.h : d.h + (cible.h - d.h) * k
         etats.current.set(code, { c, h })
         carte.setFeatureState({ source: 'departements', id: code }, { r: c[0], g: c[1], b: c[2], h })
-      })
+      }
       if (p < 1) image = requestAnimationFrame(boucle)
     }
     image = requestAnimationFrame(boucle)

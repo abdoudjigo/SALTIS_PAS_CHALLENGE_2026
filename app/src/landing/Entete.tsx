@@ -26,6 +26,23 @@ export function Entete({ chapitres, actif, onEntrer }: { chapitres: Chapitre[]; 
   const liens = useRef(new Map<string, HTMLAnchorElement>())
   const [curseur, setCurseur] = useState<{ x: number; l: number } | null>(null)
 
+  // Menu : se ferme avec Échap, au clic à côté et si l'écran repasse en grand ; la page ne défile pas dessous
+  useEffect(() => {
+    if (!menu) return
+    const echap = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false)
+    const grand = window.matchMedia('(min-width: 768px)')
+    const fermer = () => grand.matches && setMenu(false)
+    window.addEventListener('keydown', echap)
+    grand.addEventListener('change', fermer)
+    const avant = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', echap)
+      grand.removeEventListener('change', fermer)
+      document.body.style.overflow = avant
+    }
+  }, [menu])
+
   useEffect(() => {
     const suivre = () => {
       setSerree(window.scrollY > 24)
@@ -78,30 +95,38 @@ export function Entete({ chapitres, actif, onEntrer }: { chapitres: Chapitre[]; 
         {/* Téléphone : le chapitre en cours, en clair */}
         <span className="px-1 text-sm font-medium whitespace-nowrap text-white/70 max-[430px]:hidden md:hidden">{chapitres.find((c) => c.id === actif)?.libelle}</span>
 
-        <button type="button" onClick={onEntrer} className="group inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-soleil-500 pr-3 pl-4 text-sm font-semibold text-vert-900 transition hover:bg-soleil-100 active:scale-[0.97]">
+        <button type="button" onClick={onEntrer} className="group inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-soleil-500 pr-3 pl-4 text-sm font-semibold text-vert-900 transition hover:bg-soleil-100 active:scale-[0.98]">
           Entrer <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
         </button>
         <button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-label="Menu" className="grid size-10 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/10">
           {menu ? <X className="size-[18px]" /> : <Menu className="size-[18px]" />}
         </button>
 
-        <span ref={progres} aria-hidden className="ile-progres absolute inset-x-0 bottom-0 h-[2px] bg-linear-to-r from-ciel-lueur via-ciel-vif to-pluie-500" style={{ scale: '0 1' }} />
+        <span ref={progres} aria-hidden className="ile-progres absolute inset-x-0 bottom-0 h-[2px] bg-ciel-lueur" style={{ scale: '0 1' }} />
       </div>
 
       {menu && (
-        <div className="fiche surgir pointer-events-auto absolute top-[calc(100%+0.5rem)] left-1/2 w-[min(92vw,22rem)] -translate-x-1/2 rounded-3xl p-2">
-          <p className="px-4 pt-3 pb-1 text-2xs font-medium tracking-etiquette text-encre-douce uppercase">Chapitres</p>
-          {chapitres.map((c) => (
-            <a key={c.id} href={`#${c.id}`} onClick={() => setMenu(false)} className="flex min-h-11 items-center justify-between rounded-2xl px-4 text-md font-medium text-encre transition hover:bg-vert-50">
-              {c.libelle}
-              {actif === c.id && <span className="size-1.5 rounded-full bg-vert-500" aria-hidden />}
-            </a>
-          ))}
-          <p className="mt-1 border-t border-trait px-4 pt-3 pb-1 text-2xs font-medium tracking-etiquette text-encre-douce uppercase">Le projet</p>
-          {PAGES.map((p) => (
-            <Link key={p.to} to={p.to} className="flex min-h-11 items-center rounded-2xl px-4 text-md text-encre transition hover:bg-vert-50">{p.libelle}</Link>
-          ))}
-        </div>
+        <>
+          <button type="button" aria-label="Fermer le menu" onClick={() => setMenu(false)} className="voile-menu pointer-events-auto fixed inset-0 -z-10 bg-encre/25 backdrop-blur-sm" />
+          <nav aria-label="Menu" className="fiche menu-3d pointer-events-auto absolute top-[calc(100%+0.5rem)] left-1/2 max-h-[calc(100svh-6rem)] w-[min(92vw,22rem)] -translate-x-1/2 overflow-y-auto rounded-3xl p-2">
+            <p className="px-4 pt-3 pb-1 text-2xs font-medium tracking-etiquette text-encre-douce uppercase">Chapitres</p>
+            {chapitres.map((c) => (
+              <a key={c.id} href={`#${c.id}`} onClick={() => setMenu(false)} aria-current={actif === c.id ? 'true' : undefined}
+                className={clsx('flex min-h-11 items-center justify-between rounded-2xl px-4 text-md font-medium transition', actif === c.id ? 'bg-vert-50 text-vert-700' : 'text-encre hover:bg-vert-50')}>
+                {c.libelle}
+                {actif === c.id && <span className="size-1.5 rounded-full bg-vert-500" aria-hidden />}
+              </a>
+            ))}
+            <p className="mt-1 border-t border-trait px-4 pt-3 pb-1 text-2xs font-medium tracking-etiquette text-encre-douce uppercase">Le projet</p>
+            {PAGES.map((p) => (
+              <Link key={p.to} to={p.to} onClick={() => setMenu(false)} className="flex min-h-11 items-center rounded-2xl px-4 text-md text-encre transition hover:bg-vert-50">{p.libelle}</Link>
+            ))}
+            <button type="button" onClick={() => { setMenu(false); onEntrer() }}
+              className="mt-2 flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl bg-vert-700 text-md font-semibold text-white transition hover:bg-vert-900">
+              Entrer dans la carte <ArrowRight className="size-4" aria-hidden />
+            </button>
+          </nav>
+        </>
       )}
     </header>
   )

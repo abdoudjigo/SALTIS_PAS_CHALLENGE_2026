@@ -39,6 +39,12 @@ export default defineConfig(({ mode }) => {
           navigateFallback: '/index.html',
           runtimeCaching: [
             {
+              // Contours de la carte et logos des sources : servis du cache, rafraîchis en arrière-plan
+              urlPattern: ({ url }) => /^\/(geo|logos)\//.test(url.pathname),
+              handler: 'StaleWhileRevalidate',
+              options: { cacheName: 'fonds-et-logos', expiration: { maxEntries: 30 } },
+            },
+            {
               urlPattern: ({ url }) => /\/assets\/mapbox-.*\.(js|css)$/.test(url.pathname),
               handler: 'CacheFirst',
               options: { cacheName: 'mapbox-lib', expiration: { maxEntries: 6 } },

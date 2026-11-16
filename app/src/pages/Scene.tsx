@@ -24,7 +24,11 @@ import Vulnerabilite from '../scene/modes/Vulnerabilite'
 import type { Utilisateur } from '../types/auth'
 import { anneeAVenir } from '../types/previsions'
 
-const Carte = lazy(() => import('../scene/Carte'))
+// La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
+// données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
+const chargerCarte = () => import('../scene/Carte')
+const Carte = lazy(chargerCarte)
+void chargerCarte()
 
 const F = {
   parcelle: { id: 'parcelle', titre: 'Ma parcelle', phrase: 'Se localiser : le sol, les risques, les cultures et la campagne de son champ.', icone: MapPinned, composant: Parcelle },
@@ -48,9 +52,17 @@ function fonctionnalitesDe(user: Utilisateur): { profil: string; liste: Fonction
 function useEcran() {
   const [taille, setTaille] = useState(() => ({ l: window.innerWidth, h: window.innerHeight }))
   useEffect(() => {
-    const suivre = () => setTaille({ l: window.innerWidth, h: window.innerHeight })
+    // Un redimensionnement émet des dizaines d'événements : on attend qu'il se pose, pour ne recadrer la carte qu'une fois
+    let minuteur = 0
+    const suivre = () => {
+      clearTimeout(minuteur)
+      minuteur = window.setTimeout(() => setTaille((t) => (t.l === window.innerWidth && t.h === window.innerHeight ? t : { l: window.innerWidth, h: window.innerHeight })), 120)
+    }
     window.addEventListener('resize', suivre)
-    return () => window.removeEventListener('resize', suivre)
+    return () => {
+      clearTimeout(minuteur)
+      window.removeEventListener('resize', suivre)
+    }
   }, [])
   return taille
 }

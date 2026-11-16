@@ -60,7 +60,7 @@ function messageErreur(contenu: unknown, status: number): string {
 export async function requete<T>(chemin: string, { method = 'GET', params, body, signal, timeout = 15000, sansJeton = false }: OptionsRequete = {}): Promise<T> {
   const controleur = new AbortController()
   const minuteur = setTimeout(() => controleur.abort(new DOMException('timeout', 'TimeoutError')), timeout)
-  signal?.addEventListener('abort', () => controleur.abort(signal.reason))
+  signal?.addEventListener('abort', () => controleur.abort(signal.reason), { once: true })
 
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = sessionStore.token()

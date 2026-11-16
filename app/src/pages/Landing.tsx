@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { ArrowDown, X } from 'lucide-react'
+import { ArrowDown, CalendarDays, CloudRain, CloudSun, Layers, ShieldAlert, Sprout, Truck, Wheat, X, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { useCarte, useReferentiels, useTerritoires, useVulnerabilite } from '../hooks/donnees'
@@ -75,10 +75,23 @@ function Legende({ titre, gauche, droite, degrade }: { titre: string; gauche: st
   )
 }
 
+function Points({ points, teinte }: { points: [LucideIcon, string][]; teinte: string }) {
+  return (
+    <ul className="mt-5 space-y-3 border-t border-trait pt-5">
+      {points.map(([Icone, texte]) => (
+        <li key={texte} className="flex items-start gap-3 text-md leading-snug text-encre">
+          <span className={clsx('point-3d grid size-9 shrink-0 place-items-center rounded-xl bg-white', teinte)}><Icone className="size-[18px]" aria-hidden /></span>
+          <span className="pt-1.5">{texte}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function Recit({ id, cote, surtitre, titre, children }: { id: Etape; cote: 'gauche' | 'droite'; surtitre: string; titre: string; children: ReactNode }) {
   return (
     <section id={id} data-chapitre className="pointer-events-none relative flex min-h-[120svh] scroll-mt-0 items-end px-4 pb-[12svh] sm:px-8 lg:items-center lg:px-[6vw] lg:pb-0">
-      <div className={clsx('fiche reveler pointer-events-auto w-full max-w-[27rem] rounded-[28px] p-6 sm:p-8', cote === 'droite' && 'lg:ml-auto')}>
+      <div className={clsx('fiche reveler pointer-events-auto w-full max-w-[27rem] rounded-3xl p-6 sm:p-8', cote === 'droite' && 'lg:ml-auto')}>
         <p className="text-2xs font-medium tracking-etiquette text-encre-douce uppercase">{surtitre}</p>
         <h2 className="mt-2 font-titre text-titre-recit font-semibold text-encre">{titre}</h2>
         {children}
@@ -111,6 +124,7 @@ export default function Landing() {
   const [etape, setEtape] = useState<Etape>('zones')
   const [arrive, setArrive] = useState(false)
   const [zone, setZone] = useState<string | null>(null)
+  const [zoneSurvolee, setZoneSurvolee] = useState<string | null>(null)
   const [cultureChoisie, setCulture] = useState<string | null>(null)
   const [portes, setPortes] = useState(false)
   useRecit(setEtape)
@@ -138,20 +152,6 @@ export default function Landing() {
   }, [territoires])
   const culture = cultureChoisie ?? cultures[0] ?? null
 
-  const ciel = useMemo(() => {
-    const connus = saison?.filter((l) => l.anomalie_pluie_saison_pct !== null) ?? []
-    return {
-      plus: connus.filter((l) => l.anomalie_pluie_saison_pct! > 10).length,
-      moins: connus.filter((l) => l.anomalie_pluie_saison_pct! < -10).length,
-      secheresse: saison?.filter((l) => l.alerte_secheresse).length ?? 0,
-    }
-  }, [saison])
-
-  const classement = useMemo(
-    () => (vulnerabilite ?? []).filter((v) => v.score_vulnerabilite !== null).sort((a, b) => b.score_vulnerabilite! - a.score_vulnerabilite!),
-    [vulnerabilite],
-  )
-
   const niveaux = useMemo(() => {
     const lignes = territoires?.filter((t) => t.culture === culture) ?? []
     return ORDRE_NIVEAUX.map((n) => ({ niveau: n, nb: lignes.filter((t) => t.meilleur_niveau_adequation === n).length })).filter((n) => n.nb > 0)
@@ -173,6 +173,16 @@ export default function Landing() {
   }, [zone, saison, territoires])
 
   // --- La carte suit le récit ------------------------------------------------------------------
+  // Couleurs par département : calculées une fois par jeu de données, pas à chaque survol ni à chaque chapitre
+  const teintesCiel = useMemo(() => new Map(saison?.map((l) => [l.code_departement, { couleur: couleurAnomalie(l.anomalie_pluie_saison_pct) }])), [saison])
+  const teintesTerre = useMemo(
+    () => new Map(vulnerabilite?.map((v) => [v.code_departement, { couleur: couleurVulnerabilite(v.score_vulnerabilite), hauteur: (v.score_vulnerabilite ?? 0) * 650 }])),
+    [vulnerabilite],
+  )
+  const teintesDecision = useMemo(
+    () => new Map(territoires?.filter((t) => t.culture === culture).map((t) => [t.code_departement, { couleur: t.meilleur_niveau_adequation ? NIVEAUX[t.meilleur_niveau_adequation].couleur : NON_DISPONIBLE }])),
+    [territoires, culture],
+  )
   const vue = useMemo<VueCarte>(() => {
     const marge = (cote: 'gauche' | 'droite') =>
       large
@@ -181,26 +191,14 @@ export default function Landing() {
     const pays = (cote: 'gauche' | 'droite', inclinaison = 0, cap = 0) => ({ emprise: SENEGAL.emprise, marge: marge(cote), inclinaison, cap, duree: 2400 })
 
     if (etape === 'zones') {
-      if (!arrive) return { ambiance: 'clair', camera: { centre: [-36, 17], zoom: large ? 1.75 : 0.9, marge: marge('gauche') }, derive: mode.animations, vent: mode.animations }
-      return { ambiance: 'clair', camera: { ...pays('gauche'), duree: 5200 }, zones: { accent: zone } }
+      // Seul le globe est de nuit ; dès la descente sur le Sénégal, la carte repasse en jour clair
+      if (!arrive) return { ambiance: 'nuit', camera: { centre: [-36, 17], zoom: large ? 1.75 : 0.9, marge: marge('gauche') }, derive: mode.animations, vent: mode.animations }
+      return { ambiance: 'clair', camera: { ...pays('gauche'), duree: 5200 }, zones: { accent: zoneSurvolee ?? zone } }
     }
-    if (etape === 'ciel')
-      return {
-        ambiance: 'clair', camera: pays('droite'), pluie: mode.animations ? 0.45 : 0,
-        departements: new Map(saison?.map((l) => [l.code_departement, { couleur: couleurAnomalie(l.anomalie_pluie_saison_pct) }])),
-      }
-    if (etape === 'terre')
-      return {
-        ambiance: 'clair', camera: pays('gauche', 52, -14), relief: true,
-        departements: new Map(vulnerabilite?.map((v) => [v.code_departement, { couleur: couleurVulnerabilite(v.score_vulnerabilite), hauteur: (v.score_vulnerabilite ?? 0) * 650 }])),
-      }
-    return {
-      ambiance: 'clair', camera: pays('droite'),
-      departements: new Map(
-        territoires?.filter((t) => t.culture === culture).map((t) => [t.code_departement, { couleur: t.meilleur_niveau_adequation ? NIVEAUX[t.meilleur_niveau_adequation].couleur : NON_DISPONIBLE }]),
-      ),
-    }
-  }, [etape, arrive, zone, large, mode.animations, saison, vulnerabilite, territoires, culture])
+    if (etape === 'ciel') return { ambiance: 'clair', camera: pays('droite'), pluie: mode.animations ? 0.45 : 0, departements: teintesCiel }
+    if (etape === 'terre') return { ambiance: 'clair', camera: pays('gauche', 52, -14), relief: true, departements: teintesTerre }
+    return { ambiance: 'clair', camera: pays('droite'), departements: teintesDecision }
+  }, [etape, arrive, zone, zoneSurvolee, large, mode.animations, teintesCiel, teintesTerre, teintesDecision])
 
   return (
     <div className="landing relative bg-white text-encre">
@@ -210,8 +208,8 @@ export default function Landing() {
       <div className="fixed inset-0" aria-hidden>
         {mode.globe ? (
           <Suspense fallback={null}>
-            <Carte vue={vue} contours={contours} contoursZones={contoursZones} departements={ref?.departements} interactive={false}
-              onZone={(cle) => setZone((z) => (z === cle ? null : cle))} onSurvolZone={(cle) => etape === 'zones' && cle && setZone(cle)} />
+            <Carte vue={vue} contours={contours} contoursZones={contoursZones} departements={ref?.departements} interactive={false} vitrine
+              onZone={(cle) => setZone((z) => (z === cle ? null : cle))} onSurvolZone={(cle) => setZoneSurvolee(etape === 'zones' ? cle : null)} />
           </Suspense>
         ) : (
           <div className="size-full bg-[radial-gradient(60%_50%_at_70%_40%,#dcecf8,transparent),radial-gradient(40%_40%_at_30%_80%,#eef6f0,transparent)]" />
@@ -240,19 +238,19 @@ export default function Landing() {
               <button type="button" onClick={() => setPortes(true)} className="bouton-ciel inline-flex min-h-12 items-center rounded-full bg-vert-700 px-6 text-md font-semibold text-white transition hover:bg-vert-900 active:scale-[0.98]">
                 Entrer dans la carte
               </button>
-              <a href="#ciel" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-trait bg-white/70 px-5 text-md font-medium text-encre backdrop-blur transition hover:border-encre/30">
-                Suivre le récit <ArrowDown className="size-4" aria-hidden />
+              <a href="#ciel" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-trait bg-white/80 px-6 text-md font-medium text-encre backdrop-blur transition hover:border-encre/40">
+                Voir le récit <ArrowDown className="size-4" aria-hidden />
               </a>
             </div>
           </div>
 
-          {/* Les 6 zones : survol ou clic, la carte répond */}
+          {/* Les 6 zones : le survol accentue la zone, le clic ouvre sa fiche */}
           <div className="pointer-events-auto relative mt-9 lg:absolute lg:inset-x-[6vw] lg:bottom-7 lg:mt-0">
             {ficheZone && (
               <div key={ficheZone.cle} className="fiche surgir mb-3 max-w-md rounded-3xl p-5 lg:absolute lg:right-0 lg:bottom-0 lg:z-10 lg:mb-0 lg:w-[24rem]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="flex items-center gap-2 font-titre text-xl font-medium tracking-tight">
+                    <p className="flex items-center gap-2 font-titre text-xl font-semibold tracking-tight">
                       <span className="size-2.5 rounded-full" style={{ background: ficheZone.couleur }} aria-hidden />
                       {ficheZone.nom}
                     </p>
@@ -289,7 +287,8 @@ export default function Landing() {
                   key={z.cle}
                   type="button"
                   onClick={() => setZone((c) => (c === z.cle ? null : z.cle))}
-                  onMouseEnter={() => setZone(z.cle)}
+                  onMouseEnter={() => setZoneSurvolee(z.cle)}
+                  onMouseLeave={() => setZoneSurvolee(null)}
                   aria-pressed={zone === z.cle}
                   style={delai(0.5 + i * 0.07)}
                   className={clsx(
@@ -306,44 +305,41 @@ export default function Landing() {
         </section>
 
         {/* --- Le récit : la carte change à chaque chapitre ------------------------------------ */}
-        <Recit id="ciel" cote="droite" surtitre={campagne ? `Campagne ${campagne}` : 'Dernière campagne'} titre="Le ciel">
+        <Recit id="ciel" cote="droite" surtitre="Assaman · le ciel" titre="La pluie, suivie et annoncée">
           <p className="mt-3 text-md leading-relaxed text-encre-douce">
-            La pluie de la saison dans chaque département, comparée à sa propre normale (1991-2020).
+            La pluie de chaque département : ce qui est tombé, la normale, et la prévision pour la saison.
           </p>
-          <div className="mt-6 grid grid-cols-3 gap-4 border-t border-trait pt-5">
-            <Chiffre valeur={saison ? String(ciel.plus) : '—'} texte="départements nettement plus arrosés" teinte="text-pluie-700" />
-            <Chiffre valeur={saison ? String(ciel.moins) : '—'} texte="nettement plus secs que la normale" teinte="text-terre-700" />
-            <Chiffre valeur={saison ? String(ciel.secheresse) : '—'} texte="en alerte sécheresse" teinte="text-alerte-700" />
-          </div>
-          <Legende titre="Écart à la normale" gauche="−40 %" droite="+40 %" degrade="linear-gradient(to right,#8a5527,#d9a56b,#f1ece0,#8fc0e6,#1b5a8e)" />
+          <Points teinte="text-pluie-700" points={[
+            [CloudRain, 'La pluie de la saison, décade par décade, comparée à la normale'],
+            [CalendarDays, 'Le début et la fin de la saison des pluies, et les séquences sèches'],
+            [CloudSun, 'Une prévision de la saison avant les semis'],
+          ]} />
+          <Legende titre={campagne ? `Sur la carte : la pluie ${campagne} face à la normale` : 'Sur la carte : la pluie face à la normale'} gauche="Plus sec" droite="Plus arrosé" degrade="linear-gradient(to right,#8a5527,#d9a56b,#f1ece0,#8fc0e6,#1b5a8e)" />
         </Recit>
 
-        <Recit id="terre" cote="gauche" surtitre="Vulnérabilité" titre="La terre">
+        <Recit id="terre" cote="gauche" surtitre="Suuf · la terre" titre="Le sol et les territoires fragiles">
           <p className="mt-3 text-md leading-relaxed text-encre-douce">
-            Là où une mauvaise saison pèse le plus : fréquence des sécheresses, pluie des années sèches, rendements qui varient.
+            La terre de chaque département : son sol, ses rendements passés, et sa fragilité quand la saison est mauvaise.
           </p>
-          <ol className="mt-6 space-y-3 border-t border-trait pt-5">
-            {classement.slice(0, 4).map((v, i) => (
-              <li key={v.code_departement} className="flex items-center gap-3 text-sm">
-                <span className="w-4 text-xs text-encre-douce tabular-nums">{i + 1}</span>
-                <span className="w-28 shrink-0 font-medium">{v.departement}</span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-trait">
-                  <span className="block h-full rounded-full" style={{ width: `${v.score_vulnerabilite}%`, background: couleurVulnerabilite(v.score_vulnerabilite) }} />
-                </span>
-                <span className="w-8 text-right font-semibold tabular-nums">{nombre(v.score_vulnerabilite)}</span>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-5 text-xs leading-relaxed text-encre-douce">
-            Score relatif et indicatif, sur {classement.length || '—'} départements notés. La hauteur des volumes est le score. À valider avec les techniciens.
-          </p>
+          <Points teinte="text-terre-700" points={[
+            [Layers, 'Le sol : texture, acidité, eau qu’il retient'],
+            [Wheat, 'Les rendements de 12 cultures depuis 1981'],
+            [ShieldAlert, 'Les départements les plus fragiles, pour aider en priorité'],
+          ]} />
+          <Legende titre="Sur la carte : la fragilité (hauteur des volumes)" gauche="Moins fragile" droite="Plus fragile" degrade="linear-gradient(to right,#fdf0d2,#f2b544,#e07a3a,#a3311c)" />
         </Recit>
 
-        <Recit id="decision" cote="droite" surtitre="Choix des cultures" titre="La décision">
+        <Recit id="decision" cote="droite" surtitre="La décision" titre="Semer au bon endroit, au bon moment">
           <p className="mt-3 text-md leading-relaxed text-encre-douce">
-            Pour chaque culture, la saison est-elle assez longue et assez arrosée ? Choisissez une culture, la carte répond.
+            Le ciel et la terre réunis : quoi semer, quand semer, et où porter les intrants.
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
+          <Points teinte="text-vert-700" points={[
+            [Sprout, 'La culture et la variété adaptées à chaque département'],
+            [CalendarDays, 'La bonne date de semis'],
+            [Truck, 'Les besoins en semences et engrais, et leur répartition'],
+          ]} />
+          <p className="mt-5 text-sm font-medium text-encre">Choisissez une culture pour l'afficher sur la carte.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
             {cultures.map((c) => (
               <button key={c} type="button" onClick={() => setCulture(c)} aria-pressed={c === culture}
                 className={clsx('min-h-10 rounded-full border px-3.5 text-sm font-medium transition duration-300', c === culture ? 'border-vert-700 bg-vert-700 text-white' : 'border-trait text-encre hover:border-encre/40')}>
@@ -376,18 +372,18 @@ export default function Landing() {
 
             <div className="reveler mt-24 grid gap-10 border-t border-trait pt-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
               <div>
-                <h3 className="font-titre text-3xl leading-tight font-medium tracking-tight">Ce que nous ne savons pas, nous l'écrivons.</h3>
+                <h3 className="font-titre text-3xl leading-tight font-semibold tracking-tight">Ce que nous ne savons pas, nous l'écrivons.</h3>
                 <p className="mt-4 max-w-lg leading-relaxed text-encre-douce">
                   Une valeur absente s'affiche « non disponible », jamais zéro. Une dose qui n'a pas été validée porte la mention « à confirmer ».
                   La vulnérabilité d'un département est relative et indicative, et c'est écrit à côté du chiffre.
                 </p>
               </div>
-              <dl className="grid grid-cols-2 gap-x-8 gap-y-7">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-7">
                 <Chiffre valeur="45" texte="départements suivis, saison après saison depuis 1981" />
-                <Chiffre valeur="3" texte="modèles d'IA : la pluie de la saison, le semis, la récolte" />
+                <Chiffre valeur="3" texte="modèles de prévision : la pluie de la saison, le semis, la récolte" />
                 <Chiffre valeur={ref ? String(ref.cultures.length) : '12'} texte="cultures, avec leurs cycles court, moyen et long" />
                 <Chiffre valeur="6" texte="zones agroécologiques, du fleuve à la Casamance" />
-              </dl>
+              </div>
             </div>
           </div>
         </section>
@@ -397,10 +393,10 @@ export default function Landing() {
 
       {/* --- Pop-up d'entrée ------------------------------------------------------------------ */}
       {portes && (
-        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-white/70 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Choisir son profil" onClick={() => setPortes(false)}>
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-white/80 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Choisir son profil" onClick={() => setPortes(false)}>
           <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-5 flex items-end justify-between gap-4">
-              <h2 className="surgir font-titre text-3xl font-medium tracking-tight sm:text-4xl">Qui entre ?</h2>
+              <h2 className="surgir font-titre text-3xl font-semibold tracking-tight sm:text-4xl">Choisissez votre profil</h2>
               <button type="button" onClick={() => setPortes(false)} aria-label="Fermer" className="grid size-11 place-items-center rounded-full border border-trait bg-white text-encre transition hover:border-encre/40">
                 <X className="size-5" />
               </button>

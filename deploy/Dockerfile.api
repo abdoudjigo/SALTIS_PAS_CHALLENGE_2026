@@ -17,4 +17,6 @@ USER saltis
 
 EXPOSE 8080
 # Un seul worker : la voix wolof est chargée une fois en mémoire
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]
+# --proxy-headers : l'adresse du visiteur vient de Caddy (FORWARDED_ALLOW_IPS dans docker-compose.prod.yml)
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", \
+     "--proxy-headers", "--no-server-header", "--timeout-keep-alive", "15"]

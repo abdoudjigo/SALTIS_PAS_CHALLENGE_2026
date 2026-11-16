@@ -1,7 +1,6 @@
 // Pied de page de la landing : la terre sous le ciel. Marque et mission, liens, puis les sources
 // et crédits (obligatoires) dans un bloc à part, et la mention d'honnêteté du prototype.
 import { Link } from 'react-router'
-import { config } from '../config'
 
 const RUBRIQUES: { titre: string; liens: { libelle: string; to: string; ancre?: boolean }[] }[] = [
   {
@@ -38,6 +37,21 @@ const SOURCES: [string, string][] = [
   ['Vent du globe', 'décor (prévisions GFS), pas une donnée du projet'],
 ]
 
+function Linkedin({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13M7.12 20.45H3.56V9h3.56zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0"/>
+    </svg>
+  )
+}
+
+const EQUIPE: [string, string][] = [
+  ['Abdoulaye Djigo', 'https://www.linkedin.com/in/abdoulaye-djigo-9898241b6/'],
+  ['Aby Faye', 'https://www.linkedin.com/in/aby-f-1399b8269/'],
+  ['Ibrahima Niasse Diouf', 'https://www.linkedin.com/in/ibrahima-niasse-diouf-b8b837310/'],
+  ['Ndeye Khady Mbaye', 'https://www.linkedin.com/in/ndeye-khady-mbaye/'],
+]
+
 const LIEN = 'inline-flex min-h-11 items-center text-sm text-white/70 underline-offset-4 transition hover:text-white hover:underline'
 const ETIQUETTE = 'text-2xs font-medium tracking-etiquette text-soleil-500 uppercase'
 
@@ -53,9 +67,9 @@ export function PiedDePage() {
       <div className="mx-auto max-w-6xl px-5 pt-14 pb-[max(1.75rem,env(safe-area-inset-bottom))] sm:px-8 lg:pt-20">
         <div className="grid gap-x-12 gap-y-12 lg:grid-cols-[1.25fr_2fr]">
           <div className="max-w-sm">
-            <p className="flex items-center gap-3 font-titre text-2xl font-semibold"><img src="/favicon.svg" alt="" className="size-10 rounded-lg" />Assaman & Suuf</p>
+            <p className="flex items-center gap-3 font-titre text-2xl font-semibold"><img src="/favicon.svg" alt="" className="size-10 rounded-xl" />Assaman & Suuf</p>
             <p className="mt-4 text-md leading-relaxed text-white/70">
-              Le ciel et la terre. Réunir la pluie, le sol et les cultures des 45 départements du Sénégal, pour décider quoi semer et où porter les intrants.
+              La pluie, le sol et les cultures des 45 départements du Sénégal, pour décider quoi semer et où porter les intrants.
             </p>
             <p className="mt-6 text-sm text-white/55">Équipe AKAI · SALTIS PAS Challenge 2026</p>
           </div>
@@ -71,18 +85,18 @@ export function PiedDePage() {
                 </ul>
               </nav>
             ))}
-            <div>
-              <h2 className={ETIQUETTE}>Nous suivre</h2>
+            <nav aria-label="L'équipe sur LinkedIn">
+              <h2 className={ETIQUETTE}>L'équipe</h2>
               <ul className="mt-2">
-                {config.reseaux.map((r) => (
-                  <li key={r.nom}>
-                    {r.url
-                      ? <a href={r.url} target="_blank" rel="noreferrer" className={LIEN}>{r.nom}</a>
-                      : <span className="inline-flex min-h-11 items-center gap-2 text-sm text-white/40">{r.nom}<span className="text-2xs">bientôt</span></span>}
+                {EQUIPE.map(([nom, url]) => (
+                  <li key={url}>
+                    <a href={url} target="_blank" rel="noreferrer" className={`${LIEN} gap-2`}>
+                      <Linkedin className="size-4 shrink-0" aria-hidden />{nom}<span className="sr-only"> (LinkedIn, nouvel onglet)</span>
+                    </a>
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           </div>
         </div>
 
