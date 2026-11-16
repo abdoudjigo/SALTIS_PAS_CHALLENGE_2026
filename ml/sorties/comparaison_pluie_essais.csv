@@ -1,0 +1,70 @@
+modele,reglage,variables,rmse_val_mm,rps_val
+Linéaire régularisé,penalite=1,"océan (ONI, TSA)",123.2471,0.2289
+Linéaire régularisé,penalite=1,"océan (ONI, TNA, TSA)",125.7617,0.2297
+Linéaire régularisé,penalite=1,océan + département,127.8424,0.237
+Linéaire régularisé,penalite=10,"océan (ONI, TSA)",123.2151,0.2286
+Linéaire régularisé,penalite=10,"océan (ONI, TNA, TSA)",125.6028,0.2286
+Linéaire régularisé,penalite=10,océan + département,127.6392,0.235
+Linéaire régularisé,penalite=100,"océan (ONI, TSA)",122.9601,0.2272
+Linéaire régularisé,penalite=100,"océan (ONI, TNA, TSA)",124.4231,0.225
+Linéaire régularisé,penalite=100,océan + département,126.2491,0.2278
+Linéaire régularisé,penalite=1000,"océan (ONI, TSA)",122.6083,0.2295
+Linéaire régularisé,penalite=1000,"océan (ONI, TNA, TSA)",122.414,0.2287
+Linéaire régularisé,penalite=1000,océan + département,122.6145,0.2264
+k plus proches voisins,k=10,"océan (ONI, TSA)",149.0545,0.3278
+k plus proches voisins,k=10,"océan (ONI, TNA, TSA)",141.1251,0.304
+k plus proches voisins,k=10,océan + département,132.0623,0.2795
+k plus proches voisins,k=25,"océan (ONI, TSA)",146.5733,0.3248
+k plus proches voisins,k=25,"océan (ONI, TNA, TSA)",138.7727,0.2846
+k plus proches voisins,k=25,océan + département,125.0121,0.2528
+k plus proches voisins,k=50,"océan (ONI, TSA)",139.6931,0.3006
+k plus proches voisins,k=50,"océan (ONI, TNA, TSA)",137.0762,0.2698
+k plus proches voisins,k=50,océan + département,123.3171,0.2406
+k plus proches voisins,k=100,"océan (ONI, TSA)",134.512,0.2744
+k plus proches voisins,k=100,"océan (ONI, TNA, TSA)",131.8535,0.2546
+k plus proches voisins,k=100,océan + département,120.692,0.227
+Forêt aléatoire,"profondeur=3, feuille=20","océan (ONI, TSA)",124.7737,0.2445
+Forêt aléatoire,"profondeur=3, feuille=20","océan (ONI, TNA, TSA)",121.0256,0.2291
+Forêt aléatoire,"profondeur=3, feuille=20",océan + département,120.4563,0.2289
+Forêt aléatoire,"profondeur=5, feuille=20","océan (ONI, TSA)",132.1785,0.2666
+Forêt aléatoire,"profondeur=5, feuille=20","océan (ONI, TNA, TSA)",128.9634,0.253
+Forêt aléatoire,"profondeur=5, feuille=20",océan + département,123.2122,0.244
+Forêt aléatoire,"profondeur=None, feuille=50","océan (ONI, TSA)",128.9402,0.2596
+Forêt aléatoire,"profondeur=None, feuille=50","océan (ONI, TNA, TSA)",135.933,0.2675
+Forêt aléatoire,"profondeur=None, feuille=50",océan + département,127.7862,0.2525
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.03, arbres=100","océan (ONI, TSA)",128.5956,0.2519
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.03, arbres=100","océan (ONI, TNA, TSA)",129.137,0.2471
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.03, arbres=100",océan + département,122.6441,0.2418
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.1, arbres=100","océan (ONI, TSA)",135.4495,0.2775
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.1, arbres=100","océan (ONI, TNA, TSA)",141.503,0.2578
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.1, arbres=100",océan + département,128.0938,0.2386
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.03, arbres=300","océan (ONI, TSA)",135.4958,0.2881
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.03, arbres=300","océan (ONI, TNA, TSA)",135.0886,0.2961
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.03, arbres=300",océan + département,133.0126,0.2623
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.1, arbres=300","océan (ONI, TSA)",134.7741,0.2804
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.1, arbres=300","océan (ONI, TNA, TSA)",136.3164,0.2916
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.1, arbres=300",océan + département,135.4124,0.2824
+XGBoost,"profondeur=2, pas=0.03, arbres=100","océan (ONI, TSA)",135.9695,0.2575
+XGBoost,"profondeur=2, pas=0.03, arbres=100","océan (ONI, TNA, TSA)",131.8061,0.2444
+XGBoost,"profondeur=2, pas=0.03, arbres=100",océan + département,124.7481,0.2338
+XGBoost,"profondeur=2, pas=0.1, arbres=100","océan (ONI, TSA)",145.0769,0.2822
+XGBoost,"profondeur=2, pas=0.1, arbres=100","océan (ONI, TNA, TSA)",142.4395,0.2735
+XGBoost,"profondeur=2, pas=0.1, arbres=100",océan + département,132.3731,0.2518
+XGBoost,"profondeur=3, pas=0.03, arbres=300","océan (ONI, TSA)",151.1747,0.2892
+XGBoost,"profondeur=3, pas=0.03, arbres=300","océan (ONI, TNA, TSA)",142.1244,0.2817
+XGBoost,"profondeur=3, pas=0.03, arbres=300",océan + département,133.4765,0.2531
+XGBoost,"profondeur=3, pas=0.1, arbres=300","océan (ONI, TSA)",154.8779,0.31
+XGBoost,"profondeur=3, pas=0.1, arbres=300","océan (ONI, TNA, TSA)",148.1892,0.3
+XGBoost,"profondeur=3, pas=0.1, arbres=300",océan + département,138.4025,0.2883
+Réseau de neurones,"couches=(8,), penalite=1.0","océan (ONI, TSA)",145.0479,0.2409
+Réseau de neurones,"couches=(8,), penalite=1.0","océan (ONI, TNA, TSA)",136.8619,0.2515
+Réseau de neurones,"couches=(8,), penalite=1.0",océan + département,152.5103,0.2449
+Réseau de neurones,"couches=(8,), penalite=0.1","océan (ONI, TSA)",152.312,0.2545
+Réseau de neurones,"couches=(8,), penalite=0.1","océan (ONI, TNA, TSA)",147.539,0.2691
+Réseau de neurones,"couches=(8,), penalite=0.1",océan + département,166.4432,0.2596
+Réseau de neurones,"couches=(16, 8), penalite=1.0","océan (ONI, TSA)",123.9809,0.2676
+Réseau de neurones,"couches=(16, 8), penalite=1.0","océan (ONI, TNA, TSA)",127.2711,0.2506
+Réseau de neurones,"couches=(16, 8), penalite=1.0",océan + département,131.2613,0.2562
+Réseau de neurones,"couches=(16, 8), penalite=0.1","océan (ONI, TSA)",123.8843,0.2813
+Réseau de neurones,"couches=(16, 8), penalite=0.1","océan (ONI, TNA, TSA)",137.185,0.2761
+Réseau de neurones,"couches=(16, 8), penalite=0.1",océan + département,142.3356,0.283

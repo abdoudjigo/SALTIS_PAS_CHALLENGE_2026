@@ -100,7 +100,7 @@ export const api = {
       ? marts<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { culture })
       : exemple<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { params: { culture } }),
 
-  // IA — résultats des 4 modèles (SALTIS.ML), voir ml/MODELES.md
+  // IA — résultats des 3 modèles (SALTIS.ML), voir ml/MODELES.md
   previsionSaison: (annee: number) => previsions<PrevisionSaison>(`/saison/${annee}`),
   previsionRendement: (code: string, annee: number) => previsions<PrevisionRendement>(`/rendement/${enc(code)}/${annee}`),
   alerteRecolte: (annee: number, moment: Moment, culture?: string | null) => previsions<PrevisionRendement>(`/alerte-recolte/${annee}`, { moment, culture }),

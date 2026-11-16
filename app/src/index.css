@@ -271,7 +271,7 @@
 /* Voile blanc : garde le texte lisible devant le globe, sans cacher la carte */
 .voile-clair { background: linear-gradient(to top, #fff 30%, rgb(255 255 255 / 0.82) 52%, rgb(255 255 255 / 0) 76%); }
 @media (min-width: 1024px) {
-  .voile-clair { background: linear-gradient(to right, #fff 6%, rgb(255 255 255 / 0.86) 30%, rgb(255 255 255 / 0) 56%); }
+  .voile-clair { background: linear-gradient(to right, #ffffff 6%, rgba(255, 255, 255, 0.86) 30%, rgb(255 255 255 / 0) 56%); }
 }
 
 .fiche {

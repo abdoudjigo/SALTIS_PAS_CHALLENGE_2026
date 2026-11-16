@@ -79,10 +79,6 @@ def prev_saison_departement(code: str) -> str:
     return f"prev:saison:departement:{code}"
 
 
-def semblables(code: str, annee: int, moment: str | None) -> str:
-    return f"prev:semblables:{code}:{annee}:{moment or TOUTES}"
-
-
 def rendement(code: str, annee: int, culture: str | None) -> str:
     return f"prev:rendement:{code}:{annee}:{culture or TOUTES}"
 

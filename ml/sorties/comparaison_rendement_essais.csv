@@ -1,0 +1,24 @@
+modele,reglage,mae_val_kg_ha,brier_val
+Linéaire régularisé,penalite=1,258.7063,0.1939
+Linéaire régularisé,penalite=10,256.6833,0.1942
+Linéaire régularisé,penalite=100,247.8241,0.1974
+Linéaire régularisé,penalite=1000,244.0709,0.202
+k plus proches voisins,k=10,264.9932,0.2242
+k plus proches voisins,k=25,255.2101,0.2098
+k plus proches voisins,k=50,251.4216,0.2061
+k plus proches voisins,k=100,251.3464,0.2038
+Forêt aléatoire,"profondeur=3, feuille=20",257.5182,0.2046
+Forêt aléatoire,"profondeur=5, feuille=20",260.3208,0.2067
+Forêt aléatoire,"profondeur=None, feuille=50",258.2724,0.2061
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.03, arbres=100",255.1288,0.2019
+Gradient boosting (scikit-learn),"profondeur=2, pas=0.1, arbres=100",259.4331,0.2069
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.03, arbres=300",260.1062,0.2072
+Gradient boosting (scikit-learn),"profondeur=3, pas=0.1, arbres=300",264.6623,0.2231
+XGBoost,"profondeur=2, pas=0.03, arbres=100",257.5838,0.2028
+XGBoost,"profondeur=2, pas=0.1, arbres=100",263.0885,0.2055
+XGBoost,"profondeur=3, pas=0.03, arbres=300",262.9493,0.2092
+XGBoost,"profondeur=3, pas=0.1, arbres=300",270.6964,0.2225
+Réseau de neurones,"couches=(8,), penalite=1.0",254.0125,0.1985
+Réseau de neurones,"couches=(8,), penalite=0.1",260.4009,0.2055
+Réseau de neurones,"couches=(16, 8), penalite=1.0",255.0644,0.2062
+Réseau de neurones,"couches=(16, 8), penalite=0.1",277.2773,0.2225

@@ -56,7 +56,7 @@ TAGS = [
     {"name": "C · Besoins en intrants", "description": "Besoins de référence (`MART_BESOINS`) et totaux additifs."},
     {"name": "D · AgroDistrib", "description": "Critères de répartition des intrants (`MART_TERRITOIRES_AGRODISTRIB`)."},
     {"name": "D · Vulnérabilité", "description": "Score relatif et indicatif (`MART_VULNERABILITE_DEPARTEMENT`, méthode v1)."},
-    {"name": "IA · Prévisions", "description": "Résultats des 4 modèles d'IA (`SALTIS.ML`) : saison qui vient, années semblables, "
+    {"name": "IA · Prévisions", "description": "Résultats des 3 modèles d'IA (`SALTIS.ML`) : saison qui vient, "
      "rendement et alerte récolte, date de semis, et leur fiabilité. Voir `ml/MODELES.md`."},
     {"name": "IA · Voix", "description": "Question parlée (wolof) ou écrite (français) → réponse courte tirée des données, "
      "en français et en wolof, avec la vue de la carte à afficher. Voir `voix/README.md`."},

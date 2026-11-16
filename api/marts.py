@@ -14,7 +14,6 @@ from typing import Literal
 from pydantic import BaseModel
 
 from .schemas import (
-    AnneeSemblable,
     Besoin,
     CarteAgroclimat,
     ChoixCulture,
@@ -53,7 +52,6 @@ MARTS: dict[str, DefinitionMart] = {
         DefinitionMart("vulnerabilite", "MART_VULNERABILITE_DEPARTEMENT", Vulnerabilite, "rang_vulnerabilite nulls last, code_departement"),
         # ---- modèles d'IA (ml/), facultatifs
         DefinitionMart("prev_saison", "PREVISION_SAISONNIERE", PrevisionSaison, "annee, code_departement", "ml", False),
-        DefinitionMart("semblables", "ANNEES_SEMBLABLES", AnneeSemblable, "code_departement, annee, moment_prevision, rang", "ml", False),
         DefinitionMart("prev_rendement", "PREVISION_RENDEMENT", PrevisionRendement,
                        "code_departement, annee, culture, moment_prevision", "ml", False),
         DefinitionMart("semis", "RISQUE_SEMIS", RisqueSemis, "code_departement, annee nulls last, culture, decade_semis", "ml", False),

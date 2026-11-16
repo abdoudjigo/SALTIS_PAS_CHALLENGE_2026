@@ -1,4 +1,4 @@
-// Types des résultats des 4 modèles d'IA (SALTIS.ML, routes /api/v1/previsions), voir ml/MODELES.md.
+// Types des résultats des 3 modèles d'IA (SALTIS.ML, routes /api/v1/previsions), voir ml/MODELES.md.
 // Chaque prévision porte des probabilités ou une fourchette. `| null` = valeur absente, jamais 0.
 import type { Territoire } from './marts'
 

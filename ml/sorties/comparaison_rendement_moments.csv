@@ -1,0 +1,69 @@
+tache,modele,moment,test_nb_lignes,test_mae_kg_ha,test_gain_mae_vs_tendance,test_gain_mae_bas,test_gain_mae_haut,test_brier,test_brier_skill_score,test_bss_bas,test_bss_haut,test_auc
+rendement (kg/ha),Tendance (moyenne des 10 campagnes précédentes),FIN_AOUT,1224,228.1,0.0,0.0,0.0,,,,,
+rendement (kg/ha),Tendance (moyenne des 10 campagnes précédentes),FIN_JUILLET,1224,228.1,0.0,0.0,0.0,,,,,
+rendement (kg/ha),Tendance (moyenne des 10 campagnes précédentes),FIN_JUIN,1224,228.1,0.0,0.0,0.0,,,,,
+rendement (kg/ha),Tendance (moyenne des 10 campagnes précédentes),FIN_MAI,1224,228.1,0.0,0.0,0.0,,,,,
+rendement (kg/ha),"Passé de la culture (médiane, fréquence des chutes)",FIN_AOUT,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+rendement (kg/ha),"Passé de la culture (médiane, fréquence des chutes)",FIN_JUILLET,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+rendement (kg/ha),"Passé de la culture (médiane, fréquence des chutes)",FIN_JUIN,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+rendement (kg/ha),"Passé de la culture (médiane, fréquence des chutes)",FIN_MAI,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+chute de la récolte,"Passé de la culture (médiane, fréquence des chutes)",FIN_AOUT,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+chute de la récolte,"Passé de la culture (médiane, fréquence des chutes)",FIN_JUILLET,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+chute de la récolte,"Passé de la culture (médiane, fréquence des chutes)",FIN_JUIN,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+chute de la récolte,"Passé de la culture (médiane, fréquence des chutes)",FIN_MAI,1224,228.3,-0.001,-0.017,0.017,0.1728,0.0,0.0,0.0,0.52
+rendement (kg/ha),Modèle actuel m3-v1 (12 seuils logistiques),FIN_AOUT,1224,221.5,0.029,-0.025,0.092,0.1685,0.025,-0.046,0.101,0.558
+rendement (kg/ha),Modèle actuel m3-v1 (12 seuils logistiques),FIN_JUILLET,1224,225.5,0.011,-0.043,0.079,0.1736,-0.004,-0.083,0.077,0.555
+rendement (kg/ha),Modèle actuel m3-v1 (12 seuils logistiques),FIN_JUIN,1224,231.8,-0.016,-0.089,0.068,0.1793,-0.037,-0.147,0.073,0.491
+rendement (kg/ha),Modèle actuel m3-v1 (12 seuils logistiques),FIN_MAI,1224,229.6,-0.006,-0.068,0.054,0.1746,-0.01,-0.101,0.084,0.483
+chute de la récolte,Modèle actuel m3-v1 (12 seuils logistiques),FIN_AOUT,1224,221.5,0.029,-0.025,0.092,0.1685,0.025,-0.046,0.101,0.558
+chute de la récolte,Modèle actuel m3-v1 (12 seuils logistiques),FIN_JUILLET,1224,225.5,0.011,-0.043,0.079,0.1736,-0.004,-0.083,0.077,0.555
+chute de la récolte,Modèle actuel m3-v1 (12 seuils logistiques),FIN_JUIN,1224,231.8,-0.016,-0.089,0.068,0.1793,-0.037,-0.147,0.073,0.491
+chute de la récolte,Modèle actuel m3-v1 (12 seuils logistiques),FIN_MAI,1224,229.6,-0.006,-0.068,0.054,0.1746,-0.01,-0.101,0.084,0.483
+rendement (kg/ha),Linéaire régularisé,FIN_AOUT,1224,244.4,-0.071,-0.141,-0.002,0.1691,0.022,-0.026,0.072,0.542
+rendement (kg/ha),Linéaire régularisé,FIN_JUILLET,1224,249.1,-0.092,-0.177,-0.005,0.1716,0.007,-0.043,0.059,0.545
+rendement (kg/ha),Linéaire régularisé,FIN_JUIN,1224,251.0,-0.1,-0.202,0.008,0.175,-0.012,-0.069,0.045,0.489
+rendement (kg/ha),Linéaire régularisé,FIN_MAI,1224,246.4,-0.08,-0.165,0.01,0.1729,-0.0,-0.044,0.046,0.47
+chute de la récolte,Linéaire régularisé,FIN_AOUT,1224,260.0,-0.14,-0.257,-0.037,0.1754,-0.015,-0.13,0.108,0.537
+chute de la récolte,Linéaire régularisé,FIN_JUILLET,1224,267.0,-0.17,-0.293,-0.048,0.1821,-0.054,-0.168,0.064,0.533
+chute de la récolte,Linéaire régularisé,FIN_JUIN,1224,269.4,-0.181,-0.331,-0.023,0.1892,-0.095,-0.268,0.081,0.48
+chute de la récolte,Linéaire régularisé,FIN_MAI,1224,259.5,-0.138,-0.276,0.006,0.1811,-0.048,-0.199,0.107,0.479
+rendement (kg/ha),k plus proches voisins,FIN_AOUT,1224,237.3,-0.04,-0.093,0.025,0.1704,0.014,-0.041,0.072,0.565
+rendement (kg/ha),k plus proches voisins,FIN_JUILLET,1224,244.5,-0.072,-0.134,-0.003,0.1769,-0.024,-0.076,0.03,0.536
+rendement (kg/ha),k plus proches voisins,FIN_JUIN,1224,247.4,-0.085,-0.165,0.002,0.181,-0.047,-0.128,0.03,0.511
+rendement (kg/ha),k plus proches voisins,FIN_MAI,1224,242.9,-0.065,-0.132,0.006,0.1746,-0.011,-0.064,0.046,0.518
+chute de la récolte,k plus proches voisins,FIN_AOUT,1224,237.3,-0.04,-0.093,0.025,0.1704,0.014,-0.041,0.072,0.565
+chute de la récolte,k plus proches voisins,FIN_JUILLET,1224,244.5,-0.072,-0.134,-0.003,0.1769,-0.024,-0.076,0.03,0.536
+chute de la récolte,k plus proches voisins,FIN_JUIN,1224,247.4,-0.085,-0.165,0.002,0.181,-0.047,-0.128,0.03,0.511
+chute de la récolte,k plus proches voisins,FIN_MAI,1224,242.9,-0.065,-0.132,0.006,0.1746,-0.011,-0.064,0.046,0.518
+rendement (kg/ha),Forêt aléatoire,FIN_AOUT,1224,233.8,-0.025,-0.065,0.018,0.1657,0.041,-0.014,0.109,0.605
+rendement (kg/ha),Forêt aléatoire,FIN_JUILLET,1224,234.9,-0.03,-0.081,0.028,0.1677,0.029,-0.029,0.099,0.599
+rendement (kg/ha),Forêt aléatoire,FIN_JUIN,1224,245.0,-0.074,-0.161,0.016,0.1761,-0.019,-0.085,0.054,0.513
+rendement (kg/ha),Forêt aléatoire,FIN_MAI,1224,242.3,-0.062,-0.143,0.021,0.1714,0.008,-0.058,0.08,0.527
+chute de la récolte,Forêt aléatoire,FIN_AOUT,1224,233.8,-0.025,-0.065,0.018,0.1657,0.041,-0.014,0.109,0.605
+chute de la récolte,Forêt aléatoire,FIN_JUILLET,1224,234.9,-0.03,-0.081,0.028,0.1677,0.029,-0.029,0.099,0.599
+chute de la récolte,Forêt aléatoire,FIN_JUIN,1224,245.0,-0.074,-0.161,0.016,0.1761,-0.019,-0.085,0.054,0.513
+chute de la récolte,Forêt aléatoire,FIN_MAI,1224,242.3,-0.062,-0.143,0.021,0.1714,0.008,-0.058,0.08,0.527
+rendement (kg/ha),Gradient boosting (scikit-learn),FIN_AOUT,1224,237.1,-0.039,-0.099,0.025,0.1676,0.03,-0.027,0.094,0.576
+rendement (kg/ha),Gradient boosting (scikit-learn),FIN_JUILLET,1224,240.5,-0.054,-0.128,0.022,0.1702,0.015,-0.057,0.088,0.576
+rendement (kg/ha),Gradient boosting (scikit-learn),FIN_JUIN,1224,242.3,-0.062,-0.149,0.028,0.178,-0.03,-0.118,0.049,0.51
+rendement (kg/ha),Gradient boosting (scikit-learn),FIN_MAI,1224,243.5,-0.068,-0.162,0.029,0.173,-0.001,-0.064,0.068,0.515
+chute de la récolte,Gradient boosting (scikit-learn),FIN_AOUT,1224,237.1,-0.039,-0.099,0.025,0.1676,0.03,-0.027,0.094,0.576
+chute de la récolte,Gradient boosting (scikit-learn),FIN_JUILLET,1224,240.5,-0.054,-0.128,0.022,0.1702,0.015,-0.057,0.088,0.576
+chute de la récolte,Gradient boosting (scikit-learn),FIN_JUIN,1224,242.3,-0.062,-0.149,0.028,0.178,-0.03,-0.118,0.049,0.51
+chute de la récolte,Gradient boosting (scikit-learn),FIN_MAI,1224,243.5,-0.068,-0.162,0.029,0.173,-0.001,-0.064,0.068,0.515
+rendement (kg/ha),XGBoost,FIN_AOUT,1224,235.0,-0.03,-0.082,0.025,0.167,0.033,-0.025,0.099,0.583
+rendement (kg/ha),XGBoost,FIN_JUILLET,1224,238.7,-0.047,-0.113,0.025,0.1706,0.013,-0.064,0.089,0.577
+rendement (kg/ha),XGBoost,FIN_JUIN,1224,243.9,-0.069,-0.159,0.021,0.1771,-0.025,-0.116,0.058,0.519
+rendement (kg/ha),XGBoost,FIN_MAI,1224,239.4,-0.05,-0.132,0.034,0.1718,0.006,-0.057,0.075,0.525
+chute de la récolte,XGBoost,FIN_AOUT,1224,235.0,-0.03,-0.082,0.025,0.167,0.033,-0.025,0.099,0.583
+chute de la récolte,XGBoost,FIN_JUILLET,1224,238.7,-0.047,-0.113,0.025,0.1706,0.013,-0.064,0.089,0.577
+chute de la récolte,XGBoost,FIN_JUIN,1224,243.9,-0.069,-0.159,0.021,0.1771,-0.025,-0.116,0.058,0.519
+chute de la récolte,XGBoost,FIN_MAI,1224,239.4,-0.05,-0.132,0.034,0.1718,0.006,-0.057,0.075,0.525
+rendement (kg/ha),Réseau de neurones,FIN_AOUT,1224,246.5,-0.081,-0.177,-0.001,0.1705,0.013,-0.074,0.105,0.557
+rendement (kg/ha),Réseau de neurones,FIN_JUILLET,1224,250.6,-0.099,-0.188,-0.01,0.1799,-0.041,-0.13,0.051,0.53
+rendement (kg/ha),Réseau de neurones,FIN_JUIN,1224,257.1,-0.127,-0.257,0.002,0.1866,-0.08,-0.206,0.046,0.475
+rendement (kg/ha),Réseau de neurones,FIN_MAI,1224,246.6,-0.081,-0.233,0.039,0.1793,-0.037,-0.149,0.078,0.488
+chute de la récolte,Réseau de neurones,FIN_AOUT,1224,246.5,-0.081,-0.177,-0.001,0.1705,0.013,-0.074,0.105,0.557
+chute de la récolte,Réseau de neurones,FIN_JUILLET,1224,250.6,-0.099,-0.188,-0.01,0.1799,-0.041,-0.13,0.051,0.53
+chute de la récolte,Réseau de neurones,FIN_JUIN,1224,257.1,-0.127,-0.257,0.002,0.1866,-0.08,-0.206,0.046,0.475
+chute de la récolte,Réseau de neurones,FIN_MAI,1224,246.6,-0.081,-0.233,0.039,0.1793,-0.037,-0.149,0.078,0.488

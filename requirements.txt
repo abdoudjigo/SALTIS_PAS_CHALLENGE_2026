@@ -11,6 +11,7 @@ snowflake-connector-python
 gradio_client  # IA vocale : appel du Space « voix wolof »
 scikit-learn
 xgboost
+pyarrow  # copies locales des marts (ml/donnees/*.parquet)
 ruff
 # tests de l'API
 httpx
