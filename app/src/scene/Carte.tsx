@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { config } from '../config'
 import type { Departement } from '../types/marts'
 import { CIEL_VIF, melanger, rvb, type Rvb } from './couleurs'
-import { centre, cleZone, SENEGAL, ZONE_PAR_CLE, type Contours, type ContoursZones, type Emprise, type LonLat } from './geo'
+import { centre, cleZone, coeur, SENEGAL, ZONE_PAR_CLE, type Contours, type ContoursZones, type Emprise, type LonLat } from './geo'
 
 export type Ambiance = 'clair' | 'jour' | 'aube' | 'crepuscule' | 'nuit'
 
@@ -84,6 +84,8 @@ interface PropsCarte {
   onPoint?: (position: LonLat) => void
   onSurvol?: (survol: Survol | null) => void
   onSurvolZone?: (cle: string | null) => void
+  /** Clic sur la carte hors de toute zone (sert à désélectionner) */
+  onHorsZone?: () => void
   /** l'utilisateur manipule la carte (déplacement, zoom, rotation) : vrai au début, faux à la fin */
   onManipulation?: (enCours: boolean) => void
   className?: string
@@ -120,15 +122,18 @@ function elementRepere(r: Repere) {
   return el
 }
 
-export default function Carte({ vue, contours, contoursZones, departements, depart, interactive = true, onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onManipulation, className, vitrine = false }: PropsCarte) {
+export default function Carte({ vue, contours, contoursZones, departements, depart, interactive = true, onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, className, vitrine = false }: PropsCarte) {
   const conteneur = useRef<HTMLDivElement>(null)
   const carteRef = useRef<mapboxgl.Map | null>(null)
   const [prete, setPrete] = useState(false)
-  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onManipulation })
+  // Zones éteintes (chapitres suivants) : elles ne réagissent ni au survol ni au clic
+  const zonesActives = useRef(Boolean(vue.zones))
+  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation })
   const vueRef = useRef(vue)
   const departRef = useRef(depart)
   useEffect(() => {
-    rappels.current = { onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onManipulation }
+    zonesActives.current = Boolean(vue.zones)
+    rappels.current = { onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation }
     vueRef.current = vue
   })
 
@@ -147,7 +152,9 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       zoom: departRef.current?.zoom ?? v.camera.zoom ?? 5,
       pitch: v.camera.inclinaison ?? 0,
       bearing: v.camera.cap ?? 0,
-      interactive,
+      // Toujours « interactive » pour recevoir survol et clics ; sans interaction, seuls les gestes sont coupés
+      // (interactive: false n'attache aucun écouteur : la carte ne verrait jamais la souris)
+      interactive: true,
       attributionControl: false,
       maxPitch: 75,
       // Étiquettes : fondu court, pour que les noms suivent la caméra sans traîner
@@ -167,6 +174,8 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       },
     })
     carteRef.current = carte
+    if (!interactive)
+      for (const geste of [carte.scrollZoom, carte.boxZoom, carte.dragRotate, carte.dragPan, carte.keyboard, carte.doubleClickZoom, carte.touchZoomRotate, carte.touchPitch]) geste.disable()
     carte.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     if (v.camera.marge) carte.setPadding({ top: 0, right: 0, bottom: 0, left: 0, ...v.camera.marge })
 
@@ -174,6 +183,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       if (clair) carte.setFog(brume(v.ambiance))
 
       carte.addSource('zones', { type: 'geojson', data: VIDE, promoteId: 'cle' })
+      carte.addSource('zones-centres', { type: 'geojson', data: VIDE, promoteId: 'cle' })
       carte.addSource('departements', { type: 'geojson', data: VIDE, promoteId: 'GID_2' })
       carte.addSource('noms', { type: 'geojson', data: VIDE })
       carte.addSource('arcs', { type: 'geojson', data: VIDE, lineMetrics: true })
@@ -191,7 +201,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       })
       carte.addLayer({
         id: 'zones-trait', type: 'line', source: 'zones', slot: 'middle',
-        paint: { 'line-color': ['get', 'couleur'], 'line-width': 1.6, 'line-opacity': ['min', 1, ['*', 1.6, etat('o', 0)]], 'line-emissive-strength': 1 },
+        paint: { 'line-color': ['get', 'couleur'], 'line-width': ['+', 1.6, ['*', 1.8, etat('n', 0)]], 'line-opacity': ['min', 1, ['*', 1.6, etat('o', 0)]], 'line-emissive-strength': 1 },
       })
       const teinte: ExpressionSpecification = ['rgb', etat('r', GRIS[0]), etat('g', GRIS[1]), etat('b', GRIS[2])]
       carte.addLayer({
@@ -253,6 +263,18 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
         },
         paint: { 'text-color': '#1d2a22', 'text-halo-color': 'rgba(255,255,255,0.9)', 'text-halo-width': 1.3, 'text-emissive-strength': 1 },
       })
+      // Nom de la zone allumée, écrit en son cœur ; l'opacité suit l'état « n » (animé avec l'accent)
+      carte.addLayer({
+        id: 'zones-noms', type: 'symbol', source: 'zones-centres', slot: 'top', layout: {
+          'text-field': ['get', 'nom'], 'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 7, 16], 'text-max-width': 8, 'text-letter-spacing': 0.02,
+          'text-allow-overlap': true, 'text-ignore-placement': true,
+        },
+        paint: {
+          'text-color': '#1d2a22', 'text-halo-color': 'rgba(255,255,255,0.95)', 'text-halo-width': 1.8, 'text-halo-blur': 0.4,
+          'text-opacity': etat('n', 0), 'text-emissive-strength': 1,
+        },
+      })
       setPrete(true)
     })
 
@@ -261,7 +283,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       const couches = ['dep-aplat', 'dep-volumes'].filter((c) => carte.getLayer(c) && carte.getLayoutProperty(c, 'visibility') !== 'none')
       const dep = couches.length ? carte.queryRenderedFeatures(point, { layers: couches })[0] : undefined
       if (dep) return { code: String(dep.properties?.GID_2) }
-      const zone = carte.getLayer('zones-aplat') ? carte.queryRenderedFeatures(point, { layers: ['zones-aplat'] })[0] : undefined
+      const zone = zonesActives.current && carte.getLayer('zones-aplat') ? carte.queryRenderedFeatures(point, { layers: ['zones-aplat'] })[0] : undefined
       return zone ? { zone: String(zone.properties?.cle) } : {}
     }
     let survole = ''
@@ -299,6 +321,10 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       cancelAnimationFrame(imageSurvol)
       imageSurvol = 0
       survole = ''
+      if (zoneSurvolee) {
+        zoneSurvolee = ''
+        rappels.current.onSurvolZone?.(null)
+      }
       if (carte.getLayer('dep-survol')) carte.setFilter('dep-survol', ['==', ['get', 'GID_2'], ''])
       rappels.current.onSurvol?.(null)
     })
@@ -309,6 +335,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       if (code && rappels.current.onDepartement) return rappels.current.onDepartement(code)
       if (rappels.current.onPoint) return rappels.current.onPoint([e.lngLat.lng, e.lngLat.lat])
       if (zone) rappels.current.onZone?.(zone)
+      else rappels.current.onHorsZone?.()
     })
 
     carte.on('dragstart', () => rappels.current.onSurvol?.(null))
@@ -345,6 +372,13 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       return { ...f, properties: { cle, couleur: ZONE_PAR_CLE.get(cle)?.couleur ?? '#b7793f' } }
     })
     ;(carte.getSource('zones') as GeoJSONSource).setData({ type: 'FeatureCollection', features })
+    ;(carte.getSource('zones-centres') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: features.map((f) => ({
+        type: 'Feature', geometry: { type: 'Point', coordinates: ZONE_PAR_CLE.get(f.properties.cle)?.centreNom ?? coeur(f.geometry) },
+        properties: { cle: f.properties.cle, nom: ZONE_PAR_CLE.get(f.properties.cle)?.nomCourt ?? f.properties.cle },
+      })),
+    })
   }, [prete, contoursZones])
 
   useEffect(() => {
@@ -419,6 +453,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
   const zonesVisibles = Boolean(vue.zones)
   const accent = vue.zones?.accent ?? null
   const opaciteZones = useRef(new Map<string, number>())
+  const nomZones = useRef(new Map<string, number>())
   useEffect(() => {
     const carte = carteRef.current
     if (!carte || !prete || !contoursZones) return
@@ -426,18 +461,23 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     const depart = new Map(cles.map((c) => [c, opaciteZones.current.get(c) ?? 0]))
     const eveil = zonesVisibles && cles.every((c) => (depart.get(c) ?? 0) === 0)
     const cible = (c: string) => (!zonesVisibles ? 0 : accent ? (c === accent ? 0.82 : 0.16) : 0.58)
+    const cibleNom = (c: string) => (zonesVisibles && c === accent ? 1 : 0)
     // Déjà en place (changement de chapitre sans zones, même accent) : aucune image à redessiner
-    if (opaciteZones.current.size && cles.every((c) => depart.get(c) === cible(c))) return
+    if (opaciteZones.current.size && cles.every((c) => depart.get(c) === cible(c) && (nomZones.current.get(c) ?? 0) === cibleNom(c))) return
     const debut = performance.now()
     let image = 0
     const boucle = (t: number) => {
       let fini = true
       cles.forEach((c, i) => {
-        const p = Math.min(Math.max((t - debut - (eveil ? i * PAS_ZONE_MS : 0)) / 600, 0), 1)
+        const p = Math.min(Math.max((t - debut - (eveil ? i * PAS_ZONE_MS : 0)) / (eveil ? 600 : 180), 0), 1)
         if (p < 1) fini = false
         const o = p >= 1 ? cible(c) : (depart.get(c) ?? 0) + (cible(c) - (depart.get(c) ?? 0)) * adoucir(p)
+        const n0 = nomZones.current.get(c) ?? 0
+        const n = p >= 1 ? cibleNom(c) : n0 + (cibleNom(c) - n0) * adoucir(p)
         opaciteZones.current.set(c, o)
-        carte.setFeatureState({ source: 'zones', id: c }, { o })
+        nomZones.current.set(c, n)
+        carte.setFeatureState({ source: 'zones', id: c }, { o, n })
+        carte.setFeatureState({ source: 'zones-centres', id: c }, { n })
       })
       if (!fini) image = requestAnimationFrame(boucle)
     }

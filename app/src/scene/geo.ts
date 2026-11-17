@@ -22,14 +22,18 @@ export interface Zone {
   couleur: string
   /** une phrase de repère, sans chiffre : les chiffres viennent de l'API */
   repere: string
+  /** nom écrit sur la carte, quand le nom complet est trop long */
+  nomCourt?: string
+  /** où écrire le nom, quand le calcul automatique tombe mal (zone découpée) */
+  centreNom?: LonLat
 }
 
 // Du fleuve au nord vers la Casamance au sud. Couleurs tirées de la palette « Ciel & Terre ».
 export const ZONES: Zone[] = [
-  { cle: 'VALLÉE DU FLEUVE SÉNÉGAL', nom: 'Vallée du fleuve Sénégal', couleur: '#2d7fc1', repere: 'Le fleuve, au nord. Peu de pluie, des cultures irriguées.' },
+  { cle: 'VALLÉE DU FLEUVE SÉNÉGAL', nom: 'Vallée du fleuve Sénégal', couleur: '#2d7fc1', nomCourt: 'Vallée du fleuve', repere: 'Le fleuve, au nord. Peu de pluie, des cultures irriguées.' },
   { cle: 'NIAYES', nom: 'Niayes', couleur: '#6fb58a', repere: 'La frange côtière, de Dakar vers Saint-Louis.' },
-  { cle: 'ZONE SYLVOPASTORALE (FERLO)', nom: 'Zone sylvopastorale (Ferlo)', couleur: '#f2b544', repere: 'Le nord pastoral, à la saison des pluies courte.' },
-  { cle: 'BASSIN ARACHIDIER', nom: 'Bassin arachidier', couleur: '#b7793f', repere: "Le centre du pays, terre de l'arachide et du mil." },
+  { cle: 'ZONE SYLVOPASTORALE (FERLO)', nom: 'Zone sylvopastorale (Ferlo)', couleur: '#f2b544', nomCourt: 'Ferlo', repere: 'Le nord pastoral, à la saison des pluies courte.' },
+  { cle: 'BASSIN ARACHIDIER', nom: 'Bassin arachidier', couleur: '#b7793f', centreNom: [-16.05, 14.45], repere: "Le centre du pays, terre de l'arachide et du mil." },
   { cle: 'SÉNÉGAL ORIENTAL', nom: 'Sénégal oriental', couleur: '#8a5527', repere: "L'est, vers le Mali et la Guinée." },
   { cle: 'CASAMANCE', nom: 'Casamance', couleur: '#1f5f3a', repere: 'Le sud, la région la plus arrosée.' },
 ]
@@ -82,4 +86,42 @@ export function trouverDepartement(contours: Contours, lon: number, lat: number)
     for (const poly of polygones(f.geometry))
       if (dansAnneau(poly[0], lon, lat) && !poly.slice(1).some((trou) => dansAnneau(trou, lon, lat))) return f.properties.GID_2
   return null
+}
+
+type Anneau = number[][]
+const dedans = (x: number, y: number, a: Anneau) => {
+  let d = false
+  for (let i = 0, j = a.length - 1; i < a.length; j = i++)
+    if (a[i][1] > y !== a[j][1] > y && x < ((a[j][0] - a[i][0]) * (y - a[i][1])) / (a[j][1] - a[i][1]) + a[i][0]) d = !d
+  return d
+}
+const distanceBord = (x: number, y: number, a: Anneau) => {
+  let m = Infinity
+  for (let i = 0, j = a.length - 1; i < a.length; j = i++) {
+    const [x1, y1] = a[j], [x2, y2] = a[i]
+    const dx = x2 - x1, dy = y2 - y1
+    const t = dx || dy ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy))) : 0
+    m = Math.min(m, Math.hypot(x - x1 - t * dx, y - y1 - t * dy))
+  }
+  return m
+}
+const aire = (a: Anneau) => Math.abs(a.reduce((s, p, i) => { const q = a[(i + 1) % a.length]; return s + p[0] * q[1] - q[0] * p[1] }, 0)) / 2
+
+/** Cœur d'une zone : le point le plus éloigné des bords dans sa plus grande partie (le nom y tient, même en croissant). */
+export function coeur(g: { type: string; coordinates: unknown }): LonLat {
+  const polys = (g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates]) as Anneau[][]
+  const poly = polys.reduce((a, b) => (aire(b[0]) > aire(a[0]) ? b : a))
+  const ext = poly[0]
+  const xs = ext.map((p) => p[0]), ys = ext.map((p) => p[1])
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+  let meilleur: LonLat = [(x0 + x1) / 2, (y0 + y1) / 2], dMax = -1
+  const N = 40
+  for (let i = 0; i <= N; i++)
+    for (let j = 0; j <= N; j++) {
+      const x = x0 + ((x1 - x0) * i) / N, y = y0 + ((y1 - y0) * j) / N
+      if (!dedans(x, y, ext) || poly.slice(1).some((t) => dedans(x, y, t))) continue
+      const d = Math.min(...poly.map((a) => distanceBord(x, y, a)))
+      if (d > dMax) [dMax, meilleur] = [d, [x, y]]
+    }
+  return meilleur
 }

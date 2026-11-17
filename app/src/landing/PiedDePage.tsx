@@ -57,7 +57,7 @@ const ETIQUETTE = 'text-2xs font-medium tracking-etiquette text-soleil-500 upper
 
 export function PiedDePage() {
   return (
-    <footer className="relative bg-vert-900 text-white">
+    <footer className="pointer-events-auto relative bg-vert-900 text-white">
       {/* L'horizon : deux lignes de terre, comme sur l'emblème, font la transition depuis la page claire */}
       <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="absolute inset-x-0 bottom-full block h-16 w-full sm:h-24" aria-hidden>
         <path d="M0 70c240-58 480-58 720 0s480 58 720 0v50H0z" className="fill-terre-500" />

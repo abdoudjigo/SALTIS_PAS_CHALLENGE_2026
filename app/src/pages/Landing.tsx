@@ -123,11 +123,23 @@ export default function Landing() {
 
   const [etape, setEtape] = useState<Etape>('zones')
   const [arrive, setArrive] = useState(false)
+  // Zone montrée (survol de la carte ou de la légende, toucher sur mobile) : allumée, nommée et décrite dans la fiche
   const [zone, setZone] = useState<string | null>(null)
-  const [zoneSurvolee, setZoneSurvolee] = useState<string | null>(null)
+  const fermeture = useRef(0)
+  const montrerZone = (cle: string) => {
+    clearTimeout(fermeture.current)
+    setZone(cle)
+  }
+  // Petit délai : passer d'une zone à l'autre ne fait pas clignoter la fiche
+  const cacherZone = () => {
+    clearTimeout(fermeture.current)
+    fermeture.current = window.setTimeout(() => setZone(null), 130)
+  }
   const [cultureChoisie, setCulture] = useState<string | null>(null)
   const [portes, setPortes] = useState(false)
   useRecit(setEtape)
+  // Hors du hero, aucune zone montrée
+  const zoneMontree = etape === 'zones' ? zone : null
 
   // Le globe tourne un instant, puis la caméra descend sur le Sénégal et les 6 zones s'allument
   useEffect(() => {
@@ -137,6 +149,23 @@ export default function Landing() {
   useEffect(() => {
     if (hash) document.querySelector(hash)?.scrollIntoView()
   }, [hash])
+  // Au doigt (pas de survol) : toucher ailleurs que sur une zone efface la fiche ; Échap aussi
+  useEffect(() => {
+    if (!zone) return
+    const toucher = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      const cible = e.target as Element
+      if (!cible.closest('[data-zone], .mapboxgl-canvas')) setZone(null)
+    }
+    const echap = (e: KeyboardEvent) => e.key === 'Escape' && setZone(null)
+    document.addEventListener('pointerdown', toucher)
+    window.addEventListener('keydown', echap)
+    return () => {
+      document.removeEventListener('pointerdown', toucher)
+      window.removeEventListener('keydown', echap)
+    }
+  }, [zone])
+  useEffect(() => () => clearTimeout(fermeture.current), [])
   useEffect(() => {
     if (!portes) return
     const fermer = (e: KeyboardEvent) => e.key === 'Escape' && setPortes(false)
@@ -158,7 +187,7 @@ export default function Landing() {
   }, [territoires, culture])
 
   const ficheZone = useMemo(() => {
-    const z = ZONES.find((x) => x.cle === zone)
+    const z = ZONES.find((x) => x.cle === zoneMontree)
     if (!z) return null
     const deps = saison?.filter((l) => cleZone(l.zone_agroecologique) === z.cle) ?? []
     const normales = deps.map((l) => l.pluie_saison_normale_mm).filter((v): v is number => v !== null)
@@ -170,7 +199,7 @@ export default function Landing() {
       pluie: normales.length ? [Math.min(...normales), Math.max(...normales)] : null,
       cultures: [...adaptees].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => c),
     }
-  }, [zone, saison, territoires])
+  }, [zoneMontree, saison, territoires])
 
   // --- La carte suit le récit ------------------------------------------------------------------
   // Couleurs par département : calculées une fois par jeu de données, pas à chaque survol ni à chaque chapitre
@@ -192,13 +221,13 @@ export default function Landing() {
 
     if (etape === 'zones') {
       // Seul le globe est de nuit ; dès la descente sur le Sénégal, la carte repasse en jour clair
-      if (!arrive) return { ambiance: 'nuit', camera: { centre: [-36, 17], zoom: large ? 1.75 : 0.9, marge: marge('gauche') }, derive: mode.animations, vent: mode.animations }
-      return { ambiance: 'clair', camera: { ...pays('gauche'), duree: 5200 }, zones: { accent: zoneSurvolee ?? zone } }
+      if (!arrive) return { ambiance: 'clair', camera: { centre: [-36, 17], zoom: large ? 1.75 : 0.9, marge: marge('gauche') }, derive: mode.animations, vent: mode.animations }
+      return { ambiance: 'clair', camera: { ...pays('gauche'), duree: 5200 }, zones: { accent: zoneMontree } }
     }
     if (etape === 'ciel') return { ambiance: 'clair', camera: pays('droite'), pluie: mode.animations ? 0.45 : 0, departements: teintesCiel }
     if (etape === 'terre') return { ambiance: 'clair', camera: pays('gauche', 52, -14), relief: true, departements: teintesTerre }
     return { ambiance: 'clair', camera: pays('droite'), departements: teintesDecision }
-  }, [etape, arrive, zone, zoneSurvolee, large, mode.animations, teintesCiel, teintesTerre, teintesDecision])
+  }, [etape, arrive, zoneMontree, large, mode.animations, teintesCiel, teintesTerre, teintesDecision])
 
   return (
     <div className="landing relative bg-white text-encre">
@@ -209,14 +238,15 @@ export default function Landing() {
         {mode.globe ? (
           <Suspense fallback={null}>
             <Carte vue={vue} contours={contours} contoursZones={contoursZones} departements={ref?.departements} interactive={false} vitrine
-              onZone={(cle) => setZone((z) => (z === cle ? null : cle))} onSurvolZone={(cle) => setZoneSurvolee(etape === 'zones' ? cle : null)} />
+              onZone={montrerZone} onSurvolZone={(cle) => (cle ? montrerZone(cle) : cacherZone())} onHorsZone={() => setZone(null)} />
           </Suspense>
         ) : (
           <div className="size-full bg-[radial-gradient(60%_50%_at_70%_40%,#dcecf8,transparent),radial-gradient(40%_40%_at_30%_80%,#eef6f0,transparent)]" />
         )}
       </div>
 
-      <main className="relative">
+      {/* La page laisse passer la souris jusqu'à la carte ; seuls les blocs de contenu la captent */}
+      <main className="pointer-events-none relative">
         {/* --- Hero : du globe aux 6 zones agroécologiques ------------------------------------ */}
         <section id="zones" data-chapitre className="pointer-events-none relative flex min-h-svh flex-col justify-end px-4 pt-28 pb-6 sm:px-8 lg:justify-center lg:px-[6vw] lg:pb-24">
           <div className="voile-clair absolute inset-0" aria-hidden />
@@ -244,10 +274,10 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Les 6 zones : le survol accentue la zone, le clic ouvre sa fiche */}
+          {/* Les 6 zones : le survol (ou le toucher) allume la zone sur la carte et montre sa fiche */}
           <div className="pointer-events-auto relative mt-9 lg:absolute lg:inset-x-[6vw] lg:bottom-7 lg:mt-0">
             {ficheZone && (
-              <div key={ficheZone.cle} className="fiche surgir mb-3 max-w-md rounded-3xl p-5 lg:absolute lg:right-0 lg:bottom-0 lg:z-10 lg:mb-0 lg:w-[24rem]">
+              <div key={ficheZone.cle} aria-live="polite" className="fiche surgir pointer-events-none mb-3 max-w-md rounded-3xl p-5 lg:absolute lg:right-0 lg:bottom-full lg:z-10 lg:mb-4 lg:w-[24rem]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="flex items-center gap-2 font-titre text-xl font-semibold tracking-tight">
@@ -256,9 +286,6 @@ export default function Landing() {
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-encre-douce">{ficheZone.repere}</p>
                   </div>
-                  <button type="button" onClick={() => setZone(null)} aria-label="Fermer" className="grid size-9 shrink-0 place-items-center rounded-full text-encre-douce transition hover:bg-encre/5">
-                    <X className="size-4" />
-                  </button>
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-trait pt-4 text-sm">
                   <div>
@@ -286,14 +313,17 @@ export default function Landing() {
                 <button
                   key={z.cle}
                   type="button"
-                  onClick={() => setZone((c) => (c === z.cle ? null : z.cle))}
-                  onMouseEnter={() => setZoneSurvolee(z.cle)}
-                  onMouseLeave={() => setZoneSurvolee(null)}
-                  aria-pressed={zone === z.cle}
+                  data-zone={z.cle}
+                  onClick={() => montrerZone(z.cle)}
+                  onMouseEnter={() => montrerZone(z.cle)}
+                  onMouseLeave={cacherZone}
+                  onFocus={() => montrerZone(z.cle)}
+                  onBlur={cacherZone}
+                  aria-current={zoneMontree === z.cle ? 'true' : undefined}
                   style={delai(0.5 + i * 0.07)}
                   className={clsx(
                     'vitrine-entree inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm font-medium whitespace-nowrap transition duration-300',
-                    zone === z.cle ? 'border-encre bg-encre text-white' : 'border-trait bg-white/80 text-encre backdrop-blur hover:border-encre/40',
+                    zoneMontree === z.cle ? 'border-encre bg-encre text-white' : 'border-trait bg-white/80 text-encre backdrop-blur hover:border-encre/40',
                   )}
                 >
                   <span className="size-2 rounded-full" style={{ background: z.couleur }} aria-hidden />
@@ -360,7 +390,7 @@ export default function Landing() {
         </Recit>
 
         {/* --- Les deux portes ---------------------------------------------------------------- */}
-        <section id="entrer" data-chapitre className="fond-ciel relative px-4 pt-24 pb-36 sm:px-8 lg:px-[6vw] lg:pt-36 lg:pb-48">
+        <section id="entrer" data-chapitre className="fond-ciel pointer-events-auto relative px-4 pt-24 pb-36 sm:px-8 lg:px-[6vw] lg:pt-36 lg:pb-48">
           <div className="mx-auto max-w-5xl">
             <p className="reveler text-2xs font-medium tracking-etiquette text-encre-douce uppercase">Deux portes d'entrée</p>
             <h2 className="reveler mt-3 max-w-2xl font-titre text-titre-section font-semibold text-balance" style={delai(0.05)}>
