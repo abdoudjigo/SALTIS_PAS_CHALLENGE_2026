@@ -32,3 +32,18 @@ models:
     description: Stocks disponibles par département et par produit.
   - name: stg_scenarios_repartition
     description: Scénarios de répartition des stocks par département.
+  - name: stg_eau_souterraine
+    description: Nappes souterraines par département (BGS). Actif si eau_chargee vaut true.
+    columns:
+      - name: code_departement
+        data_tests: [not_null, unique]
+  - name: stg_irrigation
+    description: Irrigation équipée vers 2005 par département (FAO GMIA v5). Actif si eau_chargee vaut true.
+    columns:
+      - name: code_departement
+        data_tests: [not_null, unique]
+  - name: stg_eau_surface
+    description: Eau de surface en saison sèche et terres proches par département. Actif si eau_chargee vaut true.
+    columns:
+      - name: code_departement
+        data_tests: [not_null, unique]

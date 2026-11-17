@@ -101,3 +101,11 @@ def semis_carte(annee: int | None, culture: str) -> str:
 
 def evaluation(modele: str | None) -> str:
     return f"prev:evaluation:{modele or TOUTES}"
+
+
+def opportunites(couleur: str | None) -> str:
+    return f"opportunites:carte:{couleur or TOUTES}"
+
+
+def opportunites_departement(code: str) -> str:
+    return f"opportunites:departement:{code}"

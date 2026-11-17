@@ -56,6 +56,8 @@ TAGS = [
     {"name": "C · Besoins en intrants", "description": "Besoins de référence (`MART_BESOINS`) et totaux additifs."},
     {"name": "D · AgroDistrib", "description": "Critères de répartition des intrants (`MART_TERRITOIRES_AGRODISTRIB`)."},
     {"name": "D · Vulnérabilité", "description": "Score relatif et indicatif (`MART_VULNERABILITE_DEPARTEMENT`, méthode v1)."},
+    {"name": "E · Opportunités", "description": "Carte à trois couleurs (`MART_CARTE_OPPORTUNITES`) : jaune saison courte, "
+     "vert saison longue, bleu eau mobilisable en saison sèche. Voir `docs/carte-opportunites.md`."},
     {"name": "IA · Prévisions", "description": "Résultats des 4 modèles d'IA (`SALTIS.ML`) : saison qui vient, années semblables, "
      "rendement et alerte récolte, date de semis, et leur fiabilité. Voir `ml/MODELES.md`."},
     {"name": "IA · Voix", "description": "Question parlée (wolof) ou écrite (français) → réponse courte tirée des données, "

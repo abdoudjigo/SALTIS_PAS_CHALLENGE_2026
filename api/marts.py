@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import BaseModel
+from .schemas.opportunites import CarteOpportunite
 
 from .schemas import (
     AnneeSemblable,
@@ -52,6 +53,8 @@ MARTS: dict[str, DefinitionMart] = {
         DefinitionMart("agrodistrib", "MART_TERRITOIRES_AGRODISTRIB", TerritoireAgrodistrib, "code_departement, culture"),
         DefinitionMart("vulnerabilite", "MART_VULNERABILITE_DEPARTEMENT", Vulnerabilite, "rang_vulnerabilite nulls last, code_departement"),
         # ---- modèles d'IA (ml/), facultatifs
+        # ---- carte des opportunités (pluie et eau), facultative
+        DefinitionMart("opportunites", "MART_CARTE_OPPORTUNITES", CarteOpportunite, "code_departement", "marts", False),
         DefinitionMart("prev_saison", "PREVISION_SAISONNIERE", PrevisionSaison, "annee, code_departement", "ml", False),
         DefinitionMart("semblables", "ANNEES_SEMBLABLES", AnneeSemblable, "code_departement, annee, moment_prevision, rang", "ml", False),
         DefinitionMart("prev_rendement", "PREVISION_RENDEMENT", PrevisionRendement,

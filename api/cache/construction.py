@@ -35,6 +35,7 @@ from ..schemas import (
     ZoneRef,
 )
 from . import cles
+from ..schemas.opportunites import CarteOpportunite
 from .cles import SUFFIXE_GZIP, normaliser
 
 SEUIL_GZIP_OCTETS = 1024
@@ -116,6 +117,7 @@ class Index(BaseModel):
     annees_semis: list[int] = []
     cultures_semis: list[str] = []
     a_evaluation: bool = False
+    a_opportunites: bool = False
 
     def resoudre_culture(self, texte: str) -> str | None:
         cible = normaliser(texte)
@@ -276,6 +278,7 @@ def construire(
     besoins: list[Besoin] = marts["besoins"]
     agro: list[TerritoireAgrodistrib] = marts["agrodistrib"]
     vuln: list[Vulnerabilite] = marts["vulnerabilite"]
+    opportunites: list[CarteOpportunite] = marts.get("opportunites", [])
     prev_saison: list[PrevisionSaison] = marts.get("prev_saison", [])
     semblables: list[AnneeSemblable] = marts.get("semblables", [])
     prev_rendement: list[PrevisionRendement] = marts.get("prev_rendement", [])
@@ -306,6 +309,7 @@ def construire(
         annees_semis=sorted({x.annee for x in semis if x.annee is not None}),
         cultures_semis=sorted({x.culture for x in semis}),
         a_evaluation=bool(evaluation),
+        a_opportunites=bool(opportunites),
     )
     b.c.index = index
 
@@ -449,6 +453,7 @@ def construire(
             AV_VULNERABILITE,
         )
 
+    _construire_opportunites(b, opportunites)
     _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, semblables, prev_rendement, semis,
                            evaluation)
     return b.c
@@ -546,3 +551,33 @@ def _construire_previsions(
         b.ajouter(cles.evaluation(None), evaluation, EvaluationModele, source["evaluation"], None, AV_EVALUATION)
         for modele, lignes in _grouper(evaluation, lambda x: x.modele).items():
             b.ajouter(cles.evaluation(modele), lignes, EvaluationModele, source["evaluation"], {"modele": modele}, AV_EVALUATION)
+
+
+AV_OPPORTUNITES = [
+    "Indicateur de repérage, pas une étude de faisabilité : foncier, salinité, qualité de l'eau et accès à vérifier sur place.",
+    "Saison courte / longue : même calcul que /choix-cultures (cycle qui passe au moins 4 années sur 5).",
+    "Irrigation équipée : FAO GMIA, vers 2005. Nappes : BGS, échelle continentale (grille 5 km).",
+]
+AV_OPPORTUNITES_SANS_EAU = "Couche bleue non évaluée : les sources eau ne sont pas encore chargées (categorie_eau = « non évaluée »)."
+COULEURS = ("bleu", "jaune", "vert")
+
+
+
+def _construire_opportunites(b: _Constructeur, lignes: list[CarteOpportunite]) -> None:
+    """La carte entière, une couleur à la fois (bleu = classement des opportunités), et le détail d'un département."""
+    if not lignes:
+        return
+    table = MARTS["opportunites"].table
+    avertissements = list(AV_OPPORTUNITES)
+    if all(x.categorie_eau == "non évaluée" for x in lignes):
+        avertissements.insert(0, AV_OPPORTUNITES_SANS_EAU)
+    lignes = sorted(lignes, key=lambda x: x.code_departement)
+    b.ajouter(cles.opportunites(None), lignes, CarteOpportunite, table, None, avertissements)
+    for couleur in COULEURS:
+        membres = [x for x in lignes if x.couleur_carte == couleur]
+        if couleur == "bleu":
+            membres.sort(key=lambda x: (x.rang_opportunite_eau is None, x.rang_opportunite_eau or 0, x.code_departement))
+        b.ajouter(cles.opportunites(couleur), membres, CarteOpportunite, table, {"couleur": couleur}, avertissements)
+    for x in lignes:
+        b.ajouter(cles.opportunites_departement(x.code_departement), x, CarteOpportunite, table,
+                  {"code_departement": x.code_departement}, avertissements)

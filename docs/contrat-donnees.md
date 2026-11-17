@@ -236,6 +236,38 @@ select * from SALTIS.MARTS.MART_ML_PREVISION_PLUIE where jeu = 'ENTRAINEMENT';
 
 ---
 
+## 8. `MART_CARTE_OPPORTUNITES`
+
+**Grain** : un département, 45 lignes. Méthode, seuils et limites : [`carte-opportunites.md`](./carte-opportunites.md).
+
+| Colonne | Unité | Description |
+|---|---|---|
+| `couleur_carte` | texte | `bleu` (prioritaire), sinon `couleur_fond` ; NULL si la saison n'est pas évaluée |
+| `couleur_fond`, `couche_eau` | texte / booléen | `jaune` / `vert` selon la saison ; `couche_eau` vrai = couche bleue par-dessus |
+| `classe_saison_pluie` | texte | `courte`, `longue`, `non évaluée` |
+| `cycle_max_conseille_j` | jours | Plus long cycle (culture ou variété) couvert au moins 4 années sur 5 (`MART_CHOIX_CULTURES`) ; NULL si aucun |
+| `cultures_cycle_long`, `varietes_conseillees`, `nb_varietes_conseillees` | texte / nombre | Cultures dont le cycle long passe ; variétés qui passent, avec leur cycle |
+| `pluie_saison_normale_mm`, `duree_saison_moyenne_j`, `duree_saison_courte_j` | mm / jours | Profil agroclimatique 1991-2020 |
+| `categorie_eau` | texte | `eau de surface peu exploitée`, `nappe accessible`, `eau de surface déjà exploitée`, `pas d'eau mobilisable identifiée`, `non évaluée` |
+| `potentiel_contre_saison_ha` | ha | Terres cultivables à moins de 2 km d'une eau présente 10 mois sur 12, nues en saison sèche ; seulement pour `eau de surface peu exploitée` |
+| `rang_opportunite_eau` | entier | 1 = plus grande opportunité ; couche bleue seulement |
+| `surface_eau_permanente_ha`, `surface_proche_eau_cultivable_ha`, `surface_proche_eau_inexploitee_ha`, `part_proche_eau_exploitee_pct` | ha / % | Eau de surface et terres proches (JRC, ESA, MODIS) |
+| `profondeur_classe_dominante`, `productivite_classe_dominante`, `part_nappe_accessible_pct` | texte / % | Nappes (BGS) ; accessible = 25 m au plus et au moins 1 L/s |
+| `surface_equipee_irrigation_ha` | ha | Irrigation équipée vers 2005 (FAO GMIA) |
+| `conseil_agriculteur`, `conseil_investisseur` | texte | Phrases prêtes à afficher ; `conseil_investisseur` NULL sans eau mobilisable |
+
+**Limites** : repérage, pas étude de faisabilité (foncier, salinité, qualité de l'eau et accès à vérifier) ; nappes à l'échelle continentale ; irrigation FAO vers 2005 ; eau JRC jusqu'en 2021. Couche bleue `non évaluée` tant que `eau_chargee` vaut `false`.
+
+```sql
+-- Les opportunités eau, de la plus grande à la plus petite
+select rang_opportunite_eau, departement, categorie_eau, potentiel_contre_saison_ha, profondeur_classe_dominante, conseil_investisseur
+from SALTIS.MARTS.MART_CARTE_OPPORTUNITES
+where couche_eau
+order by rang_opportunite_eau;
+```
+
+---
+
 ## Fonds de carte
 
 | Couche | Fichier ou table | Jointure | État |

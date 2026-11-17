@@ -189,6 +189,20 @@ Le score va de 0 à 100 (100 = le plus vulnérable) et mélange deux choses :
 
 Le score est **relatif** : il compare les départements entre eux, ce n'est pas une mesure absolue. Il est aussi **indicatif**, car il reste à faire valider par les techniciens. La classe (`classe_vulnerabilite`) découpe le classement en 5 groupes de taille proche. Trois départements n'ont pas de score (`null`, en fin de liste) : Guédiawaye et Pikine, faute de rendements, et Dakar, faute de données suffisantes. Leur aléa sécheresse reste affiché.
 
+### E · Opportunités : où semer court ou long, où produire toute l'année, où investir ?
+
+Une carte, trois couleurs (`MART_CARTE_OPPORTUNITES`) : **jaune** saison des pluies courte (semences à cycle court), **vert** saison longue (cycle long possible), **bleu** eau mobilisable et peu exploitée en saison sèche (contre-saison, aménagement, forage). Méthode, seuils et limites : [`docs/carte-opportunites.md`](../docs/carte-opportunites.md).
+
+| Route | On obtient |
+|---|---|
+| `/opportunites` | les 45 départements : `couleur_carte`, `couleur_fond` + `couche_eau`, cycle maximal conseillé, variétés, conseils |
+| `/opportunites?couleur=bleu` | les opportunités eau, classées (`rang_opportunite_eau` = 1 en tête), avec les hectares (`potentiel_contre_saison_ha`) |
+| `/opportunites?couleur=jaune` ou `vert` | les départements à saison courte ou longue |
+| `/opportunites/{code}` | le détail d'un département |
+
+Le jaune et le vert reprennent les probabilités de `/choix-cultures` (un cycle « passe » s'il est couvert au moins 4 années sur 5). La couche bleue n'existe qu'une fois les sources eau chargées : avant, `categorie_eau` vaut `non évaluée` et `meta.avertissements` le dit. Le mart est **facultatif** : tant que dbt ne l'a pas construit, ces routes répondent `404` (`opportunites_indisponible`) et le reste de l'API est servi normalement. `conseil_agriculteur` et `conseil_investisseur` sont prêts à afficher ou à lire par l'assistant vocal.
+
+
 ### IA · Prévisions : les 4 modèles d'IA
 
 Les résultats des modèles de `ml/` (voir [`ml/MODELES.md`](../ml/MODELES.md)) sont lus dans **`SALTIS.ML`**. **Tant que `SALTIS.ML` n'est pas chargé, l'API les lit directement dans `ml/sorties/*.csv`** (`source_locale.py`) : `python -m api` suffit pour tout servir. S'il n'y a ni table ni fichier, ces routes répondent `404` (`prevision_indisponible`) et les marts restent servis.

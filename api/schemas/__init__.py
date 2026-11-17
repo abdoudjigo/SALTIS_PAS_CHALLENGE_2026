@@ -11,3 +11,6 @@ __all__ = [
     "EvaluationModele", "InfoVersion", "Meta", "Periodes", "PrevisionRendement", "PrevisionSaison", "RegionRef", "Reponse",
     "ReponseErreur", "RisqueSemis", "Sante", "SuiviDecadaire", "Tache", "TerritoireAgrodistrib", "Vulnerabilite", "ZoneRef",
 ]
+
+from .opportunites import CarteOpportunite  # noqa: E402
+__all__.append("CarteOpportunite")

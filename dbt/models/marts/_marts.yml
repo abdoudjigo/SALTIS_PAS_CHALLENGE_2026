@@ -344,3 +344,54 @@ models:
                 values: ['ZONE']
       - name: potentiel_evalue
         data_tests: [not_null]
+
+  - name: mart_carte_opportunites
+    description: >
+      Écran carte des opportunités, un département par ligne (45). Une carte,
+      trois couleurs : jaune (saison courte, semences à cycle court), vert
+      (saison longue, cycle long possible), bleu (eau mobilisable et peu
+      exploitée en saison sèche : contre-saison pour l'agriculteur,
+      aménagement ou forage pour l'investisseur). Le fond jaune / vert vient
+      du module B (mart_choix_cultures) ; la couche bleue n'est évaluée
+      qu'une fois les sources « eau » chargées (variable eau_chargee).
+      Messages prêts à afficher : conseil_agriculteur, conseil_investisseur.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: couleur_carte
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['bleu', 'jaune', 'vert']
+      - name: couleur_fond
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['jaune', 'vert']
+      - name: couche_eau
+        data_tests: [not_null]
+      - name: classe_saison_pluie
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['courte', 'longue', 'non évaluée']
+      - name: categorie_eau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - 'eau de surface peu exploitée'
+                  - 'nappe accessible'
+                  - 'eau de surface déjà exploitée'
+                  - "pas d''eau mobilisable identifiée"
+                  - 'non évaluée'
+      - name: conseil_agriculteur
+        data_tests: [not_null]
