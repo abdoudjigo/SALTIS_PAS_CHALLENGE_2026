@@ -136,7 +136,6 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
   const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, onCarte })
   const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation })
   const [indisponible, setIndisponible] = useState(false)
-  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onManipulation })
   const vueRef = useRef(vue)
   const departRef = useRef(depart)
   useEffect(() => {
@@ -151,33 +150,6 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
     if (!el) return
     const v = vueRef.current
     const clair = vitrine || v.ambiance === 'clair'
-    const carte = new mapboxgl.Map({
-      container: el,
-      accessToken: config.mapboxToken,
-      style: 'mapbox://styles/mapbox/standard',
-      projection: 'globe',
-      center: departRef.current?.centre ?? v.camera.centre ?? SENEGAL.centre,
-      zoom: departRef.current?.zoom ?? v.camera.zoom ?? 5,
-      pitch: v.camera.inclinaison ?? 0,
-      bearing: v.camera.cap ?? 0,
-      // Toujours « interactive » pour recevoir survol et clics ; sans interaction, seuls les gestes sont coupés
-      // (interactive: false n'attache aucun écouteur : la carte ne verrait jamais la souris)
-      interactive: true,
-      attributionControl: false,
-      maxPitch: 75,
-      // Étiquettes : fondu court, pour que les noms suivent la caméra sans traîner
-      fadeDuration: 150,
-      performanceMetricsCollection: false,
-      config: {
-        basemap: {
-          lightPreset: PRESETS[v.ambiance],
-          theme: clair ? 'faded' : 'default',
-          showPointOfInterestLabels: false,
-          showTransitLabels: false,
-          showPlaceLabels: !clair,
-          showRoadLabels: !clair,
-          // La landing reprend la palette : terre claire, eau « pluie », frontières « terre »
-          ...(clair ? { colorLand: '#fbfaf6', colorWater: '#cfe5f6', colorGreenspace: '#dcecdf', colorAdminBoundaries: '#c9a57d' } : {}),
     // Sans WebGL (appareil ancien, accélération graphique coupée, trop de cartes ouvertes), Mapbox lève une
     // exception : sans ce garde-fou, toute la page restait blanche. On affiche un message à la place de la carte.
     let carte: mapboxgl.Map
@@ -191,7 +163,9 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
         zoom: departRef.current?.zoom ?? v.camera.zoom ?? 5,
         pitch: v.camera.inclinaison ?? 0,
         bearing: v.camera.cap ?? 0,
-        interactive,
+        // Toujours « interactive » pour recevoir survol et clics ; sans interaction, seuls les gestes sont coupés
+        // (interactive: false n'attache aucun écouteur : la carte ne verrait jamais la souris)
+        interactive: true,
         attributionControl: false,
         maxPitch: 75,
         // Étiquettes : fondu court, pour que les noms suivent la caméra sans traîner
