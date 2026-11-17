@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { ArrowDown, CalendarDays, CloudRain, CloudSun, Layers, ShieldAlert, Sprout, Truck, Wheat, X, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowRight, CalendarDays, CloudRain, CloudSun, Layers, ShieldAlert, Sprout, Truck, Wheat, X, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { useCarte, useReferentiels, useTerritoires, useVulnerabilite } from '../hooks/donnees'
@@ -8,6 +8,7 @@ import { PiedDePage } from '../landing/PiedDePage'
 import { Portes } from '../landing/Portes'
 import { Sources } from '../landing/Sources'
 import { libelle, mm, nombre } from '../lib/format'
+import { ACCUEIL, useMeta } from '../lib/meta'
 import type { VueCarte } from '../scene/Carte'
 import { couleurAnomalie, couleurVulnerabilite, NIVEAUX, NON_DISPONIBLE } from '../scene/couleurs'
 import { useContours, useContoursZones } from '../scene/fonds'
@@ -110,6 +111,7 @@ function Chiffre({ valeur, texte, teinte }: { valeur: string; texte: string; tei
 }
 
 export default function Landing() {
+  useMeta(ACCUEIL)
   const { hash } = useLocation()
   const mode = useModeRendu()
   const large = useLargeEcran()
@@ -235,10 +237,11 @@ export default function Landing() {
               La pluie, le sol et les cultures des 45 départements du Sénégal, réunis sur une seule carte pour savoir quoi semer et où porter les intrants.
             </p>
             <div className="vitrine-entree mt-8 flex flex-wrap items-center gap-3" style={delai(0.4)}>
-              <button type="button" onClick={() => setPortes(true)} className="bouton-ciel inline-flex min-h-12 items-center rounded-full bg-vert-700 px-6 text-md font-semibold text-white transition hover:bg-vert-900 active:scale-[0.98]">
-                Entrer dans la carte
+              {/* Un seul appel à l'action ; le récit reste accessible par un simple lien */}
+              <button type="button" onClick={() => setPortes(true)} className="bouton-action group min-h-12 pr-5 pl-6 text-md">
+                Entrer dans la carte <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
               </button>
-              <a href="#ciel" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-trait bg-white/80 px-6 text-md font-medium text-encre backdrop-blur transition hover:border-encre/40">
+              <a href="#ciel" className="inline-flex min-h-12 items-center gap-2 px-2 text-md font-medium text-encre-douce underline-offset-4 transition hover:text-encre hover:underline">
                 Voir le récit <ArrowDown className="size-4" aria-hidden />
               </a>
             </div>

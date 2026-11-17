@@ -14,8 +14,10 @@ export const config = {
   mapboxStyle: env.VITE_MAPBOX_STYLE || 'mapbox://styles/mapbox/light-v11',
   /** Profil « association de producteurs de semences » (option B, cible à confirmer) */
   activerSemenciers: String(env.VITE_ACTIVER_SEMENCIERS ?? 'true') === 'true',
-  /** Adresse de contact publique (pages Contact et Confidentialité). Vide = « bientôt disponible » */
-  emailContact: env.VITE_EMAIL_CONTACT || '',
+  /** Mesure d'audience : identifiant du site dans Umami. Vide = aucune mesure et pas de bandeau cookies */
+  umamiId: env.VITE_UMAMI_ID || '',
+  /** Une adresse de contact est-elle publiée ? (elle-même n'est lue qu'au clic : src/lib/contact.ts) */
+  aUnContact: __CONTACT_CODE__ !== '',
   /** Réseaux sociaux du pied de page. Un lien vide est affiché « bientôt » */
   reseaux: [
     { nom: 'LinkedIn', url: env.VITE_LIEN_LINKEDIN || '' },

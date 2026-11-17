@@ -24,18 +24,18 @@ function Recolte({ etat, ligne, annee }: { etat: EtatPrevision; ligne: Prevision
   const vide = etat === 'chargement' ? 'chargement…' : etat === 'non-chargee' ? 'prévisions pas encore chargées' : etat === 'erreur' ? 'les prévisions ne répondent pas' : etat === 'absente' ? `non disponible pour ${annee}` : !ligne ? 'non disponible pour cette culture' : null
   return (
     <div className="mt-3 border-t border-white/[0.09] pt-2.5">
-      <p className="text-2xs font-medium tracking-etiquette text-white/50 uppercase">Récolte attendue <span className="tracking-normal text-white/35 normal-case">{annee}</span></p>
-      {vide || !ligne ? <p className="mt-1.5 text-xs text-white/55">Récolte attendue : {vide}.</p> : (
+      <p className="text-2xs font-medium tracking-etiquette text-white/60 uppercase">Récolte attendue <span className="tracking-normal text-white/60 normal-case">{annee}</span></p>
+      {vide || !ligne ? <p className="mt-1.5 text-xs text-white/60">Récolte attendue : {vide}.</p> : (
         <>
           <p className="mt-1.5 text-sm font-medium text-white tabular-nums">
             {ligne.rendement_bas_kg_ha === null || ligne.rendement_haut_kg_ha === null ? 'Fourchette non disponible' : `${nombre(ligne.rendement_bas_kg_ha)} – ${nombre(ligne.rendement_haut_kg_ha)}`}
-            <span className="ml-1 text-xs font-normal text-white/55">kg/ha · habituel {ligne.tendance_kg_ha === null ? 'non disponible' : nombre(ligne.tendance_kg_ha)}</span>
+            <span className="ml-1 text-xs font-normal text-white/60">kg/ha · habituel {ligne.tendance_kg_ha === null ? 'non disponible' : nombre(ligne.tendance_kg_ha)}</span>
           </p>
           <div className="mt-1.5">
             <Fourchette bas={ligne.rendement_bas_kg_ha} haut={ligne.rendement_haut_kg_ha} valeur={ligne.rendement_median_kg_ha} repere={ligne.tendance_kg_ha} couleur="var(--color-soleil-500)"
               description={`Rendement entre ${nombre(ligne.rendement_bas_kg_ha)} et ${nombre(ligne.rendement_haut_kg_ha, { unite: 'kg/ha' })}, 8 chances sur 10 ; habituel ${nombre(ligne.tendance_kg_ha, { unite: 'kg/ha' })}`} />
           </div>
-          <p className="mt-1 mb-2 text-2xs text-white/45">Bande : année difficile à bonne année · trait : rendement habituel</p>
+          <p className="mt-1 mb-2 text-2xs text-white/60">Bande : année difficile à bonne année · trait : rendement habituel</p>
           <MarquesRendement ligne={ligne} quoi="rendement" />
         </>
       )}
@@ -139,19 +139,19 @@ export default function Semer({ cadre, publier }: PropsMode) {
                 <button type="button" onClick={() => setCulture(c)} aria-expanded={ouverte} className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-2 text-left transition hover:bg-white/[0.05]">
                   <span className="size-2 shrink-0 rounded-full" style={{ background: niveau?.couleur ?? NON_DISPONIBLE }} aria-hidden />
                   <span className="flex-1 truncate text-sm font-medium text-white">{libelle(c)}</span>
-                  <span className="text-xs text-white/60">{niveau?.libelle ?? 'Non évaluée'}</span>
+                  <span className="text-xs text-white/70">{niveau?.libelle ?? 'Non évaluée'}</span>
                 </button>
                 {ouverte && (
                   <div className="maj space-y-2 px-2 pt-1 pb-3">
                     {cycles.map((o) => (
-                      <div key={o.option} className="grid grid-cols-[6.5rem_1fr_2.75rem] items-center gap-2.5 text-xs text-white/65">
+                      <div key={o.option} className="grid grid-cols-[6.5rem_1fr_2.75rem] items-center gap-2.5 text-xs text-white/75">
                         <span>{libelle(o.option)}{o.cycle_jours ? ` · ${o.cycle_jours} j` : ''}</span>
                         <Barre part={o.proba_cycle_couvert_pct} couleur={o.niveau_adequation ? NIVEAUX[o.niveau_adequation].couleur : NON_DISPONIBLE} />
                         <span className="text-right font-medium text-white tabular-nums">{pct(o.proba_cycle_couvert_pct)}</span>
                       </div>
                     ))}
                     {varietes.map((v) => (
-                      <p key={v.option} className="text-xs text-white/55">Variété {v.option}{v.cycle_jours ? ` (${v.cycle_jours} j)` : ''} : {v.niveau_adequation ?? 'non évaluée'}</p>
+                      <p key={v.option} className="text-xs text-white/60">Variété {v.option}{v.cycle_jours ? ` (${v.cycle_jours} j)` : ''} : {v.niveau_adequation ?? 'non évaluée'}</p>
                     ))}
                     {<Recolte etat={etatRecolte} annee={anneeRecolte} ligne={rendements.data?.donnees.find((r) => r.culture === c && r.moment_prevision === 'FIN_MAI')} />}
                   </div>

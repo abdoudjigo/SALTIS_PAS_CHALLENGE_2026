@@ -14,13 +14,13 @@ export function Attente({ etat, objet = 'cette sélection', lignes = 4 }: { etat
   if (etat === 'ok') return null
   if (etat === 'chargement') return <Squelette lignes={lignes} />
   if (etat === 'erreur') return <Avis>Les prévisions ne répondent pas pour le moment. Réessayez dans un instant.</Avis>
-  if (etat === 'absente') return <p className="mt-4 text-sm leading-relaxed text-white/60">Pas de prévision pour {objet}.</p>
+  if (etat === 'absente') return <p className="mt-4 text-sm leading-relaxed text-white/70">Pas de prévision pour {objet}.</p>
   return (
     <div className="mt-4 flex gap-3 border-l-2 border-white/20 pl-3" role="status">
-      <CloudOff className="mt-0.5 size-4 shrink-0 text-white/50" aria-hidden />
+      <CloudOff className="mt-0.5 size-4 shrink-0 text-white/60" aria-hidden />
       <div>
         <p className="text-sm font-medium text-white">Prévisions pas encore chargées</p>
-        <p className="mt-1 text-xs leading-relaxed text-white/60">Les résultats des modèles ne sont pas encore disponibles ici. Le reste de la plateforme fonctionne normalement.</p>
+        <p className="mt-1 text-xs leading-relaxed text-white/70">Les résultats des modèles ne sont pas encore disponibles ici. Le reste de la plateforme fonctionne normalement.</p>
       </div>
     </div>
   )
@@ -31,11 +31,11 @@ export function Morceau({ libelle, valeur, modele, reserve, children }: { libell
   return (
     <div className="py-2">
       <div className="flex items-baseline justify-between gap-4">
-        <dt className="text-sm text-white/60">{libelle}</dt>
+        <dt className="text-sm text-white/70">{libelle}</dt>
         <dd className="text-right text-sm font-medium text-white tabular-nums">{valeur}</dd>
       </div>
-      {children && <div className="mt-1 text-xs leading-relaxed text-white/60">{children}</div>}
-      <p className="mt-1 text-2xs leading-snug text-white/45">{MODELES[modele].nom} · {reserve ?? MODELES[modele].fiabilite}</p>
+      {children && <div className="mt-1 text-xs leading-relaxed text-white/70">{children}</div>}
+      <p className="mt-1 text-2xs leading-snug text-white/60">{MODELES[modele].nom} · {reserve ?? MODELES[modele].fiabilite}</p>
     </div>
   )
 }
@@ -45,7 +45,7 @@ function Fiabilite({ cible }: { cible: Cible }) {
   const phrases = data ? phrasesFiabilite(data.donnees, cible) : []
   return (
     <>
-      <p className="font-medium text-white/75">{MODELES[cible.modele].nom}</p>
+      <p className="font-medium text-white/85">{MODELES[cible.modele].nom}</p>
       {phrases.length ? phrases.map((p) => <p key={p}>{p}</p>) : <p>Mesures de fiabilité non disponibles.</p>}
     </>
   )

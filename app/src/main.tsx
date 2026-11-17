@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router'
 import { AuthProvider } from './auth/AuthContext'
 import { ApiError } from './api/client'
 import { App } from './App'
+import { demarrerMesureAudience } from './consentement/audience'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -20,6 +21,8 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+demarrerMesureAudience()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

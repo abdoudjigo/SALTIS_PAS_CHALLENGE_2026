@@ -6,6 +6,7 @@ app/dev-dist
 .git
 .env
 **/.env.local
+**/.env.*.local
 ml/donnees
 voix/cache
 voix/.venv

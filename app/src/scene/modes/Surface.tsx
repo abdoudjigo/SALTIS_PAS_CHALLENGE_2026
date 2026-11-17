@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import { useBesoins, useTerritoires } from '../../hooks/donnees'
 import { etatPrevision, usePrevisionRendement, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
 import { libelle, mm, nombre, STATUTS_DOSE, VIDE } from '../../lib/format'
+import { lireNombre } from '../../lib/saisie'
 import type { ColonneBesoin, LigneBesoin } from '../../types/marts'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { couleurQuantite, NON_DISPONIBLE, tendance } from '../couleurs'
@@ -14,7 +15,7 @@ import { periodeDecades } from '../fiabilite'
 import { ChampAnnee, MethodeModele, Morceau } from '../previsions'
 import { dire } from '../lecture'
 import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, poidsWo, wo } from '../wolof'
-import { Avis, Champ, Cle, Degrade, Detail, Groupe, Ligne, Lignes, Reponse, Squelette } from '../ui'
+import { Avis, Champ, Cle, Degrade, Detail, ErreurChamp, Groupe, Ligne, Lignes, Reponse, Squelette } from '../ui'
 
 const INTRANTS: { colonne: ColonneBesoin; nom: string }[] = [
   { colonne: 'besoin_semences_retenu_t', nom: 'Semences' },
@@ -49,15 +50,18 @@ export default function Surface({ cadre, publier }: PropsMode) {
   const [dosesSaisies, setDosesSaisies] = useState<Record<string, string>>({})
   const culture = lignes.some((l) => l.culture === cultureChoisie) ? cultureChoisie : parDefaut
   const ligne = lignes.find((l) => l.culture === culture)
-  const surface = Math.max(Number(saisie.replace(',', '.')) || 0, 0)
+  // Surface d'une exploitation : plus de 0, au plus 10 000 ha. Saisie invalide : besoins non calculés (surface 0) et message
+  const lectureSurface = lireNombre(saisie, { min: 0, minExclu: true, max: 10000, unite: 'ha' })
+  const surface = lectureSurface.valeur ?? 0
 
   const intrants = ligne ? INTRANTS.map((i) => {
     const cle = `${culture}|${i.colonne}`
     const texte = dosesSaisies[cle] ?? ''
-    const n = texte.trim() === '' ? null : Number(texte.replace(',', '.'))
     const reference = dose(ligne, i.colonne)
-    const saisieKgHa = n !== null && Number.isFinite(n) && n >= 0 ? n : null
-    return { ...i, cle, texte, reference, kgHa: reference ?? saisieKgHa, horsSujet: i.colonne === 'besoin_semences_retenu_t' && ligne.besoin_semences_applicable === false }
+    // Dose tapée : de 0 à 2 000 kg/ha ; une saisie invalide n'est pas comptée et affiche son message
+    const lecture = lireNombre(texte, { max: 2000, unite: 'kg/ha' })
+    const saisieKgHa = lecture.valeur
+    return { ...i, cle, texte, erreur: lecture.erreur, reference, kgHa: reference ?? saisieKgHa, horsSujet: i.colonne === 'besoin_semences_retenu_t' && ligne.besoin_semences_applicable === false }
   }) : []
   const connus = intrants.filter((i) => i.reference !== null)
 
@@ -157,33 +161,36 @@ export default function Surface({ cadre, publier }: PropsMode) {
               </select>
             </Champ>
             <Champ libelle="Surface (ha)">
-              <input className="champ-scene tabular-nums" inputMode="decimal" value={saisie} onChange={(e) => setSaisie(e.target.value)} />
+              <input className="champ-scene tabular-nums" inputMode="decimal" value={saisie} onChange={(e) => setSaisie(e.target.value)}
+                aria-invalid={Boolean(lectureSurface.erreur)} aria-describedby={lectureSurface.erreur ? 'erreur-surface' : undefined} />
             </Champ>
           </div>
+          {lectureSurface.erreur && <ErreurChamp id="erreur-surface">Surface : {lectureSurface.erreur}</ErreurChamp>}
           <ChampAnnee cadre={cadre} a={a} saison={saison} className="mt-2" />
 
           <Groupe titre="Ce qu'il vous faut" complement={`${connus.length} dose${connus.length > 1 ? 's' : ''} connue${connus.length > 1 ? 's' : ''} sur ${intrants.length}`}>
             <ul className="space-y-1.5">
               {intrants.map((i) => (
                 <li key={i.colonne} className="grid min-h-11 grid-cols-[1fr_auto] items-center gap-3">
-                  <label htmlFor={`dose-${i.colonne}`} className="text-sm text-white/75">{i.nom}
-                    {i.reference !== null && <span className="block text-2xs text-white/45">{nombre(i.reference, { decimales: 1 })} kg/ha</span>}
+                  <label htmlFor={`dose-${i.colonne}`} className="text-sm text-white/85">{i.nom}
+                    {i.reference !== null && <span className="block text-2xs text-white/60">{nombre(i.reference, { decimales: 1 })} kg/ha</span>}
                     {i.reference === null && <span className="block text-2xs text-soleil-500">{i.horsSujet ? 'riz pluvial : dose à saisir' : 'dose à saisir'}</span>}
                   </label>
                   <span className="flex items-center gap-2">
-                    {i.reference === null && <span className="block w-20"><input id={`dose-${i.colonne}`} className="champ-scene tabular-nums" inputMode="decimal" placeholder="kg/ha" value={i.texte} onChange={(e) => setDosesSaisies((v) => ({ ...v, [i.cle]: e.target.value }))} /></span>}
+                    {i.reference === null && <span className="block w-20"><input id={`dose-${i.colonne}`} className="champ-scene tabular-nums" inputMode="decimal" placeholder="kg/ha" value={i.texte} aria-invalid={Boolean(i.erreur)} aria-describedby={i.erreur ? `erreur-dose-${i.colonne}` : undefined} onChange={(e) => setDosesSaisies((v) => ({ ...v, [i.cle]: e.target.value }))} /></span>}
                     <span className="min-w-16 text-right text-md font-semibold text-white tabular-nums">{i.kgHa === null ? VIDE : poids(i.kgHa * surface)}</span>
                   </span>
+                  {i.erreur && <ErreurChamp id={`erreur-dose-${i.colonne}`} className="col-span-2 mt-0">{i.nom} : {i.erreur}</ErreurChamp>}
                 </li>
               ))}
               {ligne.irrigation_requise && (
                 <li className="grid min-h-11 grid-cols-[1fr_auto] items-center gap-3">
-                  <span className="text-sm text-white/75">Eau d'irrigation<span className="block text-2xs text-white/45">culture irriguée · estimation, non mesurée</span></span>
+                  <span className="text-sm text-white/85">Eau d'irrigation<span className="block text-2xs text-white/60">culture irriguée · estimation, non mesurée</span></span>
                   <span className="text-right text-md font-semibold text-white tabular-nums">{ligne.volume_irrigation_m3_ha === null ? 'non disponible' : nombre(ligne.volume_irrigation_m3_ha * surface, { unite: 'm³' })}</span>
                 </li>
               )}
             </ul>
-            {connus.length < intrants.length && <p className="mt-2 text-2xs leading-snug text-white/50">Doses à saisir : pas encore de référence validée (en attente de l'ISRA). Votre dose sert au calcul, elle n'est pas enregistrée.</p>}
+            {connus.length < intrants.length && <p className="mt-2 text-2xs leading-snug text-white/60">Doses à saisir : pas encore de référence validée (en attente de l'ISRA). Votre dose sert au calcul, elle n'est pas enregistrée.</p>}
           </Groupe>
 
           <Groupe titre={`Ce que ${annee} laisse attendre`}>

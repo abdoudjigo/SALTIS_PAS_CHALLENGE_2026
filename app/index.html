@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Assaman & Suuf : aide à la décision agricole au Sénégal, département par département." />
+    <!-- Titre, description et balises de partage : remplacés au build (et en développement) par les valeurs de
+         src/lib/pages.ts ; une copie de cette page est écrite pour chaque adresse (pré-rendu, vite.config.ts) -->
+    <meta name="description" content="Aide à la décision agricole pour les 45 départements du Sénégal : pluie attendue, cultures adaptées, dates de semis et répartition des intrants." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Assaman & Suuf" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content="Assaman & Suuf · Pluie, cultures et intrants au Sénégal" />
+    <meta property="og:description" content="Aide à la décision agricole pour les 45 départements du Sénégal : pluie attendue, cultures adaptées, dates de semis et répartition des intrants." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Assaman & Suuf · Pluie, cultures et intrants au Sénégal" />
+    <meta name="twitter:description" content="Aide à la décision agricole pour les 45 départements du Sénégal : pluie attendue, cultures adaptées, dates de semis et répartition des intrants." />
     <meta name="theme-color" content="#1f5f3a" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -14,7 +25,7 @@
     <!-- Contours des 6 zones et des 45 départements : demandés tout de suite, repris par le fetch de l'application -->
     <link rel="preload" href="/geo/zones_agroecologiques.geojson" as="fetch" crossorigin="anonymous" fetchpriority="high" />
     <link rel="preload" href="/geo/departements.geojson" as="fetch" crossorigin="anonymous" />
-    <title>Assaman & Suuf</title>
+    <title>Assaman & Suuf · Pluie, cultures et intrants au Sénégal</title>
   </head>
   <body>
     <div id="root"></div>

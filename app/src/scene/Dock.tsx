@@ -43,7 +43,7 @@ export function Dock({ fonctionnalites, actif, onChoisir }: { fonctionnalites: F
               </button>
               <span className="dock-bulle verre-scene absolute left-[calc(100%+1.25rem)] w-56 rounded-lg px-3.5 py-2.5">
                 <span className="block text-sm font-medium text-white">{f.titre}</span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-white/65">{f.phrase}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-white/75">{f.phrase}</span>
               </span>
             </li>
           ))}

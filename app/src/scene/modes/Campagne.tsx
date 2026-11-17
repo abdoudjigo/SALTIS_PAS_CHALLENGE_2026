@@ -137,7 +137,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
     </li>
   )
   const entete = (
-    <div className="flex items-end gap-1 border-b border-white/[0.09] pb-1.5 text-2xs leading-tight text-white/55">
+    <div className="flex items-end gap-1 border-b border-white/[0.09] pb-1.5 text-2xs leading-tight text-white/60">
       <span className="flex-1">Département</span>
       <span className="w-[4.25rem] text-right">Pluie attendue (mm)</span><span className="w-[4.25rem] text-right">Risque récolte</span><span className="w-[4.25rem] text-right">Vulnérabilité (/100)</span>
     </div>
@@ -161,14 +161,14 @@ export default function Campagne({ cadre, publier }: PropsMode) {
         <div className="mt-4">
           {entete}
           <ol>{aSurveiller.map(ligne)}</ol>
-          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-white/55">
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-white/60">
             <span className="inline-flex items-center gap-1.5"><Point niveau="rouge" />au rouge</span><span className="inline-flex items-center gap-1.5"><Point niveau="orange" />à l'orange</span><span className="inline-flex items-center gap-1.5"><Point niveau="calme" />rien à signaler</span>
           </p>
         </div>
       )}
 
       <ChampAnnee cadre={cadre} a={a} saison={fiche?.pluie} />
-      {etat === 'ok' && etatPrevision(alerte) === 'absente' && <p className="mt-2 text-xs leading-relaxed text-white/55">Risque de récolte non disponible pour {annee} : le tableau repose sur la pluie attendue et la vulnérabilité.</p>}
+      {etat === 'ok' && etatPrevision(alerte) === 'absente' && <p className="mt-2 text-xs leading-relaxed text-white/60">Risque de récolte non disponible pour {annee} : le tableau repose sur la pluie attendue et la vulnérabilité.</p>}
 
       {etat === 'ok' && (
         <Detail libelle={fiche ? 'Voir le détail' : `Voir les ${dossiers.length} départements`}>
@@ -183,10 +183,10 @@ export default function Campagne({ cadre, publier }: PropsMode) {
                 </Morceau>
                 <div className="py-2">
                   <div className="flex items-baseline justify-between gap-4">
-                    <dt className="text-sm text-white/60">Vulnérabilité</dt>
+                    <dt className="text-sm text-white/70">Vulnérabilité</dt>
                     <dd className="text-right text-sm font-medium text-white tabular-nums">{fiche.vulnerabilite === null ? 'non notée' : `${nombre(fiche.vulnerabilite)} / 100`}</dd>
                   </div>
-                  <p className="mt-1 text-2xs leading-snug text-white/45">Indicateur calculé sur le passé (1991-2020), pas un modèle · relatif et indicatif</p>
+                  <p className="mt-1 text-2xs leading-snug text-white/60">Indicateur calculé sur le passé (1991-2020), pas un modèle · relatif et indicatif</p>
                 </div>
               </dl>
             </Groupe>

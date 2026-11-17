@@ -12,7 +12,7 @@ Le KVM 2 (2 processeurs, 8 Go de mémoire) suffit : l'API et la voix wolof prenn
 
 ## 1. Préparer le VPS (une fois)
 1. Dans le panneau Hostinger, choisir le modèle **Ubuntu 24.04 avec Docker** (ou installer Docker : https://docs.docker.com/engine/install/ubuntu/).
-2. **Nom de domaine** (recommandé, pour le HTTPS, le micro et la géolocalisation sur téléphone) : créer un enregistrement DNS **A** qui pointe vers l'IP du VPS.
+2. **Nom de domaine** (obligatoire : le site est servi en HTTPS seulement ; le micro et la géolocalisation en dépendent) : créer un enregistrement DNS **A** qui pointe vers l'IP du VPS.
 3. Se connecter : `ssh root@<IP du VPS>`, puis ouvrir les ports web : `ufw allow 22,80,443/tcp && ufw enable`.
 
 ## 2. Récupérer le projet
@@ -29,8 +29,10 @@ Dans `.env`, renseigner au minimum :
 |---|---|
 | `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_DATABASE` | l'accès Snowflake (lecture des marts) |
 | `VITE_MAPBOX_TOKEN` | le jeton public Mapbox (`pk.…`) ; dans le compte Mapbox, autoriser le domaine du site |
-| `DOMAINE` | le nom de domaine (ex. `assaman-suuf.com`) ; sans domaine : `:80` |
-| `VITE_EMAIL_CONTACT` | facultatif : l'adresse affichée sur la page Contact |
+| `DOMAINE` | **obligatoire** : le nom de domaine (ex. `assaman-suuf.com`), sans `https://` ni `www.` ; sans lui, `docker compose` refuse de démarrer |
+| `UMAMI_DB_PASSWORD`, `UMAMI_APP_SECRET` | **obligatoires** : deux secrets pour la mesure d'audience (`openssl rand -hex 24` chacun) ; voir section 7 |
+| `UMAMI_WEBSITE_ID` | identifiant du site dans Umami, à renseigner après sa création (section 7) ; vide = aucune mesure |
+| `EMAIL_CONTACT` | facultatif : l'adresse affichée sur la page Contact, au clic seulement (anti-spam) ; l'ancien nom `VITE_EMAIL_CONTACT` reste accepté |
 | `VOIX_SPACE`, `HF_TOKEN` | laisser vides : la voix wolof est produite par l'API |
 
 Le `.env` ne quitte jamais le serveur (il est ignoré par git et par Docker).
@@ -40,7 +42,7 @@ Le `.env` ne quitte jamais le serveur (il est ignoré par git et par Docker).
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 Première construction : 5 à 10 minutes (PyTorch processeur, dépendances du site). Ensuite :
-- le site : `https://<domaine>` (ou `http://<IP>` sans domaine) ;
+- le site : `https://<domaine>` ; `http://<domaine>` et `http://<IP>` y sont redirigés (301 ou 308) ;
 - l'état de l'API : `https://<domaine>/api/v1/systeme/sante` (répond `ok` quand le cache est chargé, ~30 s après le démarrage) ;
 - les journaux de l'API : `docker compose -f docker-compose.prod.yml logs -f api`.
 
@@ -66,17 +68,37 @@ Après une mise à jour des marts dans Snowflake (`dbt build`), redémarrer seul
 |---|---|
 | Réseau | Seuls 80 et 443 sont ouverts. Redis est sur un réseau Docker privé (`prive`, sans sortie internet) que seule l'API rejoint. `REDIS_PASSWORD` dans `.env` (facultatif, lettres et chiffres : `openssl rand -hex 24`) ajoute un mot de passe |
 | Conteneurs | API sans droits root et sans capacité Linux ; Caddy avec la seule capacité d'écouter sur 80/443 ; `no-new-privileges`, limites de mémoire et de processus, journaux bornés (3 × 10 Mo), contrôles de santé |
+| HTTPS forcé | `DOMAINE` obligatoire (pas de repli en HTTP) ; `DOMAINE=:80` est refusé par Caddy ; tout le port 80 est redirigé vers `https://<domaine>` ; HSTS un an avec `includeSubDomains` ; `upgrade-insecure-requests` dans la CSP. Vérifier : `curl -I http://<domaine>` doit répondre `308` (ou `301` par l'adresse IP) avec `Location: https://…` |
 | En-têtes (Caddy) | HSTS, CSP (site + Mapbox seulement), `X-Frame-Options: DENY`, `Permissions-Policy` (micro et géolocalisation pour le site seulement). **Un nouveau service externe dans le front (police, carte, vidéo) doit être ajouté à la CSP de `deploy/Caddyfile`** |
 | API | CORS fermé (`CORS_ORIGINES=[]` : même origine), documentation `/docs` coupée (`API_DOCS=false`), débit par adresse IP (1 200 requêtes/min, 60 questions écrites/min, 20 reconnaissances ou synthèses vocales/min, 10 essais de jeton d'administration/min), corps JSON ≤ 64 Ko, audio ≤ 5 Mo, une seule synthèse vocale à la fois, 400 voix gardées au plus |
-| Secrets | Tous dans `.env` (jamais dans git ni dans les images). Jeton Mapbox : public par nature, à **restreindre au domaine** dans le compte Mapbox |
+| Secrets | Tous dans `.env` (jamais dans git ni dans les images). Le build du front échoue si une variable `VITE_*` ressemble à un secret (`app/vite.config.ts`). Jeton Mapbox : public par nature, à **restreindre au domaine** dans le compte Mapbox |
 
 Les limites se règlent dans `.env` (`LIMITE_REQUETES_PAR_MINUTE`, `LIMITE_VOIX_TEXTE_PAR_MINUTE`, `LIMITE_VOIX_SYNTHESE_PAR_MINUTE` ; 0 = sans limite) : à relever si tout un jury partage la même adresse IP et atteint un plafond (réponse 429).
+
+## 7. Mesure d'audience (Umami)
+Umami compte les visites sans cookie, sur le VPS (conteneurs `umami` et `umami-db`, données dans le volume `umami-db`).
+Le site n'en expose que le script et la route d'envoi (`/stats/script.js`, `/stats/api/send`) ; le tableau de bord
+n'écoute que sur le VPS (`127.0.0.1:3001`), jamais sur Internet. Le script n'est chargé qu'après « Accepter » dans le bandeau cookies.
+
+Première mise en route :
+1. Dans `.env` : `UMAMI_DB_PASSWORD` et `UMAMI_APP_SECRET` (`openssl rand -hex 24` chacun), puis `docker compose -f docker-compose.prod.yml up -d --build`.
+2. Depuis son ordinateur, ouvrir un tunnel vers le tableau de bord, puis aller sur http://localhost:3001 :
+   ```bash
+   ssh -N -L 3001:127.0.0.1:3001 root@<IP du VPS>
+   ```
+3. Se connecter avec `admin` / `umami`, et **changer ce mot de passe tout de suite** (Paramètres → Profil).
+4. Paramètres → Sites web → Ajouter : nom « Assaman & Suuf », domaine `<domaine>`. Copier l'identifiant du site (UUID).
+5. Dans `.env` : `UMAMI_WEBSITE_ID=<identifiant>`, puis reconstruire le site : `docker compose -f docker-compose.prod.yml up -d --build web`.
+6. Vérifier : ouvrir le site, accepter le bandeau, changer de page ; les visites apparaissent dans le tableau de bord (Temps réel).
+
+Sans `UMAMI_WEBSITE_ID`, le site ne charge rien et n'affiche pas de bandeau cookies (rien à accepter).
+Sauvegarde des statistiques : `docker compose -f docker-compose.prod.yml exec umami-db pg_dump -U umami umami > umami.sql`.
 
 ## Fichiers
 | Fichier | Rôle |
 |---|---|
-| `docker-compose.prod.yml` | Les trois conteneurs, leurs volumes, les seuls ports ouverts (80, 443) |
+| `docker-compose.prod.yml` | Les conteneurs (site, API, Redis, Umami et sa base), leurs volumes, les seuls ports ouverts (80, 443 ; 3001 sur le VPS seulement) |
 | `deploy/Dockerfile.api` | Image de l'API (Python 3.12, `requirements-api.txt` + `requirements-voix.txt`) |
 | `deploy/Dockerfile.web` | Construction du site, puis Caddy |
-| `deploy/Caddyfile` | HTTPS automatique, `/api` vers l'API, cache des fichiers du site, en-têtes de sécurité |
+| `deploy/Caddyfile` | HTTPS automatique, `/api` vers l'API, `/stats/script.js` et `/stats/api/send` vers Umami, cache des fichiers du site, en-têtes de sécurité |
 | `.dockerignore` | Ce qui n'entre jamais dans les images (`.env`, données brutes, environnements locaux) |

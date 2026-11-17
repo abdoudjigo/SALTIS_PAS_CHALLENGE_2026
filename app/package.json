@@ -13,7 +13,8 @@
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "icons": "python3 scripts/generate_icons.py"
+    "icons": "python3 scripts/generate_icons.py",
+    "images": "python3 scripts/compress_images.py"
   },
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "^5.3.0",

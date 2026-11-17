@@ -4,8 +4,33 @@
     {
       "name": "front",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "app", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "app",
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "front-build",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "app",
+        "run",
+        "preview"
+      ],
+      "port": 4173
+    },
+    {
+      "name": "front-demo",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd app && VITE_USE_MOCK=true VITE_AUTH_DEMO=true VITE_DONNEES_DEMO=true exec npx vite --port 5174 --strictPort"
+      ],
+      "port": 5174
     }
   ]
 }

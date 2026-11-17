@@ -103,17 +103,17 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
                   <span className="point-alerte size-2.5 shrink-0 rounded-full bg-alerte-500" aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-white">{l.departement}</span>
-                    <span className="block text-xs text-white/55">{libelle(l.culture)}</span>
+                    <span className="block text-xs text-white/60">{libelle(l.culture)}</span>
                   </span>
                   {l.alerte_fiable && <Marque ton="ferme">Fiable</Marque>}
-                  <span className="text-lg font-semibold text-white tabular-nums">{nombre(l.proba_chute_pct)}<span className="ml-0.5 text-xs font-normal text-white/55">%</span></span>
+                  <span className="text-lg font-semibold text-white tabular-nums">{nombre(l.proba_chute_pct)}<span className="ml-0.5 text-xs font-normal text-white/60">%</span></span>
                 </button>
               </li>
             ))}
           </ul>
-        ) : <p className="mt-4 text-sm leading-relaxed text-white/70">Aucun département n'atteint le seuil d'alerte. Le plus exposé : {classement[0] ? `${classement[0].departement}, ${pct(classement[0].proba_chute_pct)}` : 'non disponible'}.</p>
+        ) : <p className="mt-4 text-sm leading-relaxed text-white/80">Aucun département n'atteint le seuil d'alerte. Le plus exposé : {classement[0] ? `${classement[0].departement}, ${pct(classement[0].proba_chute_pct)}` : 'non disponible'}.</p>
       )}
-      {!fiche && n > 0 && !alertes.some((l) => l.alerte_fiable) && <p className="mt-2 text-2xs leading-snug text-white/50">Vu à {nomMoment(moment)}, c'est le risque habituel de ces départements, pas encore une prévision de l'année.</p>}
+      {!fiche && n > 0 && !alertes.some((l) => l.alerte_fiable) && <p className="mt-2 text-2xs leading-snug text-white/60">Vu à {nomMoment(moment)}, c'est le risque habituel de ces départements, pas encore une prévision de l'année.</p>}
 
       <div className="mt-4 space-y-2">
         {a.passee && <Segments libelle="Moment de la saison" options={MOMENTS.map((m) => ({ id: m.id, libelle: m.court }))} valeur={moment} onChange={setMoment} />}
@@ -125,7 +125,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
         </Champ>
         <ChampAnnee cadre={cadre} a={a} className="" />
       </div>
-      {etat === 'ok' && code && !fiche && <p className="mt-4 text-sm text-white/60">Pas de série de rendement dans ce département pour cette sélection.</p>}
+      {etat === 'ok' && code && !fiche && <p className="mt-4 text-sm text-white/70">Pas de série de rendement dans ce département pour cette sélection.</p>}
 
       {classement.length > 0 && (
         <Detail libelle={fiche ? 'Voir le détail' : `Voir les ${classement.length} départements`}>
@@ -133,7 +133,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
             <Groupe titre={`Récolte attendue · ${libelle(fiche.culture).toLowerCase()}`}>
               <Fourchette bas={fiche.rendement_bas_kg_ha} haut={fiche.rendement_haut_kg_ha} valeur={fiche.rendement_median_kg_ha} repere={fiche.tendance_kg_ha} couleur="var(--color-soleil-500)"
                 description={`Rendement entre ${nombre(fiche.rendement_bas_kg_ha)} et ${nombre(fiche.rendement_haut_kg_ha, { unite: 'kg/ha' })} ; habituel ${nombre(fiche.tendance_kg_ha, { unite: 'kg/ha' })}`} />
-              <p className="mt-1.5 mb-2 text-2xs text-white/45">Bande : année difficile à bonne année · trait : rendement habituel</p>
+              <p className="mt-1.5 mb-2 text-2xs text-white/60">Bande : année difficile à bonne année · trait : rendement habituel</p>
               <Lignes>
                 <Ligne libelle="Fourchette" valeur={fiche.rendement_bas_kg_ha === null || fiche.rendement_haut_kg_ha === null ? 'non disponible' : `${nombre(fiche.rendement_bas_kg_ha)} – ${nombre(fiche.rendement_haut_kg_ha, { unite: 'kg/ha' })}`} detail="8 chances sur 10" />
                 <Ligne libelle="Rendement habituel" valeur={fiche.tendance_kg_ha === null ? 'non disponible' : nombre(fiche.tendance_kg_ha, { unite: 'kg/ha' })} detail="10 campagnes précédentes" />
@@ -142,7 +142,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
                     detail={fiche.chute_observee === null ? undefined : fiche.chute_observee ? 'chute observée' : 'pas de chute'} />
                 )}
               </Lignes>
-              {fiche.explication && <p className="mt-3 text-xs leading-relaxed text-white/60">Ce qui pèse le plus : {fiche.explication}.</p>}
+              {fiche.explication && <p className="mt-3 text-xs leading-relaxed text-white/70">Ce qui pèse le plus : {fiche.explication}.</p>}
             </Groupe>
           )}
           <Groupe titre="Tous les départements" complement="du plus exposé au moins exposé">

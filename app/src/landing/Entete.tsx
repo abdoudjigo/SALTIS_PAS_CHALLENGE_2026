@@ -67,14 +67,15 @@ export function Entete({ chapitres, actif, onEntrer }: { chapitres: Chapitre[]; 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <div className={clsx('ile pointer-events-auto relative flex items-center overflow-hidden rounded-full', serree ? 'ile-serree gap-1 py-1.5 pr-1.5 pl-2' : 'gap-2 py-2 pr-2 pl-3 sm:gap-4 sm:pl-4')}>
-        <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="Assaman & Suuf, accueil">
+        <Link to="/" className="flex min-h-10 min-w-10 shrink-0 items-center gap-2.5" aria-label="Assaman & Suuf, accueil">
           <img src="/favicon.svg" alt="" className="size-8 rounded-[10px]" />
-          <span className={clsx('font-titre text-lg font-semibold whitespace-nowrap text-white transition-all duration-500', serree ? 'max-w-0 opacity-0 lg:max-w-40 lg:opacity-100' : 'max-w-40')}>
+          <span className={clsx('font-titre text-lg font-semibold whitespace-nowrap text-white transition-all duration-500 max-[359px]:hidden', serree ? 'max-w-0 opacity-0 lg:max-w-40 lg:opacity-100' : 'max-w-40')}>
             Assaman & Suuf
           </span>
         </Link>
 
-        <nav aria-label="Chapitres" className="relative hidden items-center md:flex">
+        {/* Chapitres à partir de 1024 px : entre 768 et ~880 px, ils poussaient le bouton Menu hors de l'en-tête */}
+        <nav aria-label="Chapitres" className="relative hidden items-center lg:flex">
           <span aria-hidden className="ile-curseur absolute inset-y-0 left-0 rounded-full bg-white/[0.14]" style={curseur ? { translate: `${curseur.x}px 0`, width: curseur.l } : { opacity: 0, width: 0 }} />
           {chapitres.map((c) => (
             <a
@@ -93,10 +94,10 @@ export function Entete({ chapitres, actif, onEntrer }: { chapitres: Chapitre[]; 
         </nav>
 
         {/* Téléphone : le chapitre en cours, en clair */}
-        <span className="px-1 text-sm font-medium whitespace-nowrap text-white/70 max-[430px]:hidden md:hidden">{chapitres.find((c) => c.id === actif)?.libelle}</span>
+        <span className="px-1 text-sm font-medium whitespace-nowrap text-white/70 max-[430px]:hidden lg:hidden">{chapitres.find((c) => c.id === actif)?.libelle}</span>
 
-        <button type="button" onClick={onEntrer} className="group inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full bg-soleil-500 pr-3 pl-4 text-sm font-semibold text-vert-900 transition hover:bg-soleil-100 active:scale-[0.98]">
-          Entrer <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
+        <button type="button" onClick={onEntrer} className="bouton-action group min-h-10 pr-3 pl-4 text-sm">
+          Entrer<span className="max-xl:sr-only"> dans la carte</span> <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
         </button>
         <button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-label="Menu" className="grid size-10 shrink-0 place-items-center rounded-full text-white transition hover:bg-white/10">
           {menu ? <X className="size-[18px]" /> : <Menu className="size-[18px]" />}
@@ -122,7 +123,7 @@ export function Entete({ chapitres, actif, onEntrer }: { chapitres: Chapitre[]; 
               <Link key={p.to} to={p.to} onClick={() => setMenu(false)} className="flex min-h-11 items-center rounded-2xl px-4 text-md text-encre transition hover:bg-vert-50">{p.libelle}</Link>
             ))}
             <button type="button" onClick={() => { setMenu(false); onEntrer() }}
-              className="mt-2 flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl bg-vert-700 text-md font-semibold text-white transition hover:bg-vert-900">
+              className="bouton-action mt-2 min-h-12 w-full rounded-2xl text-md">
               Entrer dans la carte <ArrowRight className="size-4" aria-hidden />
             </button>
           </nav>

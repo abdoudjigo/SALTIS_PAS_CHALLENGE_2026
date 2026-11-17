@@ -4,6 +4,7 @@ import { BarChart3, CalendarDays, ClipboardList, CloudSun, LogOut, MapPinned, Sc
 import { lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { useReferentiels } from '../hooks/donnees'
+import { ACCUEIL, useMeta } from '../lib/meta'
 import type { Survol, VueCarte } from '../scene/Carte'
 import { cadrer, type Cadre, type Fonctionnalite, type Infobulle, type Sortie } from '../scene/cadre'
 import { Dock } from '../scene/Dock'
@@ -80,12 +81,13 @@ function Bulle({ ref, infobulle }: { ref: Ref<PoigneeBulle>; infobulle: Sortie['
   return (
     <div className="verre-scene pointer-events-none absolute z-30 max-w-64 rounded-lg px-3 py-2" style={{ left: Math.max(8, Math.min(survol.x + 16, window.innerWidth - (window.innerWidth >= 768 ? LARGEUR_FENETRE_PX + 32 : 0) - 264)), top: Math.max(8, survol.y + 16) }} role="status">
       <p className="text-sm font-medium text-white">{contenu.titre}</p>
-      {contenu.lignes.map((l) => <p key={l} className="text-xs leading-relaxed text-white/70">{l}</p>)}
+      {contenu.lignes.map((l) => <p key={l} className="text-xs leading-relaxed text-white/80">{l}</p>)}
     </div>
   )
 }
 
 export default function Scene() {
+  useMeta({ titrePage: 'Carte', description: ACCUEIL.description })
   const { user, logout } = useAuth()
   const ecran = useEcran()
   const { data: ref, error } = useReferentiels()
@@ -131,7 +133,7 @@ export default function Scene() {
         </Suspense>
       ) : (
         <div className="grid h-full place-items-center px-6 text-center">
-          <p className={error ? 'text-soleil-500' : 'animate-pulse text-white/60'}>
+          <p className={error ? 'text-soleil-500' : 'animate-pulse text-white/70'}>
             {error ? `Les données ne répondent pas : ${error.message}` : 'La carte se prépare…'}
           </p>
         </div>
@@ -144,9 +146,9 @@ export default function Scene() {
           <img src="/favicon.svg" alt="" className="size-9 rounded-lg" />
           <div className="leading-tight">
             <p className="font-titre text-md font-semibold text-white">Assaman & Suuf</p>
-            <p className="text-2xs text-white/55">{profil}</p>
+            <p className="text-2xs text-white/60">{profil}</p>
           </div>
-          <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/60 transition hover:text-white">
+          <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
             <LogOut className="size-4" />
           </button>
         </div>

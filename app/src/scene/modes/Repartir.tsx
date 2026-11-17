@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useTerritoires } from '../../hooks/donnees'
 import { libelle, nombre, pct, tonnes } from '../../lib/format'
+import { lireNombre } from '../../lib/saisie'
 import { besoinsParDepartement } from '../besoinsPays'
 import { cadrer, usePublier, type PropsMode, type Sortie } from '../cadre'
 import type { Arc } from '../Carte'
@@ -10,7 +11,7 @@ import { couleurCouverture, NON_DISPONIBLE } from '../couleurs'
 import type { LonLat } from '../geo'
 import { METHODE, repartir, VERSION } from '../repartition'
 import { dire } from '../lecture'
-import { Avis, Champ, Cle, Degrade, Groupe, Methode, Rang, Reponse, Squelette, Detail } from '../ui'
+import { Avis, Champ, Cle, Degrade, ErreurChamp, Groupe, Methode, Rang, Reponse, Squelette, Detail } from '../ui'
 
 const DAKAR: LonLat = [-17.3, 14.74]
 
@@ -30,7 +31,9 @@ export default function Repartir({ cadre, publier }: PropsMode) {
   const besoinTotal = demandes.reduce((a, d) => a + d.besoin_t, 0)
   const sansDose = besoins.reduce((a, b) => a + b.sansDose, 0)
   // Sans saisie : un stock qui couvre le quart du besoin, pour que la carte parle tout de suite
-  const stock = saisie === '' ? Math.round(besoinTotal * 0.25) : Math.max(Number(saisie.replace(',', '.')) || 0, 0)
+  // Stock tapé : plus de 0, au plus 1 000 000 t. Saisie invalide : rien n'est réparti et un message l'explique
+  const lectureStock = lireNombre(saisie, { min: 0, minExclu: true, max: 1_000_000, unite: 't' })
+  const stock = lectureStock.vide ? Math.round(besoinTotal * 0.25) : (lectureStock.valeur ?? 0)
   const resultat = useMemo(() => repartir(stock, demandes, priorite / 100), [stock, demandes, priorite])
   const parts = useMemo(() => [...resultat.parts].sort((a, b) => b.quantite_t - a.quantite_t), [resultat])
   const reparti = parts.reduce((a, p) => a + p.quantite_t, 0)
@@ -92,8 +95,10 @@ export default function Repartir({ cadre, publier }: PropsMode) {
           </select>
         </Champ>
         <Champ libelle="Stock (t)">
-          <input className="champ-scene tabular-nums" inputMode="decimal" placeholder={String(Math.round(besoinTotal * 0.25))} value={saisie} onChange={(e) => setSaisie(e.target.value)} />
+          <input className="champ-scene tabular-nums" inputMode="decimal" placeholder={String(Math.round(besoinTotal * 0.25))} value={saisie} onChange={(e) => setSaisie(e.target.value)}
+            aria-invalid={Boolean(lectureStock.erreur)} aria-describedby={lectureStock.erreur ? 'erreur-stock' : undefined} />
         </Champ>
+        {lectureStock.erreur && <ErreurChamp id="erreur-stock" className="col-span-2 mt-0">Stock : {lectureStock.erreur}</ErreurChamp>}
         <Champ libelle="Culture visée" className="col-span-2">
           <select className="champ-scene" value={culture ?? ''} onChange={(e) => setCulture(e.target.value || null)}>
             <option value="">Toutes les cultures</option>
@@ -101,10 +106,10 @@ export default function Repartir({ cadre, publier }: PropsMode) {
           </select>
         </Champ>
       </div>
-      <label className="mt-3 block text-2xs text-white/55">
+      <label className="mt-3 block text-2xs text-white/60">
         <span className="flex justify-between"><span>Priorité à la vulnérabilité</span><span className="text-sm font-medium text-white tabular-nums">{priorite} %</span></span>
         <input type="range" className="glissiere mt-1 block h-6 w-full" min={0} max={100} step={5} value={priorite} onChange={(e) => setPriorite(Number(e.target.value))} />
-        <span className="flex justify-between text-white/40"><span>prorata des besoins</span><span>les plus vulnérables d'abord</span></span>
+        <span className="flex justify-between text-white/60"><span>prorata des besoins</span><span>les plus vulnérables d'abord</span></span>
       </label>
 
       {!territoires && <Squelette lignes={5} />}

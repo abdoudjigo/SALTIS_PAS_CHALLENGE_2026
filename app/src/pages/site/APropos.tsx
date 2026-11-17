@@ -1,9 +1,11 @@
+import { PAGES } from '../../lib/pages'
 import { PageSite, Partie, Tableau } from './PageSite'
 
 export default function APropos() {
   return (
     <PageSite
-      titre="À propos"
+      titre={PAGES.aPropos.titre}
+      description={PAGES.aPropos.description}
       chapeau="Assaman & Suuf (« le ciel et la terre » en wolof) aide les agriculteurs, les ONG et les services de l'État à préparer la campagne agricole au Sénégal : quelle pluie attendre, quoi semer et quand, où porter les intrants."
     >
       <Partie titre="Le défi">
