@@ -3,12 +3,12 @@
 import clsx from 'clsx'
 import { Loader2, Square } from 'lucide-react'
 import { useState } from 'react'
-import { api } from '../api'
-import { arreter, lectureDisponible, lire, lireAudio, pourLOreille, useQuiParle, type Parleur } from './lecture'
+import { arreter, lectureDisponible, lire, lireWolof, pourLOreille, useQuiParle, type Parleur } from './lecture'
 
 const visage = 'var(--color-terre-700)'
 
-function Garcon() {
+/** L'avatar de la voix française (aussi dans le pied de la fiche de l'agriculteur). */
+export function Garcon() {
   return (
     <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
       <circle cx="20" cy="20" r="20" fill="var(--color-pluie-100)" />
@@ -22,7 +22,8 @@ function Garcon() {
   )
 }
 
-function Fille() {
+/** L'avatar de la voix wolof. */
+export function Fille() {
   return (
     <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
       <circle cx="20" cy="20" r="20" fill="var(--color-soleil-100)" />
@@ -38,9 +39,6 @@ function Fille() {
   )
 }
 
-// Voix wolof déjà synthétisées, par texte : rejouer ne refait pas l'appel
-const cacheWolof = new Map<string, string>()
-
 export function Mascottes({ fr, wo, className }: { fr?: string[]; wo?: string[]; className?: string }) {
   const qui = useQuiParle()
   const [attente, setAttente] = useState(false)
@@ -50,15 +48,12 @@ export function Mascottes({ fr, wo, className }: { fr?: string[]; wo?: string[];
     const texte = (wo ?? []).join(' ')
     if (!texte) return
     setMessage(null)
-    const connu = cacheWolof.get(texte)
-    if (connu) return lireAudio(connu)
-    setAttente(true)
-    setMessage('La voix wolof se prépare : quelques secondes (la toute première fois, environ une minute). Ensuite, elle est instantanée.')
     try {
-      const { audio_wo_base64 } = await api.voixParler(texte)
-      cacheWolof.set(texte, audio_wo_base64)
+      await lireWolof(texte, () => {
+        setAttente(true)
+        setMessage('La voix wolof se prépare : quelques secondes (la toute première fois, environ une minute). Ensuite, elle est instantanée.')
+      })
       setMessage(null)
-      lireAudio(audio_wo_base64)
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'La voix wolof ne répond pas.')
     } finally {

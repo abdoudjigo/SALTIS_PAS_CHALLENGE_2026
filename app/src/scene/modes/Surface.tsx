@@ -3,19 +3,28 @@
 // prévu cette année-là : pluie (modèle 1), récolte et production (modèle 3), période de semis (modèle 4).
 // Une dose inconnue reste « à saisir », jamais zéro : l'agriculteur peut taper la sienne. L'eau d'irrigation
 // n'apparaît que si la culture la demande.
+//
+// Pastilles de l'agriculteur (statut de la dose, `statut_validation_engrais` / `statut_validation_semis` de /besoins) :
+// - dose au statut VALIDEE → ok ;
+// - dose A_CONFIRMER ou NON_VERIFIEE (ou sans statut) → attention, avec « à confirmer » ;
+// - dose inconnue → info, « dose à saisir » ; dose tapée par l'agriculteur → info (« votre dose »).
+// Les sacs : kg ÷ 50, arrondis au demi-sac supérieur (`sacs` de conseil.ts).
+// Pluie (M1), récolte (M3), semis (M4 : la fenêtre de `fenetreCulture`, la même que « Quand semer ? ») : une année
+// qu'un modèle ne couvre pas n'appelle pas l'API (`anneeCouverte`), le détail dit « Pas de prévision … pour {année} ».
 import { useMemo, useState } from 'react'
 import { useBesoins, useTerritoires } from '../../hooks/donnees'
-import { etatPrevision, usePrevisionRendement, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
-import { libelle, mm, nombre, STATUTS_DOSE, VIDE } from '../../lib/format'
+import { useActuelles, etatActuel, useRecolteFinMai, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
+import { libelle, mm, nombre, pct, STATUTS_DOSE, VIDE } from '../../lib/format'
 import type { ColonneBesoin, StatutDose } from '../../types/marts'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { couleurQuantite, NON_DISPONIBLE, tendance } from '../couleurs'
 import { debutDecade, natureAnnee, periodeDecades } from '../fiabilite'
-import { ChampAnnee, MethodeModele, Morceau } from '../previsions'
-import { dire } from '../lecture'
+import { MethodeModele, Morceau } from '../previsions'
 import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, poidsWo, wo } from '../wolof'
-import { dose, enSacs, fenetreCulture, heuresPompage, nombreSacs, repliCulture, sacs } from '../conseil'
-import { AFaire, Avis, Champ, Cle, Cles, Degrade, Detail, Groupe, Ligne, Lignes, LigneFiabilite, Reponse, Squelette, type Action } from '../ui'
+import { cultureRetenue, dose, enSacs, fenetreCulture, heuresPompage, nombreSacs, repliCulture, sacs } from '../conseil'
+import { aLire, CHOISIR, puceAnnee, puceCulture, puceSurface, type LigneCheck } from '../fiche'
+import { FicheReponse } from '../FicheReponse'
+import { AFaire, Avis, Cle, Cles, Degrade, Groupe, Ligne, Lignes, LigneFiabilite, Squelette, type Action } from '../ui'
 
 /** `forme` : comment on le compte. Engrais en sacs de 50 kg, semences en kg, fumier en tonnes. */
 const INTRANTS: { colonne: ColonneBesoin; nom: string; forme: 'sacs' | 'kg' | 't'; dose: 'semis' | 'engrais' }[] = [
@@ -36,20 +45,21 @@ const vide = (etat: EtatPrevision) => (etat === 'chargement' ? '…' : 'non disp
 export default function Surface({ cadre, publier }: PropsMode) {
   const code = cadre.selection ?? cadre.user.code_departement
   const departement = cadre.ref.departements.find((d) => d.code_departement === code)
-  const a = useAnnee(cadre, 'M1')
+  const a = useAnnee(cadre, 'M1', true)
+  const aM3 = useAnnee(cadre, 'M3', true)
+  const aM4 = useAnnee(cadre, 'M4', true)
   const { annee } = a
-  const { data: besoins } = useBesoins(code ? { code_departement: code } : {}, Boolean(code))
+  const besoins = useActuelles(useBesoins(code ? { code_departement: code } : {}, Boolean(code)))
   const { data: territoires } = useTerritoires()
   const lignes = useMemo(() => (code ? (besoins ?? []).filter((b) => b.code_departement === code && b.culture).sort((x, y) => libelle(x.culture).localeCompare(libelle(y.culture), 'fr')) : []), [besoins, code])
   // Par défaut, la culture dont on connaît le plus de doses : la réponse est d'emblée utile
-  const parDefaut = useMemo(() => [...lignes].sort((x, y) => INTRANTS.filter((i) => dose(y, i.colonne) !== null).length - INTRANTS.filter((i) => dose(x, i.colonne) !== null).length)[0]?.culture ?? null, [lignes])
+  const parDoses = useMemo(() => [...lignes].sort((x, y) => INTRANTS.filter((i) => dose(y, i.colonne) !== null).length - INTRANTS.filter((i) => dose(x, i.colonne) !== null).length).map((l) => l.culture!), [lignes])
   const [saisie, setSaisie] = useState('1')
   // Doses saisies par l'agriculteur (kg/ha), par culture et par intrant : gardées le temps de la session
   const [dosesSaisies, setDosesSaisies] = useState<Record<string, string>>({})
   // La culture partagée si le département a une superficie de référence pour elle ; sinon le choix par défaut
-  const connue = lignes.some((l) => l.culture === cadre.culture)
-  const culture = connue ? cadre.culture : parDefaut
-  const repli = lignes.length ? repliCulture(connue ? null : cadre.culture, culture) : null
+  const culture = useMemo(() => cultureRetenue(cadre.culture, parDoses), [cadre.culture, parDoses])
+  const repli = lignes.length ? repliCulture(cadre.culture, culture) : null
   const ligne = lignes.find((l) => l.culture === culture)
   const surface = Math.max(Number(saisie.replace(',', '.')) || 0, 0)
 
@@ -60,7 +70,7 @@ export default function Surface({ cadre, publier }: PropsMode) {
     const reference = dose(ligne, i.colonne)
     const saisieKgHa = n !== null && Number.isFinite(n) && n >= 0 ? n : null
     const statut = i.dose === 'semis' ? ligne.statut_validation_semis : ligne.statut_validation_engrais
-    return { ...i, cle, texte, reference, kgHa: reference ?? saisieKgHa, statut: reference === null ? null : marqueStatut(statut), horsSujet: i.colonne === 'besoin_semences_retenu_t' && ligne.besoin_semences_applicable === false }
+    return { ...i, cle, texte, reference, kgHa: reference ?? saisieKgHa, statut: reference === null ? null : marqueStatut(statut), validee: reference !== null && statut === 'VALIDEE', horsSujet: i.colonne === 'besoin_semences_retenu_t' && ligne.besoin_semences_applicable === false }
   }) : []
   const connus = intrants.filter((i) => i.reference !== null)
   // Les sacs d'engrais : NPK, urée et DAP dont la dose est connue (ou saisie), chacun arrondi au demi-sac supérieur
@@ -70,15 +80,23 @@ export default function Surface({ cadre, publier }: PropsMode) {
   const aConfirmer = connus.some((i) => i.statut !== null)
 
   // Le climat prévu pour l'année choisie
-  const saisonReq = usePrevisionSaison(code ? annee : undefined)
-  const recolteReq = usePrevisionRendement(code, annee)
+  const saisonReq = usePrevisionSaison(code && a.couverte ? annee : undefined)
+  // Le modèle 3 ne couvre pas toutes les années passées (ex. 2019) : hors de ses années, pas d'appel à l'API
+  const recolteCouverte = aM3.couverte
+  const recolteReq = useRecolteFinMai(recolteCouverte ? annee : undefined)
+  const etatRecolte: EtatPrevision = recolteCouverte ? etatActuel(recolteReq) : 'absente'
   // Toutes les cultures du département, filtrées ici : la même requête que « Ma parcelle » et « Quand semer ? »,
   // déjà en cache, et pas de seconde requête quand la culture arrive avec les besoins
-  const semisReq = useRisqueSemis(code, annee)
-  const saison = saisonReq.data?.donnees.find((l) => l.code_departement === code)
-  const recolte = recolteReq.data?.donnees.find((l) => l.culture === culture && l.moment_prevision === 'FIN_MAI')
-  const semis = semisReq.data?.donnees.find((l) => l.culture === culture && l.decade_conseillee)
-  const fenetre = fenetreCulture(semisReq.data?.donnees, culture)
+  const semisReq = useRisqueSemis(aM4.couverte ? code : null, annee)
+  const etatSaison: EtatPrevision = a.couverte ? etatActuel(saisonReq) : 'absente'
+  const etatSemis: EtatPrevision = aM4.couverte ? etatActuel(semisReq) : 'absente'
+  const saisonDonnees = useActuelles(saisonReq)
+  const recolteDonnees = useActuelles(recolteReq)
+  const semisDonnees = useActuelles(semisReq)
+  const saison = saisonDonnees?.donnees.find((l) => l.code_departement === code)
+  const recolte = !recolteCouverte ? undefined : recolteDonnees?.donnees.find((l) => l.culture === culture && l.code_departement === code && l.moment_prevision === 'FIN_MAI')
+  const fenetre = fenetreCulture(semisDonnees?.donnees, culture)
+  const semis = fenetre?.meilleure
   // Mis en cache : un nouvel objet à chaque rendu relancerait la publication sans fin
   const t = useMemo(() => (saison ? tendance(saison) : null), [saison])
   const production = recolte && recolte.rendement_bas_kg_ha !== null && recolte.rendement_haut_kg_ha !== null ? { bas: recolte.rendement_bas_kg_ha * surface, haut: recolte.rendement_haut_kg_ha * surface } : null
@@ -102,29 +120,27 @@ export default function Surface({ cadre, publier }: PropsMode) {
   const resume = !departement ? 'Choisissez un département' : !ligne ? departement.departement
     : engrais.length ? `${ha} ha ${de}${nomCulture} : ${nombreSacs(nbSacs)} d’engrais` : `${ha} ha ${de}${nomCulture} : doses à saisir`
 
-  // L'essentiel, pour l'oreille : la réponse, que faire, ce qu'il faut pour sa surface, puis ce que la saison laisse attendre
-  const lus = intrants.map((i) => `${i.nom}|${i.kgHa}|${i.horsSujet}`).join(';')
-  const aEcouter = useMemo<string[]>(() => {
-    if (!departement) return ['Touchez un département sur la carte, puis choisissez la culture et la surface.']
-    if (!besoins) return [] // pendant le chargement : le bouton reste désactivé
-    if (!ligne) return [`Pas de culture de référence à ${departement.departement}.`]
-    const phrases = [`${titre}.`, ...actions.map((x) => String(x.texte)), `Pour ${dire.ha(surface)} ${de}${nomCulture} à ${departement.departement}, en ${annee}, voici ce qu'il vous faut.`]
-    const aSaisir: string[] = []
-    intrants.forEach((i) => {
-      if (i.horsSujet) return
-      if (i.kgHa === null) return aSaisir.push(i.nom.toLowerCase())
-      const total = i.kgHa * surface
-      phrases.push(Math.round(i.kgHa) === 0 ? `Pas de ${i.nom} dans la formule de la zone.` : i.forme === 'sacs' ? `${i.nom} : ${nombreSacs(sacs(total))} de cinquante kilos, soit ${dire.kg(total)}.` : `${i.nom} : ${dire.kg(total)}.`)
-    })
-    if (aSaisir.length) phrases.push(`Dose à saisir pour : ${aSaisir.join(', ')}. Elle n'est pas encore connue pour cette zone.`)
-    if (t) phrases.push(`La saison ${annee} s'annonce plutôt ${t.classe}, avec ${dire.pct(t.proba)} de chances${saison?.pluie_prevue_mm != null ? ` et ${dire.mm(saison.pluie_prevue_mm)} de pluie attendus` : ''}.`)
-    if (semis) phrases.push(`Semez de préférence ${periodeDecades(semis.decade_semis)}.`)
-    if (production) phrases.push(`Production ${recolte?.rendement_fiable ? 'attendue' : 'habituelle'} : entre ${dire.kg(production.bas)} et ${dire.kg(production.haut)}.`)
-    phrases.push('Les doses sont des références de la zone, en attente de validation par l\'ISRA. Estimations indicatives.')
-    return phrases
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `lus` résume les intrants, `titre` et `avant` les actions (recalculés à chaque rendu)
-  }, [departement, besoins, ligne, surface, de, nomCulture, annee, lus, t, saison, semis, production?.bas, production?.haut, recolte, titre, avant, aConfirmer])
+  // La réponse en 1 à 3 lignes : les sacs de chaque engrais, les semences ; « à confirmer » si la dose n'est pas validée
+  // État d'une dose : validée (ok), de référence non validée (attention, « à confirmer »), tapée par l'agriculteur (info)
+  const etatDose = (i: { reference: number | null; validee: boolean }): LigneCheck['etat'] => (i.reference === null ? 'info' : i.validee ? 'ok' : 'attention')
+  const conf = (i: { reference: number | null; validee: boolean }) => ({ ok: '', attention: ', à confirmer', info: ', votre dose', non: '' })[etatDose(i)]
+  const lignesEngrais: LigneCheck[] = engrais.map((i) => ({ etat: etatDose(i), texte: `${i.nom} : **${nombreSacs(sacs(i.kgHa! * surface))}** de 50 kg${conf(i)}` }))
+  const ligneSemences: LigneCheck[] = semences ? [{ etat: etatDose(semences), texte: `Semences : **${nombre(semences.kgHa! * surface)} kg**${conf(semences)}` }] : []
+  // Plus de 3 lignes : les engrais en une seule, avec l'état le moins sûr
+  const etatsEngrais = engrais.map(etatDose)
+  const etatEngrais: LigneCheck['etat'] = etatsEngrais.includes('attention') ? 'attention' : etatsEngrais.includes('info') ? 'info' : 'ok'
+  const lignesFiche: LigneCheck[] = !departement ? [CHOISIR] : !ligne ? [] : [
+    ...(!engrais.length ? [{ etat: 'info' as const, texte: 'Engrais : dose **à saisir**' }]
+      : lignesEngrais.length + ligneSemences.length > 3 ? [{ etat: etatEngrais, texte: `Engrais : **${nombreSacs(nbSacs)}** de 50 kg${etatEngrais === 'attention' ? ', à confirmer' : etatEngrais === 'info' ? ', votre dose' : ''}` }]
+        : lignesEngrais),
+    ...ligneSemences,
+  ]
+  const titreFiche = !departement ? 'Choisissez un département' : titre
+  const cleLignes = lignesFiche.map((l) => l.texte).join('|')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignesFiche` est résumé par `cleLignes`
+  const aEcouter = useMemo<string[]>(() => (departement && !besoins ? [] : departement && !ligne ? [`Pas de culture de référence à ${departement.departement}.`] : aLire(titreFiche, lignesFiche)), [departement, besoins, ligne, titreFiche, cleLignes])
 
+  const lus = intrants.map((i) => `${i.nom}|${i.kgHa}|${i.horsSujet}`).join(';')
   const aEcouterWo = useMemo<string[] | undefined>(() => {
     if (!departement || !besoins) return undefined
     if (!ligne || !culture) return [`Amul mbay ci ${departement.departement}.`]
@@ -171,18 +187,20 @@ export default function Surface({ cadre, publier }: PropsMode) {
   }, [surfaces, max, departements, nomCulture, de, code, cadre, aEcouter, aEcouterWo, resume])
   usePublier(publier, sortie)
 
-  if (!departement) return <Reponse titre="Choisissez un département" phrase="Touchez un département sur la carte pour estimer vos besoins." />
+  if (!departement) return <FicheReponse cadre={cadre} mode="surface" cle="aucun" titre={titreFiche} lignes={lignesFiche} aEcouter={aEcouter} aEcouterWo={aEcouterWo} />
 
+  const puces = [puceAnnee(cadre, a, saison), ...(lignes.length ? [puceCulture(cadre, lignes.map((l) => l.culture!), culture), puceSurface(saisie, setSaisie, ha)] : [])]
   return (
-    <div>
-      <Reponse vivant cle={`${code}-${culture}-${annee}`} titre={titre}
-        phrase={ligne ? `${departement.departement} · ${annee}. ${t ? `Saison ${t.texte} (prévision)` : 'Saison : prévision non disponible'}${semis ? `, à semer ${periodeDecades(semis.decade_semis)}` : ''}.` : undefined} />
-      {repli && <p className="mt-2 text-xs text-white/60">{repli}</p>}
-      {!besoins && <Squelette lignes={5} />}
-      {besoins && !lignes.length && <Avis>Pas de superficie agricole de référence dans ce département : aucun besoin n'est calculé.</Avis>}
-
-      {ligne && (
+    <FicheReponse cadre={cadre} mode="surface" cle={`${code}-${culture}-${annee}`} culture={culture} puces={puces} titre={titreFiche} lignes={lignesFiche}
+      aEcouter={aEcouter} aEcouterWo={aEcouterWo}
+      etat={<>
+        {repli && <p className="mt-2 text-xs text-white/60">{repli}</p>}
+        {!besoins && <Squelette lignes={5} />}
+        {besoins && !lignes.length && <Avis>Pas de superficie agricole de référence dans ce département : aucun besoin n'est calculé.</Avis>}
+      </>}
+      detail={!ligne ? undefined : (
         <>
+          <p className="mt-4 text-sm leading-relaxed text-white/70">{`${departement.departement} · ${annee}. ${t ? `Saison ${t.texte} (prévision)` : 'Saison : prévision non disponible'}${semis ? `, à semer ${periodeDecades(semis.decade_semis)}` : ''}.`}</p>
           <AFaire aller={cadre.aller} actions={actions} />
 
           <Groupe titre="Ce qu'il vous faut" complement={`${connus.length} dose${connus.length > 1 ? 's' : ''} connue${connus.length > 1 ? 's' : ''} sur ${intrants.length}`}>
@@ -214,37 +232,25 @@ export default function Surface({ cadre, publier }: PropsMode) {
           </Groupe>
 
           <Cles>
-            <Cle large valeur={productionLue?.valeur ?? '—'} unite={productionLue?.unite} libelle={productionLue ? `de récolte, d’une année difficile à une bonne année${recolte?.rendement_fiable ? '' : ' (récolte habituelle)'}` : `récolte : ${vide(etatPrevision(recolteReq))}`} />
+            <Cle large valeur={productionLue?.valeur ?? '—'} unite={productionLue?.unite} libelle={productionLue ? `de récolte, d’une année difficile à une bonne année${recolte?.rendement_fiable ? '' : ' (récolte habituelle)'}` : `récolte : ${vide(etatRecolte)}`} />
             <Cle valeur={saison?.pluie_prevue_mm == null ? '—' : nombre(saison.pluie_prevue_mm)} unite={saison?.pluie_prevue_mm == null ? undefined : 'mm'} libelle={t ? `de pluie attendue, saison ${t.texte}` : 'de pluie attendue'} />
           </Cles>
 
           <LigneFiabilite marques={[...new Set(connus.map((i) => i.statut).filter((x): x is string => x !== null))].map((m) => `Dose ${m.toLowerCase()} (ISRA)`)}
             parties={['Doses de référence de la zone, pas de votre parcelle', natureAnnee(annee, a.aVenir, saison)]} />
 
-          <div className="mt-4 grid grid-cols-[1fr_6rem] gap-2">
-            <Champ libelle="Culture">
-              <select className="champ-scene" value={culture ?? ''} onChange={(e) => cadre.choisirCulture(e.target.value)}>
-                {lignes.map((l) => <option key={l.culture} value={l.culture!}>{libelle(l.culture)}</option>)}
-              </select>
-            </Champ>
-            <Champ libelle="Surface (ha)">
-              <input className="champ-scene tabular-nums" inputMode="decimal" value={saisie} onChange={(e) => setSaisie(e.target.value)} />
-            </Champ>
-          </div>
-          <ChampAnnee cadre={cadre} a={a} saison={saison} className="mt-2" />
 
-          <Detail>
             <Groupe titre={`Ce que ${annee} laisse attendre`}>
               <dl className="-my-2 divide-y divide-white/[0.07]">
-                <Morceau modele="M1" reserve={a.tendance ? 'prévision de tendance' : undefined} libelle="Pluie de la saison" valeur={saison?.pluie_prevue_mm == null ? vide(etatPrevision(saisonReq)) : mm(saison.pluie_prevue_mm)}>
+                <Morceau modele="M1" reserve={a.tendance ? 'prévision de tendance' : undefined} libelle="Pluie de la saison" valeur={saison?.pluie_prevue_mm == null ? vide(etatSaison) : mm(saison.pluie_prevue_mm)}>
                   {saison && saison.pluie_basse_mm !== null && saison.pluie_haute_mm !== null && <>Entre {nombre(saison.pluie_basse_mm)} et {mm(saison.pluie_haute_mm)}. Normale : {mm(saison.pluie_normale_mm)}.</>}
                 </Morceau>
                 <Morceau modele="M3" reserve={recolte?.rendement_fiable ? "prévision de l'année" : 'fiabilité faible : récolte habituelle'} libelle="Récolte par hectare"
-                  valeur={recolte && recolte.rendement_bas_kg_ha !== null && recolte.rendement_haut_kg_ha !== null ? `${nombre(recolte.rendement_bas_kg_ha)} – ${nombre(recolte.rendement_haut_kg_ha, { unite: 'kg/ha' })}` : vide(etatPrevision(recolteReq))}>
-                  {production ? <>Soit {poids(production.bas)} à {poids(production.haut)} pour votre surface, d'une année difficile à une bonne année.</> : etatPrevision(recolteReq) !== 'chargement' ? `Pas de récolte attendue calculée pour ${nomCulture} en ${annee}.` : null}
+                  valeur={recolte && recolte.rendement_bas_kg_ha !== null && recolte.rendement_haut_kg_ha !== null ? `${nombre(recolte.rendement_bas_kg_ha)} – ${nombre(recolte.rendement_haut_kg_ha, { unite: 'kg/ha' })}` : vide(etatRecolte)}>
+                  {production ? <>Soit {poids(production.bas)} à {poids(production.haut)} pour votre surface, d'une année difficile à une bonne année.</> : !recolteCouverte ? `Pas de prévision de récolte pour ${annee}` : etatRecolte !== 'chargement' ? `Pas de récolte attendue calculée pour ${nomCulture} en ${annee}.` : null}
                 </Morceau>
-                <Morceau modele="M4" libelle="Période de semis" valeur={semis ? periodeDecades(semis.decade_semis, semis.decade_semis, true) : vide(etatPrevision(semisReq))}>
-                  {semis ? <>{nombre(semis.risque_total_pct)} % de risque, le plus bas.</> : etatPrevision(semisReq) !== 'chargement' ? `Pas de période calculée pour ${nomCulture}.` : null}
+                <Morceau modele="M4" libelle="Période de semis" valeur={semis ? periodeDecades(semis.decade_semis, semis.decade_semis, true) : vide(etatSemis)}>
+                  {semis ? <>{pct(semis.risque_total_pct)} de risque, le plus bas.</> : !aM4.couverte ? `Pas de prévision de semis pour ${annee}.` : etatSemis !== 'chargement' ? `Pas de période calculée pour ${nomCulture}.` : null}
                 </Morceau>
               </dl>
             </Groupe>
@@ -255,17 +261,15 @@ export default function Surface({ cadre, publier }: PropsMode) {
                 <Ligne libelle="Zone agroécologique" valeur={libelle(departement.zone_agroecologique)} />
               </Lignes>
             </Groupe>
-          </Detail>
 
           <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }, { modele: 'M3', moment: 'FIN_MAI', culture: recolte?.culture, volet: 'rendement' }, { modele: 'M4' }]}
-            avertissements={[...(recolteReq.data?.avertissements ?? []), ...(semisReq.data?.avertissements ?? [])]}>
+            avertissements={[...(saisonDonnees?.avertissements ?? []), ...(recolteDonnees?.avertissements ?? []), ...(semisDonnees?.avertissements ?? [])]}>
             <p>Estimation indicative : doses de référence de la zone × votre surface, pas un conseil validé pour votre parcelle. Les doses ne changent pas avec l'année ; ce qui change, c'est la pluie, la récolte et la période de semis attendues.</p>
             <p>Engrais en sacs de 50 kg, arrondis au demi-sac supérieur, chaque engrais à part ; le poids exact est entre parenthèses.</p>
             <p>« Dose à saisir » : aucune dose n'est connue, le besoin n'est pas calculé, il n'est pas nul. Les doses « à confirmer » ou « non vérifiées » restent à valider par l'ISRA.</p>
             <p>Production attendue = surface × fourchette de rendement du département (8 chances sur 10), en sacs de 100 kg.</p>
           </MethodeModele>
         </>
-      )}
-    </div>
+      )} />
   )
 }

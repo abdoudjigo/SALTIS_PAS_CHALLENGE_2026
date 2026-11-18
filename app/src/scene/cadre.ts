@@ -5,7 +5,7 @@ import { useEffect, useMemo, type ComponentType, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { Utilisateur } from '../types/auth'
 import type { Referentiels } from '../types/marts'
-import { anneeAVenir, anneesPassees, DERNIERE_ANNEE_PREVISION, type CodeModele } from '../types/previsions'
+import { anneeAVenir, anneeCouverte, anneesPassees, DERNIERE_ANNEE_PREVISION, type CodeModele } from '../types/previsions'
 import type { Camera, VueCarte } from './Carte'
 import { emprise, SENEGAL, type Contours, type LonLat } from './geo'
 
@@ -63,6 +63,18 @@ export interface Fonctionnalite {
   composant: ComponentType<PropsMode>
 }
 
+/** Le parcours de l'agriculteur, dans l'ordre du bouton « Suivant », avec la question de chaque fonctionnalité. */
+export const PARCOURS_AGRICULTEUR = [
+  { id: 'parcelle', question: 'Où est mon champ ?' },
+  { id: 'saison', question: 'Va-t-il bien pleuvoir ?' },
+  { id: 'semer', question: 'Que semer ?' },
+  { id: 'semis', question: 'Quand semer ?' },
+  { id: 'surface', question: 'Combien m’en faut-il ?' },
+  { id: 'contreSaison', question: 'Puis-je cultiver en saison sèche ?' },
+] as const
+export type ModeAgriculteur = (typeof PARCOURS_AGRICULTEUR)[number]['id']
+export const questionDe = (id: ModeAgriculteur) => PARCOURS_AGRICULTEUR.find((p) => p.id === id)!.question
+
 export const cadrer = {
   pays: (cadre: Cadre, options: Pick<Camera, 'inclinaison' | 'cap' | 'duree'> = {}): Camera => ({ emprise: SENEGAL.emprise, marge: cadre.marge, ...options }),
   departement(cadre: Cadre, code: string, options: Pick<Camera, 'inclinaison' | 'cap' | 'duree'> = {}): Camera {
@@ -81,15 +93,19 @@ export function usePublier(publier: (s: Sortie) => void, sortie: Sortie) {
 }
 
 /**
- * L'année d'une fonctionnalité : celle du cadre si le modèle la couvre, sinon la campagne à venir.
- * `passees` : les années de vérification du modèle ; `tendance` : année au-delà de la prévision océan.
+ * L'année d'une fonctionnalité.
+ * - Par défaut (ONG, État) : celle du cadre si le modèle la couvre, sinon la campagne à venir.
+ * - `garder` (agriculteur) : toujours celle du cadre, la même dans les 6 écrans ; `couverte` dit si le modèle
+ *   la prévoit (sinon, pas d'appel à l'API). La saisie propose alors toutes les années passées.
+ * `passees` : les années passées proposées ; `tendance` : année au-delà de la prévision océan.
  */
-export function useAnnee(cadre: Cadre, modele: CodeModele) {
+export function useAnnee(cadre: Cadre, modele: CodeModele, garder = false) {
   const { campagnes } = cadre.ref
   return useMemo(() => {
     const aVenir = anneeAVenir(campagnes)
-    const passees = anneesPassees(campagnes, modele)
-    const annee = cadre.annee >= aVenir || passees.includes(cadre.annee) ? cadre.annee : aVenir
-    return { annee, aVenir, passees, max: DERNIERE_ANNEE_PREVISION, tendance: annee > aVenir, passee: annee < aVenir }
-  }, [campagnes, modele, cadre.annee])
+    const couverteCadre = anneeCouverte(campagnes, modele, cadre.annee)
+    const annee = garder || couverteCadre ? cadre.annee : aVenir
+    const passees = anneesPassees(campagnes, garder ? 'M1' : modele)
+    return { annee, aVenir, passees, max: DERNIERE_ANNEE_PREVISION, tendance: annee > aVenir, passee: annee < aVenir, couverte: anneeCouverte(campagnes, modele, annee) }
+  }, [campagnes, modele, cadre.annee, garder])
 }

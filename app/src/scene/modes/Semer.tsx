@@ -1,27 +1,47 @@
 // Agriculteur — « Que semer ? » : la réponse nomme la culture et le cycle à semer, la saison (carte des
 // opportunités : courte, longue, contre-saison) et quoi faire ensuite ; puis les cultures, leurs cycles et la
 // récolte attendue (modèle 3). La carte montre, pour la culture choisie, où elle est adaptée dans tout le pays.
+//
+// Pastilles de l'agriculteur : le titre ET la liste lisent le même champ, `niveau_adequation` de /choix-cultures
+// (le score du projet : 0,6 × cycle couvert + 0,4 × eau couverte), triés par niveau puis par cycle couvert.
+// - adaptée → ok ; à risque → attention ; déconseillée → non ; irrigation requise → info, avec le lien Contre-saison ;
+//   autre niveau → info.
+// - Texte : « {culture} {cycle} j : {niveau} » et la raison principale, sans seuil nouveau :
+//   `proba_besoin_eau_couvert_pct` < `proba_cycle_couvert_pct` → « l'eau manque », sinon « saison trop courte ».
+//   Pas de raison quand le niveau est « adaptée ».
+// - La culture de l'écran : celle de la puce (cadre.culture) ; sans choix, la première de la liste triée, que la
+//   puce affiche alors comme choisie (`cultureRetenue` de conseil.ts). Le titre, la première ligne, la voix, le
+//   résumé et le bouton Suivant parlent de cette culture : son niveau, son meilleur cycle et la même raison.
+// - Les lignes suivantes : les cultures suivantes de la liste triée (3 lignes au plus).
 import clsx from 'clsx'
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useChoixCultures, useOpportunite, useTerritoires } from '../../hooks/donnees'
-import { etatPrevision, usePrevisionRendement, type EtatPrevision } from '../../hooks/previsions'
+import { useActuelles, etatActuel, useRecolteFinMai, type EtatPrevision } from '../../hooks/previsions'
 import { libelle, nombre, pct } from '../../lib/format'
 import type { LigneChoixCulture, NiveauAdequation } from '../../types/marts'
 import type { PrevisionRendement } from '../../types/previsions'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { NIVEAUX, NON_DISPONIBLE } from '../couleurs'
-import { ChampAnnee, MarquesRendement, MethodeModele } from '../previsions'
-import { culture as cult, dire } from '../lecture'
+import { MarquesRendement, MethodeModele } from '../previsions'
 import { cultureWo, FIN_WO, wo } from '../wolof'
-import { anneesSur5, cycleDit, laCulture, repliCulture } from '../conseil'
-import { AFaire, Barre, Categories, Cle, Cles, Detail, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Reponse, Squelette, type Action } from '../ui'
+import { anneesSur5, cultureRetenue, cycleDit, laCulture, repliCulture } from '../conseil'
+import { aLire, CHOISIR, puceAnnee, puceCulture, type EtatLigne, type LigneCheck } from '../fiche'
+import { FicheReponse } from '../FicheReponse'
+import { AFaire, Barre, Categories, Cle, Cles, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Squelette, type Action } from '../ui'
 
 const ORDRE: NiveauAdequation[] = ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
 const rang = (n: NiveauAdequation | null) => (n ? ORDRE.indexOf(n) : ORDRE.length)
+const ETAT_NIVEAU: Partial<Record<NiveauAdequation, EtatLigne>> = { 'adaptée': 'ok', 'à risque': 'attention', 'déconseillée': 'non', 'irrigation requise': 'info' }
+/** La raison d'un niveau, sans seuil nouveau : l'eau couverte face au cycle couvert. Aucune pour « adaptée ». */
+function raison(m: LigneChoixCulture) {
+  const niveau = m.niveau_adequation
+  if (!niveau || niveau === 'adaptée' || niveau === 'irrigation requise' || m.proba_besoin_eau_couvert_pct === null || m.proba_cycle_couvert_pct === null) return ''
+  return m.proba_besoin_eau_couvert_pct < m.proba_cycle_couvert_pct ? 'l’eau manque' : 'saison trop courte'
+}
 
 /** Récolte attendue d'une culture (modèle 3, vue fin mai) : toujours la fourchette, et ce qu'elle vaut. */
-function Recolte({ etat, ligne, annee }: { etat: EtatPrevision; ligne: PrevisionRendement | undefined; annee: number }) {
-  const vide = etat === 'chargement' ? 'chargement…' : etat === 'non-chargee' ? 'prévisions pas encore chargées' : etat === 'erreur' ? 'les prévisions ne répondent pas' : etat === 'absente' ? `non disponible pour ${annee}` : !ligne ? 'non disponible pour cette culture' : null
+function Recolte({ etat, ligne, annee, couverte }: { etat: EtatPrevision; ligne: PrevisionRendement | undefined; annee: number; couverte: boolean }) {
+  const vide = !couverte ? `pas de prévision de récolte pour ${annee}` : etat === 'chargement' ? 'chargement…' : etat === 'non-chargee' ? 'prévisions pas encore chargées' : etat === 'erreur' ? 'les prévisions ne répondent pas' : etat === 'absente' ? `non disponible pour ${annee}` : !ligne ? 'non disponible pour cette culture' : null
   return (
     <div className="mt-3 border-t border-white/[0.09] pt-2.5">
       <p className="text-2xs font-medium tracking-etiquette text-white/50 uppercase">Récolte attendue <span className="tracking-normal text-white/35 normal-case">{annee}</span></p>
@@ -54,15 +74,17 @@ const varietesLisibles = (texte: string) => texte.split(';').map((v) => v.replac
 export default function Semer({ cadre, publier }: PropsMode) {
   const code = cadre.selection ?? cadre.user.code_departement
   const departement = cadre.ref.departements.find((d) => d.code_departement === code)
-  const { data: choix } = useChoixCultures(code)
+  const choix = useActuelles(useChoixCultures(code))
   const { data: territoires } = useTerritoires()
   // La carte des opportunités : saison courte ou longue, contre-saison. Absente (404) : pas de bandeau, pas d'erreur
   const { data: opportunite } = useOpportunite(code)
   // Récolte attendue pour l'année choisie, vue fin mai (avant de choisir sa culture)
-  const a = useAnnee(cadre, 'M3')
+  const a = useAnnee(cadre, 'M3', true)
   const anneeRecolte = a.annee
-  const rendements = usePrevisionRendement(code, anneeRecolte)
-  const etatRecolte = etatPrevision(rendements)
+  // Année hors du modèle 3 (ex. 2019) : aucune requête (pas de 404)
+  const rendementsReq = useRecolteFinMai(a.couverte ? anneeRecolte : undefined)
+  const rendements = useActuelles(rendementsReq)
+  const etatRecolte: EtatPrevision = a.couverte ? etatActuel(rendementsReq) : 'absente'
 
   const cultures = useMemo(() => {
     const groupes = new Map<string, LigneChoixCulture[]>()
@@ -74,30 +96,32 @@ export default function Semer({ cadre, publier }: PropsMode) {
     }).sort((a, b) => rang(a.meilleur?.niveau_adequation ?? null) - rang(b.meilleur?.niveau_adequation ?? null) || (b.meilleur?.proba_cycle_couvert_pct ?? -1) - (a.meilleur?.proba_cycle_couvert_pct ?? -1))
   }, [choix])
   // La culture partagée si ce département la classe ; sinon la mieux classée, sans écraser le choix partagé
-  const connue = cultures.some((c) => c.culture === cadre.culture)
-  const culture = connue ? cadre.culture : cultures[0]?.culture ?? null
-  const repli = choix && cultures.length ? repliCulture(connue ? null : cadre.culture, culture) : null
+  const culture = useMemo(() => cultureRetenue(cadre.culture, cultures.map((c) => c.culture)), [cadre.culture, cultures])
+  const repli = choix && cultures.length ? repliCulture(cadre.culture, culture) : null
   const compte = (n: NiveauAdequation) => cultures.filter((c) => c.meilleur?.niveau_adequation === n).length
   const choisie = cultures.find((c) => c.culture === culture)
-  const premiere = cultures[0]
   const aucune = choix !== undefined && compte('adaptée') === 0
-  // La culture conseillée : celle choisie si elle est adaptée, sinon la mieux classée
-  const conseillee = choisie?.meilleur?.niveau_adequation === 'adaptée' ? choisie : premiere
+  // La culture du titre : celle de la puce ; sans choix, la première de la liste triée
+  const conseillee = choisie
+  const dep = departement?.departement ?? ''
 
-  const titre = !choix ? `À ${departement?.departement ?? ''}` : aucune
-    ? `À ${departement?.departement}, aucune culture n’est sûre 4 années sur 5 : choisissez la moins risquée`
-    : `À ${departement?.departement}, semez ${laCulture(conseillee!.culture)} en cycle ${cycleDit(conseillee!.meilleur?.option)}`
+  const m = conseillee?.meilleur
+  const cycleTxt = m?.option ? ` en cycle ${cycleDit(m.option)}` : ''
+  const pourquoi = m ? raison(m) : ''
+  const titre = !choix || !conseillee ? `À ${dep}` : aucune && conseillee === cultures[0]
+    ? `À ${dep}, aucune culture adaptée : la moins risquée, ${laCulture(conseillee.culture)}${cycleTxt}`
+    : m?.niveau_adequation === 'adaptée' ? `À ${dep}, semez ${laCulture(conseillee.culture)}${cycleTxt}`
+      : m?.niveau_adequation === 'irrigation requise' ? `À ${dep}, ${laCulture(conseillee.culture)} demande l’irrigation`
+        : m?.niveau_adequation ? `À ${dep}, ${libelle(conseillee.culture)}${cycleTxt} : ${NIVEAUX[m.niveau_adequation].libelle.toLowerCase()}${pourquoi ? `, ${pourquoi}` : ''}`
+          : `À ${dep}, ${laCulture(conseillee.culture)} : niveau non disponible`
   const phrase = !choix ? undefined : [
-    choisie && choisie !== conseillee && choisie.meilleur?.niveau_adequation
-      ? `${libelle(choisie.culture)} : ${NIVEAUX[choisie.meilleur.niveau_adequation].libelle.toLowerCase()} ici.`
-      : null,
-    conseillee?.meilleur ? aucune
+    conseillee?.meilleur ? aucune && conseillee === cultures[0]
       ? `La moins risquée : ${laCulture(conseillee.culture)}, cycle ${cycleDit(conseillee.meilleur.option)}${conseillee.meilleur.niveau_adequation ? ` (${NIVEAUX[conseillee.meilleur.niveau_adequation].libelle.toLowerCase()})` : ''}.`
       : `${libelle(conseillee.culture)}, cycle ${cycleDit(conseillee.meilleur.option)} : la saison des pluies couvre tout le cycle ${anneesSur5(conseillee.meilleur.proba_cycle_couvert_pct)}.` : null,
   ].filter(Boolean).join(' ') || undefined
-  const resume = !departement ? 'Choisissez un département' : !choix ? departement.departement : aucune && conseillee
+  const resume = !departement ? 'Choisissez un département' : !choix ? departement.departement : aucune && conseillee && conseillee === cultures[0]
     ? `Aucune culture sûre · ${libelle(conseillee.culture)}`
-    : conseillee ? `${libelle(conseillee.culture)}, cycle ${cycleDit(conseillee.meilleur?.option)}` : departement.departement
+    : conseillee ? `${libelle(conseillee.culture)}${m?.option ? `, cycle ${cycleDit(m.option)}` : ''}${m?.niveau_adequation ? ` : ${NIVEAUX[m.niveau_adequation].libelle.toLowerCase()}` : ''}` : departement.departement
 
   // Le bandeau de saison, tiré de la carte des opportunités (jaune : saison courte, vert : longue, bleu : contre-saison)
   const saison: LigneS[] = opportunite ? ([
@@ -119,23 +143,26 @@ export default function Semer({ cadre, publier }: PropsMode) {
     cadre.aller(mode)
   }
 
-  // L'essentiel, pour l'oreille : la réponse, que faire, puis combien de cultures sont adaptées et la récolte
-  const aEcouter = useMemo<string[]>(() => {
-    if (!departement) return ['Touchez un département sur la carte pour entendre ses cultures.']
-    if (!choix) return []
-    const nb = (n: NiveauAdequation) => cultures.filter((c) => c.meilleur?.niveau_adequation === n).length
-    const adaptees = cultures.filter((c) => c.meilleur?.niveau_adequation === 'adaptée')
-    const combien = (x: number) => (x === 0 ? 'aucune' : String(x))
-    const phrases = [`${titre}.`, ...(phrase ? [phrase] : []), ...saison.map((l) => l.texte), ...(cible ? [`Ensuite, vérifiez quand semer ${laCulture(cible)}, puis calculez vos semences et engrais.`] : [])]
-    phrases.push(`À ${departement.departement}, ${adaptees.length || 'aucune'} culture${adaptees.length > 1 ? 's sont adaptées' : ' est adaptée'}, ${combien(nb('à risque'))} à risque et ${combien(nb('déconseillée'))} déconseillée${nb('déconseillée') > 1 ? 's' : ''}.`)
-    adaptees.slice(0, 3).forEach((c) => phrases.push(`${libelle(c.culture)}, cycle ${cycleDit(c.meilleur?.option)} : la saison couvre tout le cycle ${dire.pct(c.meilleur?.proba_cycle_couvert_pct)} des années.`))
-    const r = culture ? rendements.data?.donnees.find((l) => l.culture === culture && l.moment_prevision === 'FIN_MAI') : undefined
-    if (culture && r && r.rendement_bas_kg_ha !== null && r.rendement_haut_kg_ha !== null)
-      phrases.push(`Récolte ${r.rendement_fiable ? 'attendue' : 'habituelle'} ${cult.du(libelle(culture))} en ${anneeRecolte} : entre ${dire.nombre(r.rendement_bas_kg_ha)} et ${dire.kgHa(r.rendement_haut_kg_ha)}.`)
-    phrases.push('Le pourcentage est la part des années où les pluies couvrent tout le cycle de la culture. Estimations indicatives.')
-    return phrases
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `saison` et `phrase` sont tirés des mêmes données (opportunite, choix)
-  }, [departement, choix, cultures, culture, rendements.data, anneeRecolte, titre, opportunite, cible])
+  // La réponse en 1 à 3 lignes : la culture de l'écran d'abord, puis les suivantes de la liste triée
+  const notees = cultures.filter((c) => c.meilleur?.niveau_adequation)
+  const enTete = notees.filter((c) => c.culture === culture)
+  const lignes: LigneCheck[] = !departement ? [CHOISIR] : [...enTete, ...notees.filter((c) => c.culture !== culture)].slice(0, 3).map(({ culture: c, meilleur: m }) => {
+    const niveau = m!.niveau_adequation!
+    const r = raison(m!)
+    const cycle = m!.cycle_jours !== null ? ` ${nombre(m!.cycle_jours)} j` : ''
+    return {
+      etat: ETAT_NIVEAU[niveau] ?? 'info',
+      texte: `${libelle(c)}${cycle} : **${NIVEAUX[niveau].libelle.toLowerCase()}**${r ? `, ${r}` : ''}`,
+      ...(niveau === 'irrigation requise' ? { lien: { libelle: 'Contre-saison', mode: 'contreSaison' as const } } : {}),
+    }
+  })
+  const titreFiche = !departement ? 'Choisissez un département' : titre
+  const cleLignes = lignes.map((l) => l.texte).join('|')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` est résumé par `cleLignes`
+  const aEcouter = useMemo<string[]>(() => (departement && !choix ? [] : aLire(titreFiche, lignes)), [departement, choix, titreFiche, cleLignes])
+  // La culture dépliée dans la liste du détail : un affichage, pas un choix (le choix se fait par la puce)
+  const [depliee, setDepliee] = useState<string | null>(null)
+  const ouverteDe = depliee ?? culture
 
   const aEcouterWo = useMemo<string[] | undefined>(() => {
     if (!departement || !choix) return undefined
@@ -143,12 +170,12 @@ export default function Semer({ cadre, publier }: PropsMode) {
     const phrases = [adaptees.length
       ? `Ci ${departement.departement}, ${wo(adaptees.length)} mbay yoo mën a bey. Yi gën: ${adaptees.slice(0, 3).map((c) => cultureWo(c.culture)).join(', ')}.`
       : `Ci ${departement.departement}, amul mbay bu baax.`]
-    const r = culture ? rendements.data?.donnees.find((l) => l.culture === culture && l.moment_prevision === 'FIN_MAI') : undefined
+    const r = culture ? rendements?.donnees.find((l) => l.culture === culture && l.code_departement === code && l.moment_prevision === 'FIN_MAI') : undefined
     if (culture && r && r.rendement_bas_kg_ha !== null && r.rendement_haut_kg_ha !== null)
       phrases.push(`Ngóob ${cultureWo(culture)} ci atum ${wo(anneeRecolte)}: diggante ${wo(r.rendement_bas_kg_ha)} ak ${wo(r.rendement_haut_kg_ha)} kilo ci ektaar.`)
     phrases.push(FIN_WO)
     return phrases
-  }, [departement, choix, cultures, culture, rendements.data, anneeRecolte])
+  }, [departement, choix, cultures, culture, rendements, anneeRecolte, code])
 
   const sortie = useMemo<Sortie>(() => {
     const lignes = new Map(territoires?.filter((t) => t.culture === culture).map((t) => [t.code_departement, t]))
@@ -170,93 +197,99 @@ export default function Semer({ cadre, publier }: PropsMode) {
   }, [territoires, culture, code, cadre, aEcouter, aEcouterWo, resume])
   usePublier(publier, sortie)
 
-  if (!departement) return <Reponse titre="Choisissez un département" phrase="Touchez un département sur la carte pour voir ses cultures." />
+  if (!departement) return <FicheReponse cadre={cadre} mode="semer" cle="aucun" titre={titreFiche} lignes={lignes} aEcouter={aEcouter} aEcouterWo={aEcouterWo} />
 
+  const puces = [puceAnnee(cadre, a), puceCulture(cadre, cultures.map((c) => c.culture), culture)]
+  const verdict = choix && conseillee?.meilleur?.niveau_adequation ? NIVEAUX[conseillee.meilleur.niveau_adequation].couleur : undefined
   return (
-    <div>
-      <Reponse vivant cle={`${code}-${conseillee?.culture}`} titre={titre} phrase={phrase} />
-      {saison.length > 0 && <div className="mt-3 space-y-1.5">{saison.map((l) => (
-        <LigneSaison key={l.texte} couleur={l.couleur}>{l.lien ? <><Lien compact onClick={() => cadre.aller('contreSaison')}>{l.lien}</Lien>{l.suite}</> : l.texte}</LigneSaison>
-      ))}</div>}
-      {repli && <p className="mt-2 text-xs text-white/60">{repli}</p>}
-      {!choix && <Squelette lignes={2} />}
+    <FicheReponse cadre={cadre} mode="semer" cle={`${code}-${a.annee}-${culture}`} culture={culture} puces={puces} titre={titreFiche} teinte={verdict} lignes={lignes}
+      aEcouter={aEcouter} aEcouterWo={aEcouterWo}
+      etat={<>
+        {repli && <p className="mt-2 text-xs text-white/60">{repli}</p>}
+        {!choix && <Squelette lignes={2} />}
+      </>}
+      detail={!choix ? undefined : (
+        <>
+          {phrase && <p className="mt-4 text-sm leading-relaxed text-white/70">{phrase}</p>}
+          {saison.length > 0 && <div className="mt-3 space-y-1.5">{saison.map((l) => (
+            <LigneSaison key={l.texte} couleur={l.couleur}>{l.lien ? <><Lien compact onClick={() => cadre.aller('contreSaison')}>{l.lien}</Lien>{l.suite}</> : l.texte}</LigneSaison>
+          ))}</div>}
 
-      <AFaire aller={allerAvecCulture} actions={actions} />
+          <AFaire aller={allerAvecCulture} actions={actions} />
 
-      <Cles>
-        <Cle valeur={choix ? compte('adaptée') : '—'} libelle="cultures adaptées" teinte={NIVEAUX['adaptée'].couleur} />
-        <Cle valeur={choix ? compte('à risque') : '—'} libelle="à risque" teinte={NIVEAUX['à risque'].couleur} />
-        <Cle valeur={choix ? compte('déconseillée') : '—'} libelle="déconseillées" teinte={NIVEAUX['déconseillée'].couleur} />
-      </Cles>
+          <Cles>
+            <Cle valeur={choix ? compte('adaptée') : '—'} libelle="cultures adaptées" teinte={NIVEAUX['adaptée'].couleur} />
+            <Cle valeur={choix ? compte('à risque') : '—'} libelle="à risque" teinte={NIVEAUX['à risque'].couleur} />
+            <Cle valeur={choix ? compte('déconseillée') : '—'} libelle="déconseillées" teinte={NIVEAUX['déconseillée'].couleur} />
+          </Cles>
 
-      <LigneFiabilite parties={['Saisons des pluies 1991-2020 du département', 'niveaux indicatifs, à valider avec les conseillers agricoles']} />
+          <LigneFiabilite parties={['Saisons des pluies 1991-2020 du département', 'niveaux indicatifs, à valider avec les conseillers agricoles']} />
 
-      <ChampAnnee cadre={cadre} a={a} />
-
-      <Groupe titre="Cultures et cycles" complement="touchez une culture">
-        {!choix && <Squelette lignes={6} />}
-        <ul className="-mx-2">
-          {cultures.map(({ culture: c, cycles, meilleur, varietes }) => {
-            const niveau = meilleur?.niveau_adequation ? NIVEAUX[meilleur.niveau_adequation] : null
-            const ouverte = c === culture
-            return (
-              <li key={c} className={clsx('rounded-md', ouverte && 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--color-soleil-500)]')}>
-                <button type="button" onClick={() => cadre.choisirCulture(c)} aria-expanded={ouverte} className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-2 text-left transition hover:bg-white/[0.05]">
-                  <span className="size-2 shrink-0 rounded-full" style={{ background: niveau?.couleur ?? NON_DISPONIBLE }} aria-hidden />
-                  <span className="flex-1 truncate text-sm font-medium text-white">{libelle(c)}</span>
-                  <span className="text-xs text-white/60">{niveau?.libelle ?? 'Non évaluée'}</span>
-                </button>
-                {ouverte && (
-                  <div className="maj space-y-2 px-2 pt-1 pb-3">
-                    {cycles.map((o) => (
-                      <div key={o.option} className="grid grid-cols-[6.5rem_1fr_7.75rem] items-center gap-2.5 text-xs text-white/65"
-                        role="img" aria-label={`Cycle ${cycleDit(o.option)}${o.cycle_jours ? `, ${o.cycle_jours} jours` : ''} : la saison couvre le cycle ${pct(o.proba_cycle_couvert_pct)} des années`}>
-                        <span>{libelle(o.option)}{o.cycle_jours ? ` · ${o.cycle_jours} j` : ''}</span>
-                        <Barre part={o.proba_cycle_couvert_pct} couleur={o.niveau_adequation ? NIVEAUX[o.niveau_adequation].couleur : NON_DISPONIBLE} />
-                        <span className="text-right font-medium text-white tabular-nums">{anneesSur5(o.proba_cycle_couvert_pct)}</span>
+          <Groupe titre="Cultures et cycles" complement="touchez une culture">
+            {!choix && <Squelette lignes={6} />}
+            <ul className="-mx-2">
+              {cultures.map(({ culture: c, cycles, meilleur, varietes }) => {
+                const niveau = meilleur?.niveau_adequation ? NIVEAUX[meilleur.niveau_adequation] : null
+                const ouverte = c === ouverteDe
+                return (
+                  <li key={c} className={clsx('rounded-md', ouverte && 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--color-soleil-500)]')}>
+                    <button type="button" onClick={() => setDepliee(ouverte ? '' : c)} aria-expanded={ouverte} className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-2 text-left transition hover:bg-white/[0.05]">
+                      <span className="size-2 shrink-0 rounded-full" style={{ background: niveau?.couleur ?? NON_DISPONIBLE }} aria-hidden />
+                      <span className="flex-1 truncate text-sm font-medium text-white">{libelle(c)}</span>
+                      <span className="text-xs text-white/60">{niveau?.libelle ?? 'Non évaluée'}</span>
+                    </button>
+                    {ouverte && (
+                      <div className="maj space-y-2 px-2 pt-1 pb-3">
+                        {cycles.map((o) => (
+                          <div key={o.option} className="grid grid-cols-[6.5rem_1fr_7.75rem] items-center gap-2.5 text-xs text-white/65"
+                            role="img" aria-label={`Cycle ${cycleDit(o.option)}${o.cycle_jours ? `, ${o.cycle_jours} jours` : ''} : la saison couvre le cycle ${pct(o.proba_cycle_couvert_pct)} des années`}>
+                            <span>{libelle(o.option)}{o.cycle_jours ? ` · ${o.cycle_jours} j` : ''}</span>
+                            <Barre part={o.proba_cycle_couvert_pct} couleur={o.niveau_adequation ? NIVEAUX[o.niveau_adequation].couleur : NON_DISPONIBLE} />
+                            <span className="text-right font-medium text-white tabular-nums">{anneesSur5(o.proba_cycle_couvert_pct)}</span>
+                          </div>
+                        ))}
+                        {varietes.map((v) => (
+                          <p key={v.option} className="text-xs text-white/60">Variété {v.option}{v.cycle_jours ? ` (${v.cycle_jours} j)` : ''} : {v.niveau_adequation ?? 'non évaluée'}</p>
+                        ))}
+                        {<Recolte etat={etatRecolte} annee={anneeRecolte} couverte={a.couverte} ligne={rendements?.donnees.find((r) => r.culture === c && r.code_departement === code && r.moment_prevision === 'FIN_MAI')} />}
                       </div>
-                    ))}
-                    {varietes.map((v) => (
-                      <p key={v.option} className="text-xs text-white/60">Variété {v.option}{v.cycle_jours ? ` (${v.cycle_jours} j)` : ''} : {v.niveau_adequation ?? 'non évaluée'}</p>
-                    ))}
-                    {<Recolte etat={etatRecolte} annee={anneeRecolte} ligne={rendements.data?.donnees.find((r) => r.culture === c && r.moment_prevision === 'FIN_MAI')} />}
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      </Groupe>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </Groupe>
 
-      {(choisie || opportunite) && (
-        <Detail>
-          {choisie && (
-            <Groupe titre={`${libelle(choisie.culture)} · part des années où la saison couvre le cycle`}>
-              <Lignes>
-                {choisie.cycles.map((o) => <Ligne key={o.option} libelle={`Cycle ${cycleDit(o.option)}${o.cycle_jours ? ` (${o.cycle_jours} j)` : ''}`} valeur={pct(o.proba_cycle_couvert_pct)} detail={o.niveau_adequation ?? undefined} />)}
-              </Lignes>
-            </Groupe>
+          {(choisie || opportunite) && (
+            <>
+              {choisie && (
+                <Groupe titre={`${libelle(choisie.culture)} · part des années où la saison couvre le cycle`}>
+                  <Lignes>
+                    {choisie.cycles.map((o) => <Ligne key={o.option} libelle={`Cycle ${cycleDit(o.option)}${o.cycle_jours ? ` (${o.cycle_jours} j)` : ''}`} valeur={pct(o.proba_cycle_couvert_pct)} detail={o.niveau_adequation ?? undefined} />)}
+                  </Lignes>
+                </Groupe>
+              )}
+              {opportunite && (
+                <Groupe titre="La saison des pluies du département">
+                  <Lignes>
+                    <Ligne libelle="Durée atteinte 4 années sur 5" valeur={nombre(opportunite.duree_saison_courte_j, { unite: 'jours' })} />
+                    <Ligne libelle="Durée moyenne" valeur={nombre(opportunite.duree_saison_moyenne_j, { unite: 'jours' })} />
+                    <Ligne libelle="Plus long cycle conseillé" valeur={nombre(opportunite.cycle_max_conseille_j, { unite: 'jours' })} />
+                    <Ligne libelle="Pluie normale" valeur={nombre(opportunite.pluie_saison_normale_mm, { unite: 'mm' })} detail="1991-2020" />
+                    <Ligne libelle="Eau en saison sèche" valeur={libelle(opportunite.categorie_eau)} />
+                  </Lignes>
+                </Groupe>
+              )}
+            </>
           )}
-          {opportunite && (
-            <Groupe titre="La saison des pluies du département">
-              <Lignes>
-                <Ligne libelle="Durée atteinte 4 années sur 5" valeur={nombre(opportunite.duree_saison_courte_j, { unite: 'jours' })} />
-                <Ligne libelle="Durée moyenne" valeur={nombre(opportunite.duree_saison_moyenne_j, { unite: 'jours' })} />
-                <Ligne libelle="Plus long cycle conseillé" valeur={nombre(opportunite.cycle_max_conseille_j, { unite: 'jours' })} />
-                <Ligne libelle="Pluie normale" valeur={nombre(opportunite.pluie_saison_normale_mm, { unite: 'mm' })} detail="1991-2020" />
-                <Ligne libelle="Eau en saison sèche" valeur={libelle(opportunite.categorie_eau)} />
-              </Lignes>
-            </Groupe>
-          )}
-        </Detail>
-      )}
 
-      <MethodeModele cibles={[{ modele: 'M3', moment: 'FIN_MAI', volet: 'rendement' }]} avertissements={rendements.data?.avertissements}>
-        <p>« 4 années sur 5 » arrondit la part des années (1991-2020) où la saison des pluies couvre tout le cycle ; le pourcentage exact est dans le détail. Comparez les cycles sur cette part, pas sur le niveau.</p>
-        <p>Niveaux indicatifs, à valider avec les conseillers agricoles. Le mil ressort « déconseillé » dans le nord alors qu'il y est cultivé : calibration en cours.</p>
-        <p>Saison courte ou longue, contre-saison : carte des opportunités (seuil de 110 jours, à valider avec l'ANCAR).</p>
-        <p>Récolte attendue : fourchette du rendement, 8 chances sur 10, vue fin mai. Sauf mention « prévision de l'année », c'est la récolte habituelle du département, pas une prévision. Disponible pour l'arachide, le mil, le sorgho, le niébé et le maïs.</p>
-      </MethodeModele>
-    </div>
+          <MethodeModele cibles={[{ modele: 'M3', moment: 'FIN_MAI', volet: 'rendement' }]} avertissements={rendements?.avertissements}>
+            <p>« 4 années sur 5 » arrondit la part des années (1991-2020) où la saison des pluies couvre tout le cycle ; le pourcentage exact est dans le détail. Comparez les cycles sur cette part, pas sur le niveau.</p>
+            <p>Niveaux indicatifs, à valider avec les conseillers agricoles. Le mil ressort « déconseillé » dans le nord alors qu'il y est cultivé : calibration en cours.</p>
+            <p>Saison courte ou longue, contre-saison : carte des opportunités (seuil de 110 jours, à valider avec l'ANCAR).</p>
+            <p>Récolte attendue : fourchette du rendement, 8 chances sur 10, vue fin mai. Sauf mention « prévision de l'année », c'est la récolte habituelle du département, pas une prévision. Disponible pour l'arachide, le mil, le sorgho, le niébé et le maïs.</p>
+          </MethodeModele>
+        </>
+      )} />
   )
 }

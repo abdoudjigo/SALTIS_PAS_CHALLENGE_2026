@@ -112,6 +112,14 @@ export const DERNIERE_ANNEE_PREVISION = 2035
 export const anneesPassees = (campagnes: number[], modele: CodeModele) =>
   campagnes.filter((a) => (modele === 'M1' ? true : modele === 'M3' ? a >= 2001 && (a <= 2015 || a >= 2022) : a >= 2016))
 
+/**
+ * Le seul test « le modèle couvre-t-il cette année ? », pour M1, M3 et M4 : ses années de vérification
+ * (`anneesPassees`), puis l'année à venir et les années prédites jusqu'à DERNIERE_ANNEE_PREVISION.
+ * Hors de ces années : aucun appel à l'API (pas de 404), une phrase « Pas de prévision … pour {année} ».
+ */
+export const anneeCouverte = (campagnes: number[], modele: CodeModele, annee: number) =>
+  (annee >= anneeAVenir(campagnes) && annee <= DERNIERE_ANNEE_PREVISION) || anneesPassees(campagnes, modele).includes(annee)
+
 /** Les 5 cultures du modèle 3 (rendement), dans l'ordre d'affichage. */
 export const CULTURES_RENDEMENT = ['ARACHIDE', 'MIL (SOUNA)', 'SORGHO', 'NIÉBÉ', 'MAÏS']
 

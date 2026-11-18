@@ -2,9 +2,17 @@
 // à venir. La réponse nomme la classe la plus probable et la pluie attendue, puis un conseil indicatif (agriculteur) ;
 // les 3 barres sont toujours visibles. Une année passée sert de vérification : ce qu'on avait prévu, ce qui est tombé,
 // et la courbe de la pluie tombée depuis le 1er juin face à la normale.
+//
+// Pastilles de l'agriculteur (aucun seuil propre à l'écran) :
+// - Pluie attendue face à la normale : suit la classe la plus probable du modèle 1 (`classe_prevue`, API
+//   /previsions/saison) : sèche → attention, normale ou humide → ok. Le pourcentage est affiché, il ne décide rien.
+// - Risque d'année sèche : `proba_seche_pct` > 33 (`anneeSecheARisque`, conseil.ts) → attention (au-dessus du hasard : une saison sur trois par
+//   définition des terciles), sinon ok. Le texte dit « k années sur 10 ».
+// - Année passée : `classe_observee` face à `classe_prevue`. Même classe → ok, sinon info.
+// - Département non choisi ou donnée absente : info.
 import { lazy, Suspense, useMemo } from 'react'
 import { useSuivi } from '../../hooks/donnees'
-import { etatPrevision, usePrevisionSaison } from '../../hooks/previsions'
+import { useActuelles, etatActuel, etatPrevision, usePrevisionSaison } from '../../hooks/previsions'
 import { mm, nombre } from '../../lib/format'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { CLASSES3, couleurPluie, degrade, parts3, tendance } from '../couleurs'
@@ -12,6 +20,9 @@ import { datesDecade, MODELES, natureAnnee } from '../fiabilite'
 import { Attente, ChampAnnee, MethodeModele } from '../previsions'
 import { dire } from '../lecture'
 import { CLASSE_WO, FIN_WO, pctWo, wo } from '../wolof'
+import { anneeSecheARisque, SEUIL_SAISON_INCERTAINE_PCT } from '../conseil'
+import { aLire, puceAnnee, type LigneCheck } from '../fiche'
+import { FicheReponse } from '../FicheReponse'
 import { AFaire, Cle, Cles, Degrade, Detail, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Parts, Reponse, type Action } from '../ui'
 
 const CourbeCumul = lazy(() => import('../CourbeCumul'))
@@ -60,14 +71,17 @@ export default function Saison({ cadre, publier }: PropsMode) {
   const a = useAnnee(cadre, 'M1')
   const { annee, passee } = a
   const requete = usePrevisionSaison(annee)
-  const etat = etatPrevision(requete)
-  const lignes = requete.data?.donnees
+  // Agriculteur : jamais la réponse d'une autre année pendant le chargement (l'ONG garde l'affichage précédent)
+  const agriculteur = cadre.user.role === 'PRODUCTEUR'
+  const actuelles = useActuelles(requete)
+  const etat = agriculteur ? etatActuel(requete) : etatPrevision(requete)
+  const donnees = agriculteur ? actuelles : requete.data
+  const lignes = donnees?.donnees
   const code = cadre.selection ?? cadre.user.code_departement
   const ligne = lignes?.find((l) => l.code_departement === code)
   // Les probabilités viennent de l'état des océans : elles sont les mêmes dans tout le pays
   const probas = ligne ?? lignes?.[0]
   const t = useMemo(() => (probas ? tendance(probas) : null), [probas])
-  const agriculteur = cadre.user.role === 'PRODUCTEUR'
   // Année passée : la pluie tombée depuis le 1er juin, décade par décade
   const { data: suivi } = useSuivi(passee ? code : null, passee ? annee : undefined)
   const finSuivi = suivi?.filter((l) => l.cumul_depuis_juin_mm !== null && l.cumul_normale_depuis_juin_mm).sort((x, y) => y.numero_decade_annee - x.numero_decade_annee)[0]
@@ -95,7 +109,7 @@ export default function Saison({ cadre, publier }: PropsMode) {
         ] : t.classe === 'normale'
           ? [{ texte: 'Suivez le calendrier de semis habituel.', vers: { mode: 'semis', libelle: 'Quand semer ?' } }]
           : [{ texte: 'Un cycle plus long a plus de chances d’aller jusqu’au bout.', vers: { mode: 'semer', libelle: 'Que semer ?' } }]),
-        ...((t.proba ?? 100) < 45 ? [{ texte: 'Les trois cas restent possibles : ne misez pas tout sur un seul.' }] : []),
+        ...((t.proba ?? 100) < SEUIL_SAISON_INCERTAINE_PCT ? [{ texte: 'Les trois cas restent possibles : ne misez pas tout sur un seul.' }] : []),
       ]
   const faire = !t || !agriculteur || passee ? [] : actions.map((x) => String(x.texte))
   const cleFaire = faire.join('|')
@@ -103,10 +117,28 @@ export default function Saison({ cadre, publier }: PropsMode) {
     ? `${annee} : prévu ${t.classe}${ligne?.pluie_observee_mm != null ? `, tombé ${mm(ligne.pluie_observee_mm)}` : ''}`
     : `${annee} : plutôt ${t.classe}${ligne?.pluie_prevue_mm != null ? `, environ ${mm(ligne.pluie_prevue_mm)}` : ''}`
 
+  // Agriculteur : la réponse en 1 à 3 lignes, lues après le titre (règles en tête du fichier)
+  const pSeche = probas?.proba_seche_pct ?? null
+  const kSur10 = pSeche === null ? 0 : Math.round(pSeche / 10)
+  const lignesFiche: LigneCheck[] = !t ? [] : [
+    !ligne ? { etat: 'info', texte: 'Touchez votre département pour sa pluie attendue' }
+      : ecart === null ? { etat: 'info', texte: 'Pluie attendue non disponible ici' }
+        : { etat: t.classe === 'sèche' ? 'attention' : 'ok', texte: `Pluie ${passee ? 'prévue' : 'attendue'} : **${nombre(ecart + 0, { signe: true })} %** face à la normale` },
+    ...(pSeche === null ? [] : [{
+      etat: (anneeSecheARisque(pSeche) ? 'attention' : 'ok') as LigneCheck['etat'],
+      texte: `Risque d’année sèche : **${kSur10 === 0 ? 'moins d’1 année sur 10' : `${kSur10} année${kSur10 > 1 ? 's' : ''} sur 10`}**`,
+    }]),
+    ...(passee && ligne ? [!ligne.classe_observee
+      ? { etat: 'info' as const, texte: 'Saison réellement tombée non disponible' }
+      : { etat: (ligne.classe_observee === t.classe ? 'ok' : 'info') as LigneCheck['etat'],
+        texte: `Tombée : saison **${ligne.classe_observee}**${ligne.classe_observee === t.classe ? ', comme prévu' : `, prévue ${t.classe}`}` }] : []),
+  ]
+  const cleLignes = lignesFiche.map((l) => l.texte).join('|')
+
   const sortie = useMemo<Sortie>(() => {
     const parCode = new Map(lignes?.map((l) => [l.code_departement, l]))
     return {
-      aEcouter: t && probas ? ecouterSaison(annee, t.classe, t.proba, probas, ligne, a.tendance, passee, [`${titre}.`, phrase, ...faire]) : undefined,
+      aEcouter: agriculteur ? (t ? aLire(titre, lignesFiche) : undefined) : t && probas ? ecouterSaison(annee, t.classe, t.proba, probas, ligne, a.tendance, passee, [`${titre}.`, phrase, ...faire]) : undefined,
       aEcouterWo: t ? ecouterSaisonWo(annee, t.classe, t.proba, ligne, a.tendance, passee) : undefined,
       resume,
       vue: {
@@ -119,9 +151,66 @@ export default function Saison({ cadre, publier }: PropsMode) {
         return x ? { titre: x.departement, lignes: [`Pluie prévue : ${mm(x.pluie_prevue_mm)}`, `Entre ${nombre(x.pluie_basse_mm)} et ${mm(x.pluie_haute_mm)} · normale ${mm(x.pluie_normale_mm)}`] } : null
       },
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `faire` est tiré de `t` et du profil
-  }, [lignes, code, cadre, annee, t, ligne, probas, a.tendance, passee, titre, phrase, resume, cleFaire])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `faire` et `lignesFiche` sont tirés de `t`, de la ligne et du profil
+  }, [lignes, code, cadre, annee, t, ligne, probas, a.tendance, passee, titre, phrase, resume, cleFaire, cleLignes, agriculteur])
   usePublier(publier, sortie)
+
+  if (agriculteur)
+    return (
+      <FicheReponse cadre={cadre} mode="saison" cle={`${code}-${annee}`} puces={[puceAnnee(cadre, a, ligne)]} titre={titre} teinte={t?.couleur} lignes={lignesFiche}
+        etat={<Attente etat={etat} objet={`la saison ${annee}`} />} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo}
+        detail={t ? (
+          <>
+            {phrase && <p className="mt-4 text-sm leading-relaxed text-white/70">{phrase}</p>}
+            <AFaire aller={cadre.aller} actions={actions} note={passee ? undefined : 'Conseil indicatif, à confirmer avec votre conseiller agricole.'} />
+
+            {probas && <div className="mt-5"><Parts parts={parts3(probas)} /></div>}
+
+            {t && (
+              <Cles>
+                <Cle valeur={nombre(t.proba)} unite="%" libelle={`de chances : saison ${t.classe}`} teinte={t.couleur} />
+                {ligne && <Cle valeur={nombre(passee ? ligne.pluie_observee_mm : ligne.pluie_prevue_mm)} unite="mm" libelle={passee ? 'pluie tombée' : 'pluie attendue'} />}
+                {ligne && <Cle valeur={nombre(ligne.pluie_normale_mm)} unite="mm" libelle="en année normale" />}
+              </Cles>
+            )}
+
+            {t && <LigneFiabilite parties={[natureAnnee(annee, a.aVenir, ligne), a.tendance ? 'prévision de tendance' : MODELES.M1.fiabilite]} />}
+            {ligne && (
+              <>
+                <Groupe titre={`Pluie de la saison · ${ligne.departement}`}>
+                  <Fourchette bas={ligne.pluie_basse_mm} haut={ligne.pluie_haute_mm} valeur={ligne.pluie_prevue_mm} repere={ligne.pluie_normale_mm} couleur={CLASSES3.humide.couleur}
+                    description={`Pluie prévue ${mm(ligne.pluie_prevue_mm)}, entre ${mm(ligne.pluie_basse_mm)} et ${mm(ligne.pluie_haute_mm)} ; normale ${mm(ligne.pluie_normale_mm)}`} />
+                  <p className="mt-1.5 mb-2 text-2xs text-white/60">Bande : fourchette · point : prévision · trait : normale</p>
+                  <Lignes>
+                    <Ligne libelle="Pluie prévue" valeur={mm(ligne.pluie_prevue_mm)} />
+                    <Ligne libelle="Fourchette" valeur={ligne.pluie_basse_mm === null || ligne.pluie_haute_mm === null ? 'non disponible' : `${nombre(ligne.pluie_basse_mm)} – ${mm(ligne.pluie_haute_mm)}`} detail="8 chances sur 10" />
+                    <Ligne libelle="Normale" valeur={mm(ligne.pluie_normale_mm)} detail="moyenne 1991-2020" />
+                    {passee && <Ligne libelle="Réellement tombée" valeur={ligne.pluie_observee_mm === null ? 'non disponible' : mm(ligne.pluie_observee_mm)} />}
+                  </Lignes>
+                </Groupe>
+                {passee && (
+                  <Groupe titre="Pluie tombée depuis le 1er juin, face à la normale">
+                    {suivi === undefined ? <p className="text-xs text-white/60">Chargement…</p> : !finSuivi ? <p className="text-xs text-white/60">Suivi par périodes de 10 jours non disponible pour ce département.</p> : (
+                      <>
+                        <Suspense fallback={<div className="h-44" />}>
+                          <CourbeCumul lignes={suivi} description={`Pluie cumulée depuis le 1er juin ${annee} à ${ligne.departement}, comparée à la normale. ${phraseCourbe ?? ''}`} />
+                        </Suspense>
+                        <p className="mt-1 text-2xs text-white/60">Trait plein : pluie tombée · pointillés : normale 1991-2020</p>
+                        {phraseCourbe && <p className="mt-2 text-sm text-white/80">{phraseCourbe}</p>}
+                      </>
+                    )}
+                  </Groupe>
+                )}
+              </>
+            )}
+            <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }]} avertissements={donnees?.avertissements}>
+              <p>Indicatif. « Plutôt » : c'est la classe la plus probable, pas une certitude ; les trois chances se lisent ensemble.</p>
+              <p>{passee ? 'Année passée rejouée : le modèle ne connaissait pas cette saison.' : a.tendance ? `${annee} : l'océan de mars à mai n'est pas encore connu.` : `Prévision ${annee} faite avec l'état des océans de mars à mai (NOAA). Aucune pluie ${annee} n'est encore observée.`} Les chances sont les mêmes dans tout le pays ; seule la pluie attendue change d'un département à l'autre.</p>
+              {agriculteur && !passee && <p>Conseils de semis : règles simples tirées de la classe la plus probable, à faire valider par l'ANCAR. Courbe : suivi décadaire (CHIRPS), cumul des décades de juin à octobre.</p>}
+            </MethodeModele>
+          </>
+        ) : undefined} />
+    )
 
   return (
     <div>
@@ -173,7 +262,7 @@ export default function Saison({ cadre, publier }: PropsMode) {
         </Detail>
       )}
 
-      <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }]} avertissements={requete.data?.avertissements}>
+      <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }]} avertissements={donnees?.avertissements}>
         <p>Indicatif. « Plutôt » : c'est la classe la plus probable, pas une certitude ; les trois chances se lisent ensemble.</p>
         <p>{passee ? 'Année passée rejouée : le modèle ne connaissait pas cette saison.' : a.tendance ? `${annee} : l'océan de mars à mai n'est pas encore connu.` : `Prévision ${annee} faite avec l'état des océans de mars à mai (NOAA). Aucune pluie ${annee} n'est encore observée.`} Les chances sont les mêmes dans tout le pays ; seule la pluie attendue change d'un département à l'autre.</p>
         {agriculteur && !passee && <p>Conseils de semis : règles simples tirées de la classe la plus probable, à faire valider par l'ANCAR. Courbe : suivi décadaire (CHIRPS), cumul des décades de juin à octobre.</p>}

@@ -23,6 +23,8 @@ interface PropsFenetre {
   /** l'essentiel à lire à voix haute (bouton « Écouter ») */
   aEcouter?: string[]
   aEcouterWo?: string[]
+  /** faux pour l'agriculteur : sa fiche a ses propres boutons d'écoute (pied de fiche), une seule commande par fenêtre */
+  ecouteEnTete?: boolean
   large: boolean
   hauteurEcran: number
   cran: Cran
@@ -31,7 +33,7 @@ interface PropsFenetre {
   children: ReactNode
 }
 
-export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo, large, hauteurEcran, cran, onCran, legende, children }: PropsFenetre) {
+export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo, ecouteEnTete = true, large, hauteurEcran, cran, onCran, legende, children }: PropsFenetre) {
   // Changer de fonctionnalité arrête la lecture en cours
   useEffect(() => () => arreter(), [cle])
   // Réduite pour une fonctionnalité donnée : en changer rouvre la fenêtre
@@ -112,7 +114,8 @@ export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo
             {cran === 2 ? <ChevronDown className="size-5 shrink-0 text-white/50" aria-hidden /> : <ChevronUp className="size-5 shrink-0 text-white/50" aria-hidden />}
           </span>
         </button>
-        <Mascottes fr={aEcouter} wo={aEcouterWo} className="absolute top-2 right-12" />
+        {/* Posées sur la barre du tiroir, à gauche du chevron : elles ne recouvrent jamais le contenu */}
+        {ecouteEnTete && <div className="absolute top-2 right-12"><Mascottes fr={aEcouter} wo={aEcouterWo} /></div>}
         <div key={cle} className={clsx('panneau-entree min-h-0 flex-1 overscroll-contain border-t border-white/[0.09] px-4 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]', cran === 0 && tirage === null ? 'invisible overflow-hidden' : 'overflow-y-auto')}>
           {children}
           {legende && <div className="mt-5 border-t border-white/[0.09] pt-4">{legende}</div>}
@@ -137,7 +140,7 @@ export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo
         className="flex h-11 shrink-0 cursor-grab touch-none items-center gap-2.5 border-b border-white/[0.09] pr-1 pl-4 select-none active:cursor-grabbing">
         <Icone className="size-4 shrink-0 text-soleil-500" aria-hidden />
         <span className="flex-1 truncate text-2xs font-medium tracking-etiquette text-white/70 uppercase">{titre}</span>
-        <Mascottes fr={aEcouter} wo={aEcouterWo} />
+        {ecouteEnTete && <Mascottes fr={aEcouter} wo={aEcouterWo} />}
         <GripHorizontal className="size-4 text-white/25" aria-hidden />
         <button type="button" onClick={() => setReduitePour(cle)} aria-label="Réduire la fenêtre (Échap)" title="Réduire (Échap)" className="grid size-11 place-items-center rounded-lg text-white/60 transition hover:text-white">
           <Minus className="size-4" />

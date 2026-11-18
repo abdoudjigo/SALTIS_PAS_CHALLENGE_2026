@@ -7,6 +7,7 @@
 //   « Natural » d'Edge, « Google français » de Chrome, voix « Premium » ou « Améliorée » d'Apple) et on écarte
 //   les voix robotiques (eSpeak).
 import { useSyncExternalStore } from 'react'
+import { api } from '../api'
 
 const LONGUEUR_MAX = 180 // au-delà, une phrase est recoupée aux virgules
 
@@ -62,7 +63,7 @@ export function decouper(texte: string): string[] {
 export function lire(phrases: string[]) {
   if (!lectureDisponible) return
   const synth = window.speechSynthesis
-  synth.cancel()
+  arreter() // une seule voix : coupe aussi le wolof en cours, d'où qu'il vienne (mascotte ou pied de fenêtre)
   const morceaux = phrases.flatMap(decouper)
   if (!morceaux.length) return notifier(null)
   const voix = meilleureVoix()
@@ -88,6 +89,19 @@ export function lireAudio(base64: string) {
   audio.onerror = () => notifier(null)
   void audio.play().catch(() => notifier(null))
   notifier('wo')
+}
+
+// Voix wolof déjà synthétisées, par texte : rejouer ne refait pas l'appel (mascotte et pied de fenêtre partagent ce cache)
+const cacheWolof = new Map<string, string>()
+
+/** Lit un texte en wolof : depuis le cache, sinon par le Space (`preparer` est appelé avant l'attente). Rejette si le Space ne répond pas. */
+export async function lireWolof(texte: string, preparer?: () => void) {
+  const connu = cacheWolof.get(texte)
+  if (connu) return lireAudio(connu)
+  preparer?.()
+  const { audio_wo_base64 } = await api.voixParler(texte)
+  cacheWolof.set(texte, audio_wo_base64)
+  lireAudio(audio_wo_base64)
 }
 
 export function arreter() {
@@ -151,6 +165,8 @@ export function pourLOreille(texte: string): string {
     .replace(/(\d)\s?mm\b/g, '$1 millimètres')
     .replace(/(\d)\s?kg\/ha\b/g, '$1 kilos par hectare')
     .replace(/(\d)\s?kg\b/g, '$1 kilos')
+    // « 1 ha », « 0,5 ha » : hectare au singulier (moins de 2)
+    .replace(/(^|[^\d,])([01](?:,\d+)?)\s?ha\b/g, '$1$2 hectare')
     .replace(/(\d)\s?ha\b/g, '$1 hectares')
     .replace(/\s?·\s?/g, ', ')
     .replace(/\s*\(([^)]+)\)/g, ' $1') // « Mil (souna) » → « Mil souna »

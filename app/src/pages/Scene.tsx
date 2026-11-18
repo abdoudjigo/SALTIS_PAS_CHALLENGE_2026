@@ -7,7 +7,7 @@ import { config } from '../config'
 import { useReferentiels } from '../hooks/donnees'
 import { usePrechargerDepartement } from '../hooks/precharger'
 import type { Survol, VueCarte } from '../scene/Carte'
-import { cadrer, type Cadre, type Fonctionnalite, type Infobulle, type PropsMode, type Sortie } from '../scene/cadre'
+import { cadrer, questionDe, type Cadre, type Fonctionnalite, type Infobulle, type PropsMode, type Sortie } from '../scene/cadre'
 import { Dock } from '../scene/Dock'
 import { hauteurCran, type Cran } from '../scene/crans'
 import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/Fenetre'
@@ -45,15 +45,15 @@ const BesoinsPays = mode(() => import('../scene/modes/BesoinsPays'))
 const Repartir = mode(() => import('../scene/modes/Repartir'))
 
 const F = {
-  parcelle: { id: 'parcelle', titre: 'Ma parcelle', question: 'Où est mon champ ?', phrase: 'Se localiser : le sol, les risques, les cultures et la campagne de son champ.', icone: MapPinned, composant: Parcelle },
+  parcelle: { id: 'parcelle', titre: 'Ma parcelle', question: questionDe('parcelle'), phrase: 'Se localiser : le sol, les risques, les cultures et la campagne de son champ.', icone: MapPinned, composant: Parcelle },
   // Un bouton par modèle d'IA (ml/MODELES.md), et deux boutons qui en combinent plusieurs : « Ma parcelle », « Préparer la campagne »
-  saison: { id: 'saison', titre: 'La saison qui vient', question: 'Va-t-il bien pleuvoir ?', phrase: 'La pluie de l’année choisie : sèche, normale ou humide, et combien.', icone: CloudSun, composant: Saison },
-  semis: { id: 'semis', titre: 'Quand semer', question: 'Quand semer ?', phrase: 'La période de semis la moins risquée, culture par culture.', icone: CalendarDays, composant: QuandSemer },
+  saison: { id: 'saison', titre: 'La saison qui vient', question: questionDe('saison'), phrase: 'La pluie de l’année choisie : sèche, normale ou humide, et combien.', icone: CloudSun, composant: Saison },
+  semis: { id: 'semis', titre: 'Quand semer', question: questionDe('semis'), phrase: 'La période de semis la moins risquée, culture par culture.', icone: CalendarDays, composant: QuandSemer },
   alerte: { id: 'alerte', titre: 'Alerte récolte', phrase: 'Les départements où la récolte risque de chuter.', icone: TriangleAlert, composant: AlerteRecolte },
   campagne: { id: 'campagne', titre: 'Préparer la campagne', phrase: 'Pluie attendue, risque pour la récolte, vulnérabilité : où regarder d’abord.', icone: ClipboardList, composant: Campagne },
-  semer: { id: 'semer', titre: 'Quelle culture', question: 'Que semer ?', phrase: 'Les cultures adaptées à son département, leurs cycles et la récolte attendue.', icone: Sprout, composant: Semer },
-  surface: { id: 'surface', titre: 'Mes besoins', question: 'Combien m’en faut-il ?', phrase: 'Sa culture, sa surface, son année : ce qu’il faut, et ce qu’on peut en attendre.', icone: Scale, composant: Surface },
-  contreSaison: { id: 'contreSaison', titre: 'Contre-saison', question: 'Puis-je cultiver en saison sèche ?', phrase: 'L’eau disponible en saison sèche près de vos terres, et ce qu’elle permet.', icone: Droplets, composant: ContreSaison },
+  semer: { id: 'semer', titre: 'Quelle culture', question: questionDe('semer'), phrase: 'Les cultures adaptées à son département, leurs cycles et la récolte attendue.', icone: Sprout, composant: Semer },
+  surface: { id: 'surface', titre: 'Mes besoins', question: questionDe('surface'), phrase: 'Sa culture, sa surface, son année : ce qu’il faut, et ce qu’on peut en attendre.', icone: Scale, composant: Surface },
+  contreSaison: { id: 'contreSaison', titre: 'Contre-saison', question: questionDe('contreSaison'), phrase: 'L’eau disponible en saison sèche près de vos terres, et ce qu’elle permet.', icone: Droplets, composant: ContreSaison },
   vulnerabilite: { id: 'vulnerabilite', titre: 'Vulnérabilité', phrase: 'Les départements où une mauvaise saison pèse le plus.', icone: ShieldAlert, composant: Vulnerabilite },
   besoins: { id: 'besoins', titre: 'Besoins du pays', phrase: 'Semences et engrais nécessaires, département par département.', icone: BarChart3, composant: BesoinsPays },
   repartir: { id: 'repartir', titre: 'Répartir un stock', phrase: 'Du dépôt aux départements : la carte trace la proposition.', icone: Truck, composant: Repartir },
@@ -148,7 +148,7 @@ export default function Scene() {
     const minuteur = window.setTimeout(() => liste.forEach((f) => void chargeurs.get(f.composant)?.()), 1200)
     return () => clearTimeout(minuteur)
   }, [liste])
-  usePrechargerDepartement(selection ?? user?.code_departement ?? null, cadre?.annee, culture, user?.role === 'PRODUCTEUR' && cadre !== null)
+  usePrechargerDepartement(selection ?? user?.code_departement ?? null, cadre?.annee, culture, user?.role === 'PRODUCTEUR' && cadre !== null, cadre?.ref.campagnes)
   // Le même élément tant que la fonctionnalité et le cadre ne changent pas : quand la fonctionnalité publie sa
   // sortie, la scène se redessine (carte, légende, résumé) sans redessiner la fonctionnalité elle-même
   const Composant = actif.composant
@@ -201,7 +201,7 @@ export default function Scene() {
 
       {/* La fonctionnalité s'ouvre dans une fenêtre flottante (pop-up), un tiroir sur téléphone */}
       {cadre && (
-        <Fenetre cle={actif.id} titre={actif.titre} icone={actif.icone} resume={sortie.resume} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo} large={large} hauteurEcran={ecran.h} cran={cran} onCran={setCran} legende={sansCarte ? undefined : sortie.legende}>
+        <Fenetre cle={actif.id} titre={actif.titre} icone={actif.icone} resume={sortie.resume} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo} ecouteEnTete={user?.role !== 'PRODUCTEUR'} large={large} hauteurEcran={ecran.h} cran={cran} onCran={setCran} legende={sansCarte ? undefined : sortie.legende}>
           {contenu}
         </Fenetre>
       )}

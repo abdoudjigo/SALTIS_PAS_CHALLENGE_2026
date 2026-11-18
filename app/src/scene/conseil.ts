@@ -55,28 +55,54 @@ export function repliCulture(demandee: string | null, montree: string | null) {
   return `${majuscule(laCulture(demandee))} n’est pas couvert${FEMININ.test(demandee) ? 'e' : ''} ici : on montre ${laCulture(montree)}.`
 }
 
+// --- Choix de la culture ------------------------------------------------------------------------------
+/**
+ * La culture d'un écran : celle choisie (puce, cadre.culture) si l'écran la connaît ; sinon la première de sa liste.
+ * La première de la liste n'est qu'un repli quand aucune culture choisie n'est connue ici.
+ */
+export function cultureRetenue(demandee: string | null, liste: string[]): string | null {
+  return demandee !== null && liste.includes(demandee) ? demandee : liste[0] ?? null
+}
+
+// --- Modèle 1 : la saison ------------------------------------------------------------------------------
+/** Au-dessus de cette probabilité d'année sèche, on signale (une saison sur trois par définition des terciles). */
+export const SEUIL_ANNEE_SECHE_PCT = 33
+export const anneeSecheARisque = (probaSechePct: number) => probaSechePct > SEUIL_ANNEE_SECHE_PCT
+/** Sous cette probabilité pour la classe la plus probable, les trois cas restent possibles (conseil, pas une pastille). */
+export const SEUIL_SAISON_INCERTAINE_PCT = 45
+
 // --- Modèle 4 : la fenêtre de semis -----------------------------------------------------------------
-/** En dessous de ce risque total, une décade voisine de la meilleure fait encore partie du bon moment. */
+/** Sous ce risque total (strictement), une décade est un « bon moment » pour semer. */
 export const RISQUE_BON_MOMENT = 20
-/** Le bon moment : la décade conseillée et ses voisines immédiates tant que le risque reste bas. */
+/** La seule règle du bon moment, pour la frise, la checklist et le titre : risque total < RISQUE_BON_MOMENT. 20 % pile n'en est pas un. */
+export const estBonMoment = (d: Pick<RisqueSemis, 'risque_total_pct'> | undefined) =>
+  d !== undefined && d.risque_total_pct !== null && d.risque_total_pct < RISQUE_BON_MOMENT
+/** Pluie de semis retenue par le modèle 4 (mm) : on sème après une pluie d'au moins ce cumul. */
+export const PLUIE_SEMIS_MM = 20
+
+/**
+ * Le bon moment : la décade conseillée et ses voisines immédiates tant qu'elles restent des bons moments.
+ * `sur` : la décade conseillée est elle-même un bon moment ; sinon, aucune période n'est sûre.
+ */
 export function fenetre(decades: RisqueSemis[]) {
   const i = decades.findIndex((d) => d.decade_conseillee)
   if (i < 0) return null
-  const bonne = (d: RisqueSemis | undefined) => d !== undefined && d.risque_total_pct !== null && d.risque_total_pct < RISQUE_BON_MOMENT
   let [de, a] = [i, i]
-  while (bonne(decades[de - 1])) de--
-  while (bonne(decades[a + 1])) a++
-  return { de, a, meilleure: decades[i] }
+  while (estBonMoment(decades[de - 1])) de--
+  while (estBonMoment(decades[a + 1])) a++
+  return { de, a, meilleure: decades[i], sur: estBonMoment(decades[i]) }
 }
 
+/** Les décades du modèle 4 d'une culture, dans l'ordre. */
+export const decadesCulture = (lignes: RisqueSemis[] | undefined, culture: string | null) =>
+  (lignes ?? []).filter((l) => l.culture === culture).sort((a, b) => a.decade_semis - b.decade_semis)
 
 /** La fenêtre de semis d'une culture et sa date de début (« 21 juin »), à partir des décades du modèle 4. */
 export function fenetreCulture(lignes: RisqueSemis[] | undefined, culture: string | null) {
-  const decades = (lignes ?? []).filter((l) => l.culture === culture).sort((a, b) => a.decade_semis - b.decade_semis)
+  const decades = decadesCulture(lignes, culture)
   const f = fenetre(decades)
   if (!f) return null
-  const sur = f.meilleure.risque_total_pct !== null && f.meilleure.risque_total_pct < RISQUE_BON_MOMENT
-  return { ...f, decades, sur, debut: decades[f.de].decade_semis, fin: decades[f.a].decade_semis }
+  return { ...f, decades, debut: decades[f.de].decade_semis, fin: decades[f.a].decade_semis }
 }
 
 // --- Doses -------------------------------------------------------------------------------------------

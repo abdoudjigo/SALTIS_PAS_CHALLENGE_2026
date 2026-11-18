@@ -4,6 +4,7 @@
 import clsx from 'clsx'
 import { ChevronDown, Info } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
+import { VIDE } from '../lib/format'
 
 // --- Niveau 1 : la réponse -----------------------------------------------------------------------
 /** `cle` change avec le département ou la campagne : la réponse se met à jour par un court fondu. */
@@ -109,7 +110,8 @@ export function Ligne({ libelle, valeur, detail, teinte }: { libelle: string; va
     <div className="flex items-baseline justify-between gap-4 py-1.5">
       <dt className="text-sm text-white/60">{libelle}</dt>
       <dd className="text-right">
-        <span className="text-sm font-medium text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>{valeur}</span>
+        {/* Une valeur absente se dit « non disponible », jamais 0 ni un tiret seul */}
+        <span className="text-sm font-medium text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>{valeur === VIDE ? 'non disponible' : valeur}</span>
         {detail && <span className="block text-2xs text-white/45">{detail}</span>}
       </dd>
     </div>

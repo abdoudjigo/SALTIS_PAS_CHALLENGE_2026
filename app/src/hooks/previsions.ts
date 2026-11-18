@@ -15,8 +15,15 @@ export const optionsPrevisionRendement = (code: string | null, annee: number | u
   queryOptions({ queryKey: ['prevision-rendement', code, annee], queryFn: () => api.previsionRendement(code!, annee!), enabled: Boolean(code && annee), staleTime: LONG, placeholderData: keepPreviousData })
 export const usePrevisionRendement = (code: string | null, annee: number | undefined) => useQuery(optionsPrevisionRendement(code, annee))
 
-export const useAlerteRecolte = (annee: number | undefined, moment: Moment, culture?: string | null) =>
-  useQuery({ queryKey: ['alerte-recolte', annee, moment, culture ?? null], queryFn: () => api.alerteRecolte(annee!, moment, culture), enabled: Boolean(annee), staleTime: LONG, placeholderData: keepPreviousData })
+export const optionsAlerteRecolte = (annee: number | undefined, moment: Moment, culture?: string | null) =>
+  queryOptions({ queryKey: ['alerte-recolte', annee, moment, culture ?? null], queryFn: () => api.alerteRecolte(annee!, moment, culture), enabled: Boolean(annee), staleTime: LONG, placeholderData: keepPreviousData })
+export const useAlerteRecolte = (annee: number | undefined, moment: Moment, culture?: string | null) => useQuery(optionsAlerteRecolte(annee, moment, culture))
+/**
+ * Agriculteur : la récolte attendue vue fin mai (modèle 3), tous les départements d'une année, filtrée ensuite par
+ * département. La route par département répond 404 quand un département n'a pas de série (ex. Podor en 2001) ;
+ * celle-ci répond pour toute année couverte : aucune erreur dans la console, une seule requête par année.
+ */
+export const useRecolteFinMai = (annee: number | undefined) => useAlerteRecolte(annee, 'FIN_MAI')
 
 /** `annee` null = année type. Sans `culture` : toutes les cultures du département. */
 export const optionsRisqueSemis = (code: string | null, annee: number | null, culture?: string | null) =>
@@ -36,6 +43,15 @@ export const useFiabilite = (modele: CodeModele) =>
  * - `erreur` : l'API ne répond pas.
  */
 export type EtatPrevision = 'chargement' | 'ok' | 'non-chargee' | 'absente' | 'erreur'
+
+/**
+ * Agriculteur : la réponse de la sélection en cours seulement. Pendant le chargement d'une autre sélection,
+ * React Query garde l'ancienne réponse (`placeholderData`) : on ne l'affiche pas, l'état de chargement s'affiche.
+ */
+/** Écrit en hook : le compilateur React tient sa valeur pour figée, comme celle de useQuery. */
+export const useActuelles = <T,>(requete: Pick<UseQueryResult<T>, 'data' | 'isPlaceholderData'>): T | undefined => (requete.isPlaceholderData ? undefined : requete.data)
+export const etatActuel = (requete: Pick<UseQueryResult<unknown>, 'data' | 'error' | 'isPlaceholderData'>): EtatPrevision =>
+  requete.isPlaceholderData ? 'chargement' : etatPrevision(requete)
 
 export function etatPrevision(requete: Pick<UseQueryResult<unknown>, 'data' | 'error' | 'isPlaceholderData'>): EtatPrevision {
   const { error } = requete
