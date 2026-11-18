@@ -3,17 +3,67 @@
 // Pas de cartes dans les cartes : des filets fins, l'espace et la typographie font la structure.
 import clsx from 'clsx'
 import { ChevronDown, Info } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 
 // --- Niveau 1 : la réponse -----------------------------------------------------------------------
 /** `cle` change avec le département ou la campagne : la réponse se met à jour par un court fondu. */
-export function Reponse({ cle, titre, phrase, children }: { cle?: string | number | null; titre: string; phrase?: ReactNode; children?: ReactNode }) {
-  return (
+/** `vivant` : la réponse est annoncée par les lecteurs d'écran quand elle change (fenêtres de l'agriculteur). */
+export function Reponse({ cle, titre, phrase, children, vivant = false }: { cle?: string | number | null; titre: string; phrase?: ReactNode; children?: ReactNode; vivant?: boolean }) {
+  const contenu = (
     <header key={cle ?? titre} className="maj">
       <h2 className="font-titre text-titre-fiche font-semibold text-white">{titre}</h2>
       {phrase && <p className="mt-1.5 text-sm leading-relaxed text-white/70">{phrase}</p>}
       {children && <div className="mt-4 grid grid-cols-3 gap-x-4 gap-y-3">{children}</div>}
     </header>
+  )
+  return vivant ? <div aria-live="polite">{contenu}</div> : contenu
+}
+
+/** Les chiffres clés posés sous le « que faire » : le pourquoi de la réponse. */
+export const Cles = ({ children }: { children: ReactNode }) => <div className="mt-5 grid grid-cols-3 gap-x-4 gap-y-3">{children}</div>
+
+export interface Action {
+  texte: ReactNode
+  /** ouvre une autre fonctionnalité pour aller plus loin */
+  vers?: { mode: string; libelle: string }
+}
+
+/**
+ * « Que faire » : 1 à 3 actions courtes, chacune commence par un verbe, placées juste sous la réponse.
+ * `note` : une réserve d'une ligne (conseil indicatif). Pas de carte dans la carte : un filet, comme les groupes.
+ */
+export function AFaire({ actions, aller, note }: { actions: Action[]; aller: (mode: string) => void; note?: string }) {
+  if (!actions.length) return null
+  return (
+    <section className="mt-4 border-t border-white/[0.09] pt-3.5" aria-label="Que faire">
+      <h3 className={ETIQUETTE}>Que faire</h3>
+      <ol className="mt-2 space-y-1">
+        {actions.map((a, i) => (
+          <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-white">
+            <span className="mt-px w-4 shrink-0 text-xs font-semibold text-soleil-500 tabular-nums" aria-hidden>{i + 1}.</span>
+            <span className="min-w-0 flex-1">
+              {a.texte}
+              {a.vers && <> <Lien onClick={() => aller(a.vers!.mode)} compact>{a.vers.libelle}</Lien></>}
+            </span>
+          </li>
+        ))}
+      </ol>
+      {note && <p className="mt-1.5 text-2xs leading-snug text-white/60">{note}</p>}
+    </section>
+  )
+}
+
+/**
+ * D'où vient la réponse et ce qu'elle vaut, en une ligne : « Prévision océan (fin mai 2026) · fiabilité modeste ».
+ * `marques` : statuts posés devant (dose à confirmer…). Ne remplace pas la méthode, repliée plus bas.
+ */
+export function LigneFiabilite({ parties, marques = [] }: { parties: (string | null | undefined | false)[]; marques?: string[] }) {
+  const texte = parties.filter(Boolean).join(' · ')
+  return (
+    <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs leading-snug text-white/60">
+      {marques.map((m) => <Marque key={m}>{m}</Marque>)}
+      <span>{texte}</span>
+    </p>
   )
 }
 
@@ -195,6 +245,8 @@ export function Segments<T extends string>({ libelle, options, valeur, onChange 
  */
 export function SaisieAnnee({ annee, onChange, passees, min, max, nature, className }: { annee: number; onChange: (annee: number) => void; passees: number[]; min: number; max: number; nature: string; className?: string }) {
   const [texte, setTexte] = useState(annee >= min ? String(annee) : '')
+  // Le message sous le champ (nature de l'année ou erreur) décrit toujours le champ
+  const idNature = useId()
   // L'année a changé ailleurs (liste des années passées) : le champ suit
   const [suivie, setSuivie] = useState(annee)
   if (suivie !== annee) {
@@ -212,7 +264,7 @@ export function SaisieAnnee({ annee, onChange, passees, min, max, nature, classN
     <div className={className}>
       <div className="grid grid-cols-2 gap-2">
         <Champ libelle={`Année à prévoir (${min}-${max})`}>
-          <input className="champ-scene tabular-nums" type="number" inputMode="numeric" min={min} max={max} step={1} placeholder={String(min)} value={texte} aria-invalid={horsPlage} aria-describedby="annee-nature"
+          <input className="champ-scene tabular-nums" type="number" inputMode="numeric" min={min} max={max} step={1} placeholder={String(min)} value={texte} aria-invalid={horsPlage} aria-describedby={idNature}
             onChange={(e) => taper(e.target.value)} />
         </Champ>
         <Champ libelle="Ou une année passée">
@@ -223,15 +275,16 @@ export function SaisieAnnee({ annee, onChange, passees, min, max, nature, classN
         </Champ>
       </div>
       {horsPlage
-        ? <p role="alert" className="mt-2 text-xs leading-relaxed text-soleil-500">Les prévisions vont de {min} à {max}. Tapez une année dans cette plage.</p>
-        : <p id="annee-nature" className="mt-2 text-xs leading-relaxed text-white/65">{nature}</p>}
+        ? <p id={idNature} role="alert" className="mt-2 text-xs leading-relaxed text-soleil-500">Les prévisions vont de {min} à {max}. Tapez une année dans cette plage.</p>
+        : <p id={idNature} className="mt-2 text-xs leading-relaxed text-white/65">{nature}</p>}
     </div>
   )
 }
 
 /** Lien d'action dans le texte : ouvre une autre fonctionnalité. */
-export function Lien({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="inline-flex min-h-11 items-center text-sm font-medium text-soleil-500 underline-offset-4 hover:underline">{children}</button>
+export function Lien({ children, onClick, compact = false }: { children: ReactNode; onClick: () => void; compact?: boolean }) {
+  // `compact` : dans une phrase, la ligne garde sa hauteur ; la cible tactile reste de 44 px par une marge négative
+  return <button type="button" onClick={onClick} className={clsx('inline-flex items-center text-sm font-medium text-soleil-500 underline-offset-4 hover:underline', compact ? '-my-3 min-h-11 align-baseline whitespace-nowrap' : 'min-h-11')}>{children}</button>
 }
 
 export function Bouton({ children, onClick, plein = false, disabled, className }: { children: ReactNode; onClick?: () => void; plein?: boolean; disabled?: boolean; className?: string }) {

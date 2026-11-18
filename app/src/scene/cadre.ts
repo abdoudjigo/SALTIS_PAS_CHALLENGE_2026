@@ -42,8 +42,9 @@ export interface Cadre {
   annee: number
   choisirAnnee: (annee: number) => void
   aller: (mode: string) => void
-  /** culture demandée à l'assistant vocal : présélectionnée par les fonctionnalités qui choisissent une culture */
-  cultureDemandee: string | null
+  /** culture choisie, partagée entre les fonctionnalités qui choisissent une culture ; null : chacune prend son choix par défaut */
+  culture: string | null
+  choisirCulture: (culture: string | null) => void
   marge: Partial<PaddingOptions>
 }
 
@@ -55,6 +56,8 @@ export interface PropsMode {
 export interface Fonctionnalite {
   id: string
   titre: string
+  /** la question de l'agriculteur, posée par le menu (fonctionnalités de l'agriculteur seulement) */
+  question?: string
   phrase: string
   icone: LucideIcon
   composant: ComponentType<PropsMode>

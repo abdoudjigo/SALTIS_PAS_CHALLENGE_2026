@@ -3,17 +3,18 @@
 // modèles pour la campagne : saison attendue (modèle 1), décade de semis (modèle 4), récolte habituelle (modèle 3).
 import { LocateFixed } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useCarte, useChoixCultures, useTerritoires, useVulnerabilite } from '../../hooks/donnees'
+import { useBesoins, useCarte, useChoixCultures, useTerritoires, useVulnerabilite } from '../../hooks/donnees'
 import { etatPrevision, usePrevisionRendement, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
 import { libelle, mm, nombre, pct } from '../../lib/format'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { NIVEAUX, teinteVulnerabilite, tendance } from '../couleurs'
 import { cleZone, trouverDepartement, ZONE_PAR_CLE, type LonLat } from '../geo'
-import { periodeDecades } from '../fiabilite'
+import { natureAnnee, periodeDecades } from '../fiabilite'
 import { Attente, ChampAnnee, MethodeModele, Morceau } from '../previsions'
 import { culture as cult, dire } from '../lecture'
 import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, wo } from '../wolof'
-import { Avis, Bouton, Cle, Detail, Groupe, Lien, Ligne, Lignes, Pastille, Rang, Reponse, Squelette } from '../ui'
+import { cycleDit, fenetreCulture, joursEau, laCulture, nombreSacs, sacsEngraisParHa, texteJoursEau } from '../conseil'
+import { AFaire, Avis, Bouton, Cle, Cles, Detail, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Reponse, Squelette, type Action } from '../ui'
 
 const vide = (etat: EtatPrevision) => (etat === 'chargement' ? '…' : 'non disponible')
 
@@ -41,12 +42,12 @@ type DonneesParcelle = {
 }
 
 /** L'essentiel sur le terrain, pour l'oreille : où, le sol, quoi cultiver, puis la campagne selon les modèles. Une phrase par ligne. */
-function useTexteParcelle({ position, departement, sol, choix, adaptees, attendue, annee, semis, recolte, vulnerabilite }: DonneesParcelle): string {
+function useTexteParcelle({ position, departement, sol, choix, adaptees, attendue, annee, semis, recolte, vulnerabilite, reponse }: DonneesParcelle & { reponse: string[] }): string {
   const phrases = ((): string[] => {
     if (!position) return ['Activez la localisation, ou touchez votre champ sur la carte : je vous dirai l\'essentiel sur votre terrain.']
     if (!departement) return ['Ce point est hors du Sénégal. Les données couvrent les quarante-cinq départements du pays.']
     const zoneNom = ZONE_PAR_CLE.get(cleZone(departement.zone_agroecologique))?.nom
-    const phrases = [`Votre champ est dans le département de ${departement.departement}, région de ${departement.region}${zoneNom ? `, zone ${zoneNom}` : ''}.`]
+    const phrases = [...reponse, `Votre champ est dans le département de ${departement.departement}, région de ${departement.region}${zoneNom ? `, zone ${zoneNom}` : ''}.`]
     if (sol) {
       const qualites = [sol.classe_texture ? libelle(sol.classe_texture).toLowerCase() : null, lecturePh(sol.ph_eau)].filter(Boolean).join(', ')
       phrases.push(`Le sol est ${qualites ? `de type ${qualites}` : 'non décrit'}${sol.reserve_utile_mm != null ? `, avec une réserve en eau de ${dire.mm(sol.reserve_utile_mm)}` : ''}.`)
@@ -126,8 +127,21 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   const etats = [etatPrevision(prevSaison), etatPrevision(prevSemis), etatPrevision(prevRecolte)]
   const attendue = prevSaison.data?.donnees.find((l) => l.code_departement === code)
   // La culture la mieux adaptée que chaque modèle connaît (le modèle 4 couvre 8 cultures, le modèle 3 en couvre 5)
-  const semis = adaptees.map((a) => prevSemis.data?.donnees.find((l) => l.culture === a.culture && l.decade_conseillee)).find(Boolean)
-  const recolte = adaptees.map((a) => prevRecolte.data?.donnees.find((l) => l.culture === a.culture && l.moment_prevision === 'FIN_MAI')).find(Boolean)
+  // Une culture déjà choisie (« Que semer ? ») passe en premier
+  const partagee = cadre.culture && choix?.some((c) => c.culture === cadre.culture) ? cadre.culture : null
+  const ordre = partagee ? [partagee, ...adaptees.map((c) => c.culture).filter((c) => c !== partagee)] : adaptees.map((c) => c.culture)
+  const semis = ordre.map((c) => prevSemis.data?.donnees.find((l) => l.culture === c && l.decade_conseillee)).find(Boolean)
+  const recolte = ordre.map((c) => prevRecolte.data?.donnees.find((l) => l.culture === c && l.moment_prevision === 'FIN_MAI')).find(Boolean)
+  // La culture à conseiller : celle choisie, sinon la mieux adaptée ; sans culture adaptée, la moins risquée
+  const ORDRE_NIVEAUX = ['adaptée', 'à risque', 'déconseillée']
+  const moinsRisquee = [...(choix ?? [])].filter((c) => c.type_option === 'CYCLE' && c.niveau_adequation && ORDRE_NIVEAUX.includes(c.niveau_adequation))
+    .sort((x, y) => ORDRE_NIVEAUX.indexOf(x.niveau_adequation!) - ORDRE_NIVEAUX.indexOf(y.niveau_adequation!) || (y.proba_cycle_couvert_pct ?? -1) - (x.proba_cycle_couvert_pct ?? -1))[0]?.culture ?? null
+  const conseillee = partagee ?? adaptees[0]?.culture ?? moinsRisquee
+  const cycleConseille = conseillee ? [...(choix ?? [])].filter((c) => c.type_option === 'CYCLE' && c.culture === conseillee)
+    .sort((x, y) => (x.niveau_adequation === 'adaptée' ? 0 : 1) - (y.niveau_adequation === 'adaptée' ? 0 : 1) || (y.proba_cycle_couvert_pct ?? -1) - (x.proba_cycle_couvert_pct ?? -1))[0] : undefined
+  const fenetre = fenetreCulture(prevSemis.data?.donnees, conseillee)
+  const { data: besoins } = useBesoins({ code_departement: code ?? undefined }, Boolean(code))
+  const sacsHa = sacsEngraisParHa(besoins?.find((b) => b.code_departement === code && b.culture === conseillee))
 
   function localiser() {
     if (!navigator.geolocation) return setEtat('indisponible')
@@ -145,16 +159,38 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   const lon = Number(saisie.lon.replace(',', '.'))
   const saisieValide = saisie.lat !== '' && saisie.lon !== '' && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
 
-  // La réponse en une ligne : le sol, puis ce qu'on peut y semer
+  // La réponse : où est le champ et combien de cultures y réussissent ; le sol dit simplement
   const texture = sol?.classe_texture ? libelle(sol.classe_texture).toLowerCase() : null
+  const n = adaptees.length
+  const titre = !departement ? '' : !choix ? `Votre champ est à ${departement.departement}`
+    : n ? `Votre champ est à ${departement.departement} : ${n} culture${n > 1 ? 's y réussissent' : ' y réussit'}`
+      : `Votre champ est à ${departement.departement} : aucune culture pluviale n’y réussit 4 années sur 5`
   const phrase = departement
-    ? [texture ? `Sol ${texture}${lecturePh(sol?.ph_eau ?? null) ? `, ${lecturePh(sol!.ph_eau)}` : ''}` : null, choix ? `${adaptees.length} culture${adaptees.length > 1 ? 's' : ''} adaptée${adaptees.length > 1 ? 's' : ''}` : null].filter(Boolean).join(' · ')
+    ? [texture ? `Terre ${texture}${lecturePh(sol?.ph_eau ?? null) ? `, ${lecturePh(sol!.ph_eau)}` : ''}.` : null, sol ? texteJoursEau(sol.reserve_utile_mm) : null].filter(Boolean).join(' ')
     : null
+  const jours = joursEau(sol?.reserve_utile_mm)
+  const tAttendue = attendue ? tendance(attendue) : null
+
+  // Que faire : quoi semer, quand, et combien d'engrais pour 1 ha (seulement si les doses existent)
+  const actions: Action[] = [
+    ...(conseillee ? [{ texte: adaptees.length || partagee
+      ? `Commencez par ${laCulture(conseillee)}${cycleConseille ? `, cycle ${cycleDit(cycleConseille.option)}` : ''}.`
+      : `Choisissez la culture la moins risquée : ${laCulture(conseillee)}${cycleConseille ? `, cycle ${cycleDit(cycleConseille.option)}` : ''}.`, vers: { mode: 'semer', libelle: 'Que semer ?' } }] : []),
+    ...(fenetre ? [{ texte: fenetre.sur ? `Semez ${periodeDecades(fenetre.debut, fenetre.fin)}.` : `Semez de préférence ${periodeDecades(fenetre.meilleure.decade_semis)} : aucune période n’est vraiment sûre.`, vers: { mode: 'semis', libelle: 'Quand semer ?' } }] : []),
+    ...(sacsHa !== null ? [{ texte: `Préparez ${nombreSacs(sacsHa)} d’engrais pour 1 ha.`, vers: { mode: 'surface', libelle: 'Combien ?' } }] : []),
+  ]
+  const faire = actions.map((x) => String(x.texte))
+  // Les actions parlent de la culture conseillée : l'écran ouvert ensuite montre la même
+  const allerAvecCulture = (mode: string) => {
+    if (conseillee && conseillee !== cadre.culture) cadre.choisirCulture(conseillee)
+    cadre.aller(mode)
+  }
 
   // Des chaînes, pas l'objet : le compilateur React sait qu'elles ne seront pas modifiées
   const [nomDep, regionDep, zoneDep] = [departement?.departement, departement?.region, departement?.zone_agroecologique]
   const texteEcoute = useTexteParcelle({ position: position ? [position[0], position[1]] : null,
-    departement: nomDep && regionDep && zoneDep ? { departement: nomDep, region: regionDep, zone_agroecologique: zoneDep } : undefined, sol, choix, adaptees, attendue, annee: a.annee, semis, recolte, vulnerabilite })
+    departement: nomDep && regionDep && zoneDep ? { departement: nomDep, region: regionDep, zone_agroecologique: zoneDep } : undefined, sol, choix, adaptees, attendue, annee: a.annee, semis, recolte, vulnerabilite,
+    reponse: departement && choix ? [`${titre}.`, ...faire] : [] })
   const texteEcouteWo = useTexteParcelleWo({ position: position ? [position[0], position[1]] : null,
     departement: nomDep && regionDep && zoneDep ? { departement: nomDep, region: regionDep, zone_agroecologique: zoneDep } : undefined, sol, choix, adaptees, attendue, annee: a.annee, semis, recolte, vulnerabilite })
 
@@ -163,7 +199,7 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
     if (!position) return { surPoint, resume: 'Où est votre champ ?', vue: { ambiance: 'jour', camera: cadrer.pays(cadre), zones: {}, departements: null, satellite: false, arcs: [], reperes: [], pluie: 0 } }
     return {
       surPoint,
-      resume: departement ? [departement.departement, phrase].filter(Boolean).join(' · ') : 'Point hors du Sénégal',
+      resume: departement ? (choix ? `${departement.departement} : ${n ? `${n} culture${n > 1 ? 's' : ''} qui réussi${n > 1 ? 'ssent' : 't'}` : 'aucune culture sûre'}` : departement.departement) : 'Point hors du Sénégal',
       vue: {
         ambiance: 'jour', zones: null, departements: null, arcs: [], pluie: 0, satellite: true,
         // Hors du Sénégal : on montre le point, sans descendre
@@ -174,7 +210,7 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
     // Le compilateur React renonce à optimiser ce composant (analyse trop prudente des objets du référentiel) ;
     // la mise en cache manuelle reste correcte : toutes les dépendances sont listées.
     // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  }, [position, code, cadre, definirPosition, departement, phrase])
+  }, [position, code, cadre, definirPosition, departement, choix, n])
   // Le texte parlé s'ajoute à part : il change avec des données que la carte n'utilise pas
   const sortieEcoute = useMemo<Sortie>(() => ({ ...sortie, aEcouter: texteEcoute.split('\n'), aEcouterWo: texteEcouteWo.split('\n') }), [sortie, texteEcoute, texteEcouteWo])
   usePublier(publier, sortieEcoute)
@@ -208,17 +244,26 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
 
   return (
     <div>
-      <Reponse cle={code} titre={departement.departement} phrase={phrase || `Région de ${departement.region}.`}>
-        <Cle valeur={nombre(sol?.ph_eau, { decimales: 1 })} libelle="pH du sol" />
-        <Cle valeur={nombre(sol?.reserve_utile_mm)} unite="mm" libelle="réserve utile en eau" />
-        <Cle valeur={choix ? adaptees.length : '—'} libelle="cultures adaptées" teinte={NIVEAUX['adaptée'].couleur} />
-      </Reponse>
+      <Reponse vivant cle={code} titre={titre} phrase={phrase || `Région de ${departement.region}.`} />
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
         {zone && <Pastille couleur={zone.couleur}>{zone.nom}</Pastille>}
         {departement.zone_secondaire && <Pastille couleur="var(--color-brume)">transition vers {libelle(departement.zone_secondaire)}</Pastille>}
       </div>
       {avis}
 
+      <AFaire aller={allerAvecCulture} actions={actions} />
+
+      <Cles>
+        <Cle valeur={choix ? n : '—'} libelle={n > 1 ? 'cultures qui réussissent' : 'culture qui réussit'} teinte={NIVEAUX['adaptée'].couleur} />
+        <Cle valeur={tAttendue ? libelle(tAttendue.classe) : '—'} libelle={`saison ${a.annee} attendue`} teinte={tAttendue?.couleur} />
+        <Cle valeur={jours === null ? '—' : jours === 0 ? '< 5' : jours} unite={jours === null ? undefined : 'j'} libelle="d’eau gardée par le sol" />
+      </Cles>
+
+      <LigneFiabilite parties={['Valeurs du département, pas de votre champ au mètre près', natureAnnee(a.annee, a.aVenir, attendue)]} />
+
+      <ChampAnnee cadre={cadre} a={a} saison={attendue} className="mt-3" />
+
+      <Detail libelle="Voir la campagne, les cultures, le sol et les risques">
       <Groupe titre={`Campagne ${a.annee}, selon les modèles`}>
         {etats.every((e) => e === 'non-chargee') ? <Attente etat="non-chargee" /> : (
           <dl className="-my-2 divide-y divide-white/[0.07]">
@@ -235,15 +280,12 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
             </Morceau>
           </dl>
         )}
-        <ChampAnnee cadre={cadre} a={a} saison={attendue} className="mt-3" />
         <div className="mt-1"><Lien onClick={() => cadre.aller('semis')}>Voir quand semer, culture par culture</Lien></div>
       </Groupe>
-
-      <Detail libelle="Voir les cultures, le sol et les risques">
       <Groupe titre="Ce qu'on peut y cultiver">
         {!choix ? <Squelette /> : adaptees.length ? (
           <ol>
-            {adaptees.slice(0, 5).map((c) => <Rang key={c.culture} nom={`${libelle(c.culture)} · cycle ${c.option}`} part={c.proba_cycle_couvert_pct} couleur={NIVEAUX['adaptée'].couleur} valeur={pct(c.proba_cycle_couvert_pct)} />)}
+            {adaptees.slice(0, 5).map((c) => <Rang key={c.culture} nom={`${libelle(c.culture)} · cycle ${cycleDit(c.option)}`} part={c.proba_cycle_couvert_pct} couleur={NIVEAUX['adaptée'].couleur} valeur={pct(c.proba_cycle_couvert_pct)} />)}
           </ol>
         ) : <p className="text-sm text-white/60">Aucune culture pluviale classée « adaptée » dans ce département.</p>}
         <div className="mt-2"><Lien onClick={() => cadre.aller('semer')}>Comparer toutes les cultures</Lien></div>
@@ -254,7 +296,7 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
           <Lignes>
             <Ligne libelle="Texture" valeur={sol.classe_texture ? libelle(sol.classe_texture) : 'non disponible'} />
             <Ligne libelle="pH (eau)" valeur={nombre(sol.ph_eau, { decimales: 1 })} detail={lecturePh(sol.ph_eau)} />
-            <Ligne libelle="Réserve utile en eau" valeur={mm(sol.reserve_utile_mm)} />
+            <Ligne libelle="Réserve utile en eau" valeur={mm(sol.reserve_utile_mm)} detail={jours === null ? undefined : `environ ${jours} jours sans pluie (÷ 4 mm par jour)`} />
             <Ligne libelle="Carbone organique" valeur={nombre(sol.carbone_organique_g_kg, { decimales: 1, unite: 'g/kg' })} />
           </Lignes>
         ) : territoires ? <p className="text-sm text-white/60">Sol non disponible pour ce département.</p> : <Squelette lignes={4} />}

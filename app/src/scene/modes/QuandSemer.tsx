@@ -9,30 +9,18 @@ import { libelle, nombre, pct } from '../../lib/format'
 import type { RisqueSemis } from '../../types/previsions'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { couleurDecade, degrade } from '../couleurs'
-import { periodeDecades } from '../fiabilite'
+import { datesDecade, debutDecade, MODELES, natureAnnee, periodeDecades } from '../fiabilite'
 import { Attente, ChampAnnee, MethodeModele } from '../previsions'
 import { dire } from '../lecture'
 import { cultureWo, decadeWo, FIN_WO, pctWo, wo } from '../wolof'
-import { Champ, Cle, Degrade, Detail, Groupe, Ligne, Lignes, Reponse } from '../ui'
+import { fenetre, repliCulture, RISQUE_BON_MOMENT } from '../conseil'
+import { AFaire, Champ, Cle, Cles, Degrade, Detail, Groupe, Ligne, Lignes, LigneFiabilite, Reponse, type Action } from '../ui'
 
-/** En dessous de ce risque total, une décade voisine de la meilleure fait encore partie du bon moment. */
-const RISQUE_BON_MOMENT = 20
 type Temps = 'tot' | 'bon' | 'tard'
 const TEMPS: Record<Temps, { nom: string; classe: string }> = {
   tot: { nom: 'Trop tôt', classe: 'bg-soleil-500/45' },
   bon: { nom: 'Bon moment', classe: 'bg-vert-500' },
   tard: { nom: 'Trop tard', classe: 'bg-alerte-500/70' },
-}
-
-/** Le bon moment : la décade conseillée et ses voisines immédiates tant que le risque reste bas. */
-function fenetre(decades: RisqueSemis[]) {
-  const i = decades.findIndex((d) => d.decade_conseillee)
-  if (i < 0) return null
-  const bonne = (d: RisqueSemis | undefined) => d !== undefined && d.risque_total_pct !== null && d.risque_total_pct < RISQUE_BON_MOMENT
-  let [de, a] = [i, i]
-  while (bonne(decades[de - 1])) de--
-  while (bonne(decades[a + 1])) a++
-  return { de, a, meilleure: decades[i] }
 }
 
 /** Frise de début juin à mi-août : une case par décade, trois couleurs, la meilleure cochée. */
@@ -63,7 +51,6 @@ function Frise({ decades, de, a, choisie, onChoisir }: { decades: RisqueSemis[];
 export default function QuandSemer({ cadre, publier }: PropsMode) {
   const a = useAnnee(cadre, 'M4')
   const { annee } = a
-  const [cultureChoisie, setCulture] = useState<string | null>(cadre.cultureDemandee)
   const [decadeChoisie, setDecade] = useState<number | null>(null)
   const code = cadre.selection ?? cadre.user.code_departement
   const departement = cadre.ref.departements.find((d) => d.code_departement === code)
@@ -71,7 +58,11 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
   const requete = useRisqueSemis(code, annee)
   const etat = etatPrevision(requete)
   const cultures = useMemo(() => [...new Set(requete.data?.donnees.map((l) => l.culture))].sort((a, b) => a.localeCompare(b, 'fr')), [requete.data])
-  const culture = cultureChoisie && (cultures.length === 0 || cultures.includes(cultureChoisie)) ? cultureChoisie : cultures.includes('ARACHIDE') ? 'ARACHIDE' : cultures[0] ?? 'ARACHIDE'
+  // La culture partagée si le modèle 4 la couvre ici ; sinon le choix par défaut, sans écraser la culture partagée
+  const demandee = cadre.culture
+  const couverte = demandee !== null && (cultures.length === 0 || cultures.includes(demandee))
+  const culture = couverte ? demandee : cultures.includes('ARACHIDE') ? 'ARACHIDE' : cultures[0] ?? 'ARACHIDE'
+  const repli = cultures.length ? repliCulture(couverte ? null : demandee, culture) : null
   const decades = useMemo(() => (requete.data?.donnees ?? []).filter((l) => l.culture === culture).sort((a, b) => a.decade_semis - b.decade_semis), [requete.data, culture])
   const f = useMemo(() => fenetre(decades), [decades])
   const detail = decades.find((d) => d.decade_semis === decadeChoisie) ?? f?.meilleure
@@ -79,6 +70,19 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
   const nomCulture = libelle(culture).toLowerCase()
   const article = /^[aeiouéèh]/i.test(nomCulture) ? "l'" : nomCulture.startsWith('pastèque') ? 'la ' : 'le '
   const sur = f !== null && f.meilleure.risque_total_pct !== null && f.meilleure.risque_total_pct < RISQUE_BON_MOMENT
+
+  // Que faire : ne pas semer trop tôt, semer après une vraie pluie dans la fenêtre, préparer les intrants
+  const finDate = (decade: number) => { const d = datesDecade(decade); return `${d.fin} ${['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][d.mois]}` }
+  const tot = f && f.de > 0 ? decades[f.de - 1] : undefined
+  const actions: Action[] = !f ? [] : !sur
+    ? [{ texte: 'Aucune période n’est vraiment sûre cette année : préférez une culture à cycle plus court.', vers: { mode: 'semer', libelle: 'Que semer ?' } }]
+    : [
+        ...(tot && tot.risque_faux_depart_pct !== null ? [{ texte: `Ne semez pas avant le ${debutDecade(decades[f.de].decade_semis)} : avant, ${nombre(tot.risque_faux_depart_pct)} % de risque d’un sec juste après la levée.` }] : []),
+        { texte: `Semez après une pluie d’au moins 20 mm, entre le ${debutDecade(decades[f.de].decade_semis)} et le ${finDate(decades[f.a].decade_semis)}.` },
+        { texte: 'Préparez vos semences et engrais.', vers: { mode: 'surface', libelle: 'Combien ?' } },
+      ]
+  const faire = actions.map((x) => String(x.texte))
+  const cleFaire = faire.join('|')
 
   const sortie = useMemo<Sortie>(() => {
     const lignes = carte.data?.donnees
@@ -91,6 +95,7 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
             sur
               ? `À ${departement.departement}, en ${annee}, semez ${article}${nomCulture} ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis)}.`
               : `À ${departement.departement}, en ${annee}, aucune période n'est vraiment sûre pour ${article}${nomCulture}.`,
+            ...faire,
             `Le meilleur moment : ${periodeDecades(f.meilleure.decade_semis)}, avec ${dire.pct(f.meilleure.risque_total_pct)} de risque.`,
             'Semer plus tôt, c\'est risquer un épisode sec juste après la levée. Semer plus tard, c\'est risquer que les pluies s\'arrêtent avant la récolte.',
             `Calcul fait avec la prévision de la saison ${annee}. Estimation indicative, à confirmer avec votre conseiller agricole.`,
@@ -106,7 +111,7 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
     return {
       aEcouter,
       aEcouterWo,
-      resume: departement ? (f ? `${libelle(culture)} : semer ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis, true)}` : departement.departement) : 'Choisissez un département',
+      resume: departement ? (f ? (sur ? `${libelle(culture)} : semer ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis, true)}` : `${libelle(culture)} : aucune période sûre`) : departement.departement) : 'Choisissez un département',
       vue: {
         ambiance: 'jour', camera: cadrer.pays(cadre, { inclinaison: 26, cap: -6 }), zones: null, relief: false, selection: code, satellite: false, arcs: [], reperes: [], pluie: 0, alertes: [],
         departements: lignes ? new Map(lignes.map((l) => [l.code_departement, { couleur: couleurDecade(l.decade_semis) }])) : null,
@@ -118,7 +123,8 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
         return { titre: nom, lignes: l ? [`${libelle(culture)} : ${periodeDecades(l.decade_semis)}`, `Risque : ${pct(l.risque_total_pct)}`] : ['Non disponible (pas de pluie décadaire)'] }
       },
     }
-  }, [carte.data, departement, f, decades, culture, nomCulture, code, cadre, annee, article, sur])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `faire` est tiré de `f` et `decades`
+  }, [carte.data, departement, f, decades, culture, nomCulture, code, cadre, annee, article, sur, cleFaire])
   usePublier(publier, sortie)
 
   if (!departement) return <Reponse titre="Choisissez un département" phrase="Touchez un département sur la carte pour voir quand y semer." />
@@ -126,16 +132,23 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
   return (
     <div>
       {f ? (
-        <Reponse cle={`${code}-${annee}-${culture}`} titre={sur ? `Semez ${article}${nomCulture} ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis)}` : `Le moins risqué : ${periodeDecades(f.meilleure.decade_semis)}`}
-          phrase={`${departement.departement} · ${annee}.${sur ? '' : ' Aucune période n’est vraiment sûre ici pour cette culture.'}`}>
-          <Cle large valeur={periodeDecades(f.meilleure.decade_semis, f.meilleure.decade_semis, true).replace('du ', '')} libelle="le meilleur moment" teinte="var(--color-vert-100)" />
-          <Cle valeur={nombre(f.meilleure.risque_total_pct)} unite="%" libelle="de risque" />
-        </Reponse>
+        <Reponse vivant cle={`${code}-${annee}-${culture}`} titre={sur ? `Semez ${article}${nomCulture} ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis)}` : `Le moins risqué : ${periodeDecades(f.meilleure.decade_semis)}`}
+          phrase={`${departement.departement} · ${annee}.${sur ? '' : ' Aucune période n’est vraiment sûre ici pour cette culture.'}`} />
       ) : (
-        <Reponse cle={`${code}-${annee}-${culture}`} titre={departement.departement} phrase={`Quand semer ${article}${nomCulture}.`} />
+        <Reponse vivant cle={`${code}-${annee}-${culture}`} titre={departement.departement} phrase={`Quand semer ${article}${nomCulture}.`} />
       )}
+      {repli && <p className="mt-2 text-xs text-white/60">{repli}</p>}
       <Attente etat={etat} objet={`${departement.departement} en ${annee}`} />
       {etat === 'ok' && !f && <p className="mt-4 text-sm text-white/60">Pas de période de semis calculée pour {article}{nomCulture} dans ce département.</p>}
+
+      <AFaire aller={cadre.aller} actions={actions} />
+
+      {f && (
+        <Cles>
+          <Cle large valeur={periodeDecades(f.meilleure.decade_semis, f.meilleure.decade_semis, true).replace('du ', '')} libelle="le meilleur moment" teinte="var(--color-vert-100)" />
+          <Cle valeur={nombre(f.meilleure.risque_total_pct)} unite="%" libelle="de risque" />
+        </Cles>
+      )}
 
       {f && detail && (
         <div className="mt-5">
@@ -147,8 +160,10 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
         </div>
       )}
 
+      {f && <LigneFiabilite parties={['Modèle 4', MODELES.M4.fiabilite, natureAnnee(annee, a.aVenir)]} />}
+
       <Champ libelle="Culture" className="mt-4">
-        <select className="champ-scene" value={culture} onChange={(e) => { setCulture(e.target.value); setDecade(null) }}>
+        <select className="champ-scene" value={culture} onChange={(e) => { cadre.choisirCulture(e.target.value); setDecade(null) }}>
           {(cultures.length ? cultures : [culture]).map((c) => <option key={c} value={c}>{libelle(c)}</option>)}
         </select>
       </Champ>

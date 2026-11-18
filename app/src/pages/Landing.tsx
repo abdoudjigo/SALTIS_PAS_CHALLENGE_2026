@@ -353,7 +353,7 @@ export default function Landing() {
           </p>
           <Points teinte="text-terre-700" points={[
             [Layers, 'Le sol : texture, acidité, eau qu’il retient'],
-            [Wheat, 'Les rendements de 12 cultures depuis 1981'],
+            [Wheat, `Les rendements de ${ref ? ref.cultures.length : 11} cultures depuis 1981`],
             [ShieldAlert, 'Les départements les plus fragiles, pour aider en priorité'],
           ]} />
           <Legende titre="Sur la carte : la fragilité (hauteur des volumes)" gauche="Moins fragile" droite="Plus fragile" degrade="linear-gradient(to right,#fdf0d2,#f2b544,#e07a3a,#a3311c)" />
@@ -411,7 +411,7 @@ export default function Landing() {
               <div className="grid grid-cols-2 gap-x-8 gap-y-7">
                 <Chiffre valeur="45" texte="départements suivis, saison après saison depuis 1981" />
                 <Chiffre valeur="3" texte="modèles de prévision : la pluie de la saison, le semis, la récolte" />
-                <Chiffre valeur={ref ? String(ref.cultures.length) : '12'} texte="cultures, avec leurs cycles court, moyen et long" />
+                <Chiffre valeur={ref ? String(ref.cultures.length) : '11'} texte="cultures, avec leurs cycles court, moyen et long" />
                 <Chiffre valeur="6" texte="zones agroécologiques, du fleuve à la Casamance" />
               </div>
             </div>

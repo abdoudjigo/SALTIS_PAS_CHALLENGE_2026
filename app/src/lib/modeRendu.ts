@@ -23,7 +23,8 @@ function abonnerCalme(f: () => void) {
   return () => mq.removeEventListener('change', f)
 }
 
-function webglDisponible() {
+/** Vrai si le navigateur sait créer un contexte WebGL 2 (Mapbox GL en a besoin). */
+export function webglDisponible() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2')
     gl?.getExtension('WEBGL_lose_context')?.loseContext()

@@ -117,6 +117,47 @@ export interface LigneChoixCulture extends Territoire {
   zones_recommandees: string | null
 }
 
+// --- Module E : carte des opportunités (mart_carte_opportunites, docs/carte-opportunites.md) ---------
+export type CouleurOpportunite = 'bleu' | 'jaune' | 'vert'
+export type CategorieEau =
+  | 'eau de surface peu exploitée' | 'nappe accessible' | 'eau de surface déjà exploitée'
+  | "pas d'eau mobilisable identifiée" | 'non évaluée'
+
+/** Un département de la carte des opportunités, champ pour champ comme `CarteOpportunite` (api/schemas/opportunites.py). */
+export interface CarteOpportunite extends Territoire {
+  zone_secondaire: string | null
+  latitude: number | null
+  longitude: number | null
+  /** `bleu` prioritaire, sinon `couleur_fond` ; null si la saison n'est pas évaluée */
+  couleur_carte: CouleurOpportunite | null
+  /** `jaune` saison courte, `vert` saison longue */
+  couleur_fond: 'jaune' | 'vert' | null
+  couche_eau: boolean
+  classe_saison_pluie: 'courte' | 'longue' | 'non évaluée'
+  /** plus long cycle (culture ou variété) qui passe au moins 4 années sur 5 (jours) */
+  cycle_max_conseille_j: number | null
+  cultures_cycle_long: string | null
+  /** « CULTURE : variété (N j) ; … » */
+  varietes_conseillees: string | null
+  nb_varietes_conseillees: number
+  pluie_saison_normale_mm: number | null
+  duree_saison_moyenne_j: number | null
+  duree_saison_courte_j: number | null
+  categorie_eau: CategorieEau
+  potentiel_contre_saison_ha: number | null
+  rang_opportunite_eau: number | null
+  surface_eau_permanente_ha: number | null
+  surface_proche_eau_cultivable_ha: number | null
+  surface_proche_eau_inexploitee_ha: number | null
+  part_proche_eau_exploitee_pct: number | null
+  profondeur_classe_dominante: string | null
+  productivite_classe_dominante: string | null
+  part_nappe_accessible_pct: number | null
+  surface_equipee_irrigation_ha: number | null
+  conseil_agriculteur: string
+  conseil_investisseur: string | null
+}
+
 // --- Module C ---------------------------------------------------------------------
 export type StatutDose = 'VALIDEE' | 'A_CONFIRMER' | 'NON_VERIFIEE' | 'A_COMPLETER'
 

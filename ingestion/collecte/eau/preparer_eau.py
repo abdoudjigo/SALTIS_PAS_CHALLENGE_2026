@@ -108,7 +108,10 @@ def lire_texte(fichier: Path, extensions: tuple[str, ...]) -> str:
         noms = [n for n in z.namelist() if n.lower().endswith(extensions) and "readme" not in n.lower()]
         if not noms:
             raise SystemExit(f"{fichier.name} : aucun fichier {extensions} dans l'archive ({z.namelist()})")
-        return z.read(noms[0]).decode("latin-1")
+        # La grille elle-même : « xyzASCII_… » si présent, sinon le plus gros fichier (pas les notes d'accompagnement)
+        grilles = [n for n in noms if "xyzascii" in n.lower()]
+        nom = grilles[0] if grilles else max(noms, key=lambda n: z.getinfo(n).file_size)
+        return z.read(nom).decode("latin-1")
 
 
 # ------------------------------------------------------------------ géométrie
@@ -186,6 +189,9 @@ def lire_xyz(fichier: Path) -> pd.DataFrame:
             x, y = float(morceaux[0]), float(morceaux[1])
         except ValueError:
             continue  # en-tête
+        # Cases sans donnée de la BGS (lacs, bords de carte) : ignorées, jamais lues comme une valeur nulle
+        if code_bgs(morceaux[2]) in {"NULL", "NODATA", "NA", "NAN", ""}:
+            continue
         if OUEST <= x <= EST and SUD <= y <= NORD:
             enregistrements.append((x, y, morceaux[2]))
     if not enregistrements:
@@ -228,9 +234,22 @@ def preparer_bgs(departements: list[dict]) -> pd.DataFrame:
         )
     prof = lire_xyz(chemins["profondeur"])
     prod = lire_xyz(chemins["productivite"]).rename(columns={"valeur": "valeur_prod"})
-    grille = prof.merge(prod, on=["x", "y"], how="inner")
+    # Les trois cartes n'ont pas la même origine de grille (la profondeur v2 est décalée d'environ 1 km, le stock
+    # d'environ 3 km) : chaque point est ramené à la cellule la plus proche de la grille de productivité (pas de 0,05°).
+    pas, x0, y0 = 0.05, prod["x"].min(), prod["y"].min()
+
+    def cellule(df: pd.DataFrame) -> pd.DataFrame:
+        return df.assign(i=((df["x"] - x0) / pas).round().astype(int), j=((df["y"] - y0) / pas).round().astype(int))
+
+    def sur_grille(df: pd.DataFrame) -> pd.DataFrame:
+        return cellule(df).drop(columns=["x", "y"]).drop_duplicates(["i", "j"])
+
+    grille = cellule(prod).merge(sur_grille(prof), on=["i", "j"], how="inner")
     if chemins["stock"]:
-        grille = grille.merge(lire_xyz(chemins["stock"]).rename(columns={"valeur": "valeur_stock"}), on=["x", "y"], how="left")
+        grille = grille.merge(sur_grille(lire_xyz(chemins["stock"])).rename(columns={"valeur": "valeur_stock"}), on=["i", "j"], how="left")
+    if grille.empty:
+        raise SystemExit("BGS : aucune cellule commune entre la carte de profondeur et celle de productivité.")
+    grille = grille.reset_index(drop=True)
     grille["c_prof"] = classes(grille, PROFONDEUR, "profondeur")
     grille["c_prod"] = classes(grille.rename(columns={"valeur": "_", "valeur_prod": "valeur"}), PRODUCTIVITE, "productivite")
     if "valeur_stock" in grille:

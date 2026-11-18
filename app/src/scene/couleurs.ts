@@ -7,6 +7,9 @@ export type Rvb = [number, number, number]
 export const NON_DISPONIBLE = '#aab0b6'
 /** Miroir du token --color-ciel-vif : Mapbox ne lit pas les variables CSS */
 export const CIEL_VIF = '#2f9cf0'
+/** Miroirs des tokens --color-soleil-500 et --color-vert-500 (bandeau de saison de « Que semer ? ») */
+export const SOLEIL_500 = '#f2b544'
+export const VERT_500 = '#2f7d4f'
 
 export function rvb(hex: string): Rvb {
   const n = parseInt(hex.slice(1), 16)

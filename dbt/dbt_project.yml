@@ -20,7 +20,7 @@ vars:
   # Carte des opportunités (docs/carte-opportunites.md).
   # Passer à true une fois les 3 tables SALTIS.RAW.E_* chargées : active stg_eau_*,
   # fact_eau_departement et la couche bleue de mart_carte_opportunites.
-  eau_chargee: false
+  eau_chargee: true
   # Seuils de décision, à revoir avec les techniciens (ANCAR, SAED, DGPRE) :
   seuil_cycle_long_j: 110                # saison « longue » si un cycle d'au moins 110 j passe 4 années sur 5
   seuil_surface_inexploitee_ha: 200      # eau de surface mobilisable : au moins 200 ha nus près d'une eau permanente

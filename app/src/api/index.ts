@@ -3,9 +3,11 @@
 // Entrée par profil : session locale (api/mock/comptes.ts), l'API n'a pas de comptes.
 import { config } from '../config'
 import { sessionStore } from '../auth/session'
+import { cultureMontree, sansCulturesRetirees } from '../lib/cultures'
 import type { Session, Utilisateur } from '../types/auth'
 import type {
-  Departement, LigneBesoin, LigneCarte, LigneChoixCulture, LigneTerritoireAgrodistrib, LigneVulnerabilite, Referentiels,
+  CarteOpportunite, Departement, LigneBesoin, LigneCarte, LigneChoixCulture, LigneSuivi, LigneTerritoireAgrodistrib,
+  LigneVulnerabilite, Referentiels,
 } from '../types/marts'
 import type { CodeModele, EvaluationModele, Moment, Prevision, PrevisionRendement, PrevisionSaison, RisqueSemis } from '../types/previsions'
 import { ApiError, requete, type OptionsRequete } from './client'
@@ -35,12 +37,14 @@ const enc = encodeURIComponent
 
 
 // Résultats des modèles d'IA (SALTIS.ML) : on garde `meta.avertissements`, les rappels d'affichage honnête.
-// Les données d'exemple n'ont pas de prévisions : même réponse que l'API quand SALTIS.ML n'est pas chargé.
+// En démonstration, le faux serveur répond avec des prévisions synthétiques (api/mock/previsions.ts), signalées comme telles.
 async function previsions<T>(chemin: string, params?: OptionsRequete['params']): Promise<Prevision<T>> {
-  if (config.donneesDemo)
-    throw new ApiError('Les prévisions ne font pas partie des données de démonstration.', { status: 404, details: { erreur: { code: 'prevision_indisponible' } } })
+  if (config.donneesDemo) {
+    const r = await exemple<Prevision<T>>(`/previsions${chemin}`, { params })
+    return { ...r, donnees: sansCulturesRetirees(r.donnees) }
+  }
   const reponse = await requete<{ meta: { avertissements?: string[]; source?: string }; donnees: T[] }>(`/api/v1/previsions${chemin}`, { params, sansJeton: config.authDemo })
-  return { donnees: reponse.donnees, avertissements: reponse.meta.avertissements ?? [], source: reponse.meta.source ?? '' }
+  return { donnees: sansCulturesRetirees(reponse.donnees), avertissements: reponse.meta.avertissements ?? [], source: reponse.meta.source ?? '' }
 }
 
 async function referentielsReels(): Promise<Referentiels> {
@@ -70,8 +74,24 @@ async function besoinsReels({ code_departement, culture }: { code_departement?: 
   return parDepartement.flat()
 }
 
-// Guédiawaye n'a pas de série décadaire : l'API répond 404, l'écran attend une liste vide
 const reel = !config.donneesDemo
+
+/** Une route qui répond 404 quand la donnée n'existe pas (encore) : l'écran reçoit `vide` au lieu d'une erreur. */
+async function ou404<T>(appel: Promise<T>, vide: T): Promise<T> {
+  try {
+    return await appel
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return vide
+    throw e
+  }
+}
+
+// Cultures retirées de l'affichage (lib/cultures.ts) : filtrées ici, une seule fois, pour tous les écrans
+const filtrer = <T,>(appel: Promise<T[]>) => appel.then(sansCulturesRetirees)
+async function referentielsAffiches(appel: Promise<Referentiels>): Promise<Referentiels> {
+  const r = await appel
+  return { ...r, cultures: r.cultures.filter(cultureMontree), varietes: sansCulturesRetirees(r.varietes) }
+}
 
 export const api = {
   // Authentification (PostgreSQL côté API)
@@ -79,26 +99,37 @@ export const api = {
   moi: () => auth<Utilisateur>('/auth/me'),
 
   // Référentiels : départements, zones, cultures, intrants, variétés, campagnes disponibles
-  referentiels: () => (reel ? referentielsReels() : exemple<Referentiels>('/referentiels')),
+  referentiels: () => referentielsAffiches(reel ? referentielsReels() : exemple<Referentiels>('/referentiels')),
 
   // Module A — mart_carte_agroclimat
   carte: (campagne: number) =>
     reel ? marts<LigneCarte[]>(`/agroclimat/campagnes/${campagne}`) : exemple<LigneCarte[]>('/carte', { params: { campagne } }),
 
+  // Module A — mart_suivi_decadaire. Guédiawaye n'a pas de série décadaire : l'API répond 404, l'écran reçoit une liste vide
+  suiviDecadaire: (code: string, annee: number) =>
+    ou404(reel ? marts<LigneSuivi[]>(`/suivi-decadaire/${enc(code)}/${annee}`) : exemple<LigneSuivi[]>(`/suivi/${enc(code)}`, { params: { annee } }), []),
+
   // Module B — mart_choix_cultures
   choixCultures: (code: string) =>
-    reel ? marts<LigneChoixCulture[]>(`/choix-cultures/${enc(code)}`) : exemple<LigneChoixCulture[]>(`/choix-cultures/${enc(code)}`),
+    filtrer(reel ? marts<LigneChoixCulture[]>(`/choix-cultures/${enc(code)}`) : exemple<LigneChoixCulture[]>(`/choix-cultures/${enc(code)}`)),
 
   // Module C — mart_besoins
   besoins: (filtres: { code_departement?: string; culture?: string } = {}) =>
-    reel ? besoinsReels(filtres) : exemple<LigneBesoin[]>('/besoins', { params: filtres }),
+    filtrer(reel ? besoinsReels(filtres) : exemple<LigneBesoin[]>('/besoins', { params: filtres })),
 
   // Module D — mart_vulnerabilite_departement, mart_territoires_agrodistrib
   vulnerabilite: () => (reel ? marts<LigneVulnerabilite[]>('/vulnerabilite') : exemple<LigneVulnerabilite[]>('/vulnerabilite')),
   territoires: (culture?: string | null) =>
-    reel
+    filtrer(reel
       ? marts<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { culture })
-      : exemple<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { params: { culture } }),
+      : exemple<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { params: { culture } })),
+
+  // Module E — mart_carte_opportunites (docs/carte-opportunites.md). null tant que le mart n'est pas construit
+  // (l'API répond 404 opportunites_indisponible) : l'écran n'affiche alors rien de plus
+  opportunites: () =>
+    ou404<CarteOpportunite[] | null>(reel ? marts<CarteOpportunite[]>('/opportunites') : exemple<CarteOpportunite[]>('/opportunites'), null),
+  opportunite: (code: string) =>
+    ou404<CarteOpportunite | null>(reel ? marts<CarteOpportunite>(`/opportunites/${enc(code)}`) : exemple<CarteOpportunite>(`/opportunites/${enc(code)}`), null),
 
   // IA — résultats des 4 modèles (SALTIS.ML), voir ml/MODELES.md
   previsionSaison: (annee: number) => previsions<PrevisionSaison>(`/saison/${annee}`),

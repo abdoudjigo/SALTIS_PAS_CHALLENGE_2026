@@ -1,26 +1,19 @@
 // La scène : après la connexion, une seule carte plein écran. Chaque fonctionnalité du dock change la carte
 // (caméra, lumière, volumes, arcs) et ouvre son panneau. Deux profils : agriculteur, ONG et services de l'État.
-import { BarChart3, CalendarDays, ClipboardList, CloudSun, LogOut, MapPinned, Scale, ShieldAlert, Sprout, TriangleAlert, Truck } from 'lucide-react'
-import { lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
+import { BarChart3, CalendarDays, ClipboardList, CloudSun, Droplets, LogOut, MapPinned, Scale, ShieldAlert, Sprout, TriangleAlert, Truck } from 'lucide-react'
+import { lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ComponentType, type Ref } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { config } from '../config'
 import { useReferentiels } from '../hooks/donnees'
+import { usePrechargerDepartement } from '../hooks/precharger'
 import type { Survol, VueCarte } from '../scene/Carte'
-import { cadrer, type Cadre, type Fonctionnalite, type Infobulle, type Sortie } from '../scene/cadre'
+import { cadrer, type Cadre, type Fonctionnalite, type Infobulle, type PropsMode, type Sortie } from '../scene/cadre'
 import { Dock } from '../scene/Dock'
 import { hauteurCran, type Cran } from '../scene/crans'
 import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/Fenetre'
+import { GardeCarte } from '../scene/GardeCarte'
 import { useContours, useContoursZones } from '../scene/fonds'
 import type { LonLat } from '../scene/geo'
-import AlerteRecolte from '../scene/modes/AlerteRecolte'
-import BesoinsPays from '../scene/modes/BesoinsPays'
-import Campagne from '../scene/modes/Campagne'
-import Parcelle from '../scene/modes/Parcelle'
-import QuandSemer from '../scene/modes/QuandSemer'
-import Repartir from '../scene/modes/Repartir'
-import Saison from '../scene/modes/Saison'
-import Semer from '../scene/modes/Semer'
-import Surface from '../scene/modes/Surface'
-import Vulnerabilite from '../scene/modes/Vulnerabilite'
 import type { Utilisateur } from '../types/auth'
 import { anneeAVenir } from '../types/previsions'
 
@@ -30,22 +23,44 @@ const chargerCarte = () => import('../scene/Carte')
 const Carte = lazy(chargerCarte)
 void chargerCarte()
 
+// Chaque fonctionnalité est un morceau à part : un profil ne télécharge que les siennes, préchargées dès que la
+// scène est posée (le premier changement de fonctionnalité n'attend donc pas le réseau)
+type ChargeurMode = () => Promise<{ default: ComponentType<PropsMode> }>
+const chargeurs = new Map<ComponentType<PropsMode>, ChargeurMode>()
+function mode(charger: ChargeurMode) {
+  const composant = lazy(charger) as unknown as ComponentType<PropsMode>
+  chargeurs.set(composant, charger)
+  return composant
+}
+const Parcelle = mode(() => import('../scene/modes/Parcelle'))
+const Saison = mode(() => import('../scene/modes/Saison'))
+const QuandSemer = mode(() => import('../scene/modes/QuandSemer'))
+const Semer = mode(() => import('../scene/modes/Semer'))
+const Surface = mode(() => import('../scene/modes/Surface'))
+const ContreSaison = mode(() => import('../scene/modes/ContreSaison'))
+const AlerteRecolte = mode(() => import('../scene/modes/AlerteRecolte'))
+const Campagne = mode(() => import('../scene/modes/Campagne'))
+const Vulnerabilite = mode(() => import('../scene/modes/Vulnerabilite'))
+const BesoinsPays = mode(() => import('../scene/modes/BesoinsPays'))
+const Repartir = mode(() => import('../scene/modes/Repartir'))
+
 const F = {
-  parcelle: { id: 'parcelle', titre: 'Ma parcelle', phrase: 'Se localiser : le sol, les risques, les cultures et la campagne de son champ.', icone: MapPinned, composant: Parcelle },
+  parcelle: { id: 'parcelle', titre: 'Ma parcelle', question: 'Où est mon champ ?', phrase: 'Se localiser : le sol, les risques, les cultures et la campagne de son champ.', icone: MapPinned, composant: Parcelle },
   // Un bouton par modèle d'IA (ml/MODELES.md), et deux boutons qui en combinent plusieurs : « Ma parcelle », « Préparer la campagne »
-  saison: { id: 'saison', titre: 'La saison qui vient', phrase: 'La pluie de l’année choisie : sèche, normale ou humide, et combien.', icone: CloudSun, composant: Saison },
-  semis: { id: 'semis', titre: 'Quand semer', phrase: 'La décade de semis la moins risquée, culture par culture.', icone: CalendarDays, composant: QuandSemer },
+  saison: { id: 'saison', titre: 'La saison qui vient', question: 'Va-t-il bien pleuvoir ?', phrase: 'La pluie de l’année choisie : sèche, normale ou humide, et combien.', icone: CloudSun, composant: Saison },
+  semis: { id: 'semis', titre: 'Quand semer', question: 'Quand semer ?', phrase: 'La période de semis la moins risquée, culture par culture.', icone: CalendarDays, composant: QuandSemer },
   alerte: { id: 'alerte', titre: 'Alerte récolte', phrase: 'Les départements où la récolte risque de chuter.', icone: TriangleAlert, composant: AlerteRecolte },
   campagne: { id: 'campagne', titre: 'Préparer la campagne', phrase: 'Pluie attendue, risque pour la récolte, vulnérabilité : où regarder d’abord.', icone: ClipboardList, composant: Campagne },
-  semer: { id: 'semer', titre: 'Quelle culture', phrase: 'Les cultures adaptées à son département, leurs cycles et la récolte attendue.', icone: Sprout, composant: Semer },
-  surface: { id: 'surface', titre: 'Mes besoins', phrase: 'Sa culture, sa surface, son année : ce qu’il faut, et ce qu’on peut en attendre.', icone: Scale, composant: Surface },
+  semer: { id: 'semer', titre: 'Quelle culture', question: 'Que semer ?', phrase: 'Les cultures adaptées à son département, leurs cycles et la récolte attendue.', icone: Sprout, composant: Semer },
+  surface: { id: 'surface', titre: 'Mes besoins', question: 'Combien m’en faut-il ?', phrase: 'Sa culture, sa surface, son année : ce qu’il faut, et ce qu’on peut en attendre.', icone: Scale, composant: Surface },
+  contreSaison: { id: 'contreSaison', titre: 'Contre-saison', question: 'Puis-je cultiver en saison sèche ?', phrase: 'L’eau disponible en saison sèche près de vos terres, et ce qu’elle permet.', icone: Droplets, composant: ContreSaison },
   vulnerabilite: { id: 'vulnerabilite', titre: 'Vulnérabilité', phrase: 'Les départements où une mauvaise saison pèse le plus.', icone: ShieldAlert, composant: Vulnerabilite },
   besoins: { id: 'besoins', titre: 'Besoins du pays', phrase: 'Semences et engrais nécessaires, département par département.', icone: BarChart3, composant: BesoinsPays },
   repartir: { id: 'repartir', titre: 'Répartir un stock', phrase: 'Du dépôt aux départements : la carte trace la proposition.', icone: Truck, composant: Repartir },
 } satisfies Record<string, Fonctionnalite>
 
 function fonctionnalitesDe(user: Utilisateur): { profil: string; liste: Fonctionnalite[] } {
-  if (user.role === 'PRODUCTEUR') return { profil: 'Agriculteur', liste: [F.parcelle, F.saison, F.semis, F.semer, F.surface] }
+  if (user.role === 'PRODUCTEUR') return { profil: 'Agriculteur', liste: [F.parcelle, F.saison, F.semer, F.semis, F.surface, F.contreSaison] }
   return { profil: "ONG et services de l'État", liste: [F.campagne, F.saison, F.alerte, F.vulnerabilite, F.besoins, F.repartir] }
 }
 
@@ -92,13 +107,22 @@ export default function Scene() {
   const { data: contours } = useContours()
   const { data: contoursZones } = useContoursZones()
 
-  const { profil, liste } = useMemo(() => fonctionnalitesDe(user!), [user])
+  const { profil, liste } = useMemo(() => {
+    const f = fonctionnalitesDe(user!)
+    // La première fonctionnalité se télécharge en même temps que les données, pas après
+    void chargeurs.get(f.liste[0].composant)?.()
+    return f
+  }, [user])
   const [idMode, setIdMode] = useState(liste[0].id)
   const actif = liste.find((f) => f.id === idMode) ?? liste[0]
   const [selection, setSelection] = useState<string | null>(null)
   const [position, setPosition] = useState<LonLat | null>(null)
   // L'année choisie vaut pour toutes les fonctionnalités ; au départ, la campagne à venir
   const [anneeChoisie, setAnnee] = useState<number | null>(null)
+  // La culture choisie suit d'un écran à l'autre (« Que semer ? », « Quand semer ? », « Combien m'en faut-il ? »)
+  const [culture, setCulture] = useState<string | null>(null)
+  // Sans carte (pas de WebGL), pas de légende : elle décrirait une carte absente
+  const [sansCarte, setSansCarte] = useState(false)
   const [sortie, setSortie] = useState<Sortie>({ vue: {} })
   const bulle = useRef<PoigneeBulle>(null)
   const racine = useRef<HTMLDivElement>(null)
@@ -116,19 +140,35 @@ export default function Scene() {
   }, [])
   const aller = ouvrir
   const cadre = useMemo<Cadre | null>(
-    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee: setAnnee, aller, marge, cultureDemandee: null } : null),
-    [ref, contours, user, selection, position, anneeChoisie, aller, marge],
+    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee: setAnnee, culture, choisirCulture: setCulture, aller, marge } : null),
+    [ref, contours, user, selection, position, anneeChoisie, culture, aller, marge],
   )
+  // Les autres fonctionnalités du profil se téléchargent pendant que la première s'affiche
+  useEffect(() => {
+    const minuteur = window.setTimeout(() => liste.forEach((f) => void chargeurs.get(f.composant)?.()), 1200)
+    return () => clearTimeout(minuteur)
+  }, [liste])
+  usePrechargerDepartement(selection ?? user?.code_departement ?? null, cadre?.annee, culture, user?.role === 'PRODUCTEUR' && cadre !== null)
+  // Le même élément tant que la fonctionnalité et le cadre ne changent pas : quand la fonctionnalité publie sa
+  // sortie, la scène se redessine (carte, légende, résumé) sans redessiner la fonctionnalité elle-même
+  const Composant = actif.composant
+  const contenu = useMemo(() => cadre && (
+    <Suspense fallback={null}>
+      <Composant key={actif.id} cadre={cadre} publier={setSortie} />
+    </Suspense>
+  ), [Composant, actif.id, cadre])
   const vue = useMemo<VueCarte | null>(() => (cadre ? { ambiance: 'jour', camera: cadrer.pays(cadre), ...sortie.vue } : null), [cadre, sortie.vue])
 
   return (
     <div ref={racine} className="scene relative h-dvh overflow-hidden bg-encre-nuit text-white">
       {vue && cadre ? (
+        <GardeCarte large={large} onEchec={() => setSansCarte(true)}>
         <Suspense fallback={null}>
           <Carte vue={vue} contours={contours} contoursZones={contoursZones} departements={ref?.departements} depart={{ centre: [-32, 18], zoom: 1.6 }}
             onDepartement={setSelection} onPoint={sortie.surPoint} onSurvol={(s) => bulle.current?.montrer(s)}
             onManipulation={(enCours) => racine.current?.classList.toggle('scene-manip', enCours)} />
         </Suspense>
+        </GardeCarte>
       ) : (
         <div className="grid h-full place-items-center px-6 text-center">
           <p className={error ? 'text-soleil-500' : 'animate-pulse text-white/60'}>
@@ -144,7 +184,9 @@ export default function Scene() {
           <img src="/favicon.svg" alt="" className="size-9 rounded-lg" />
           <div className="leading-tight">
             <p className="font-titre text-md font-semibold text-white">Assaman & Suuf</p>
-            <p className="text-2xs text-white/55">{profil}</p>
+            <p className="text-2xs text-white/55">{profil}
+              {config.donneesDemo && <span className="ml-1.5 rounded-full border border-white/20 px-1.5 whitespace-nowrap text-white/70" title="Données de démonstration synthétiques : elles illustrent la plateforme et ne servent pas à décider.">Démo · données synthétiques</span>}
+            </p>
           </div>
           <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/60 transition hover:text-white">
             <LogOut className="size-4" />
@@ -152,15 +194,15 @@ export default function Scene() {
         </div>
       </header>
 
-      <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} />
+      <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} reponse={sortie.resume} />
 
 
-      {large && sortie.legende && <div className="verre-scene absolute bottom-8 left-24 z-10 rounded-lg px-3.5 py-3">{sortie.legende}</div>}
+      {large && !sansCarte && sortie.legende && <div className="verre-scene absolute bottom-8 left-24 z-10 rounded-lg px-3.5 py-3">{sortie.legende}</div>}
 
       {/* La fonctionnalité s'ouvre dans une fenêtre flottante (pop-up), un tiroir sur téléphone */}
       {cadre && (
-        <Fenetre cle={actif.id} titre={actif.titre} icone={actif.icone} resume={sortie.resume} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo} large={large} hauteurEcran={ecran.h} cran={cran} onCran={setCran} legende={sortie.legende}>
-          <actif.composant key={actif.id} cadre={cadre} publier={setSortie} />
+        <Fenetre cle={actif.id} titre={actif.titre} icone={actif.icone} resume={sortie.resume} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo} large={large} hauteurEcran={ecran.h} cran={cran} onCran={setCran} legende={sansCarte ? undefined : sortie.legende}>
+          {contenu}
         </Fenetre>
       )}
     </div>
