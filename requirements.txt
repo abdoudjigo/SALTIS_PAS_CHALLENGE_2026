@@ -8,6 +8,7 @@ uvicorn
 redis
 pydantic-settings
 snowflake-connector-python
+gradio_client  # IA vocale : appel du Space « voix wolof »
 scikit-learn
 xgboost
 ruff

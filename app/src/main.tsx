@@ -13,6 +13,10 @@ const queryClient = new QueryClient({
       // Pas de nouvel essai sur les erreurs définitives (droits, ressource absente)
       retry: (n, e) => !(e instanceof ApiError && [401, 403, 404].includes(e.status)) && n < 2,
       refetchOnWindowFocus: false,
+      // Les marts et les prévisions changent au plus une fois par jour : une réponse reste fraîche 10 min par défaut
+      // (1 h dans les hooks), et reste en mémoire 1 h après usage, pour revenir sur un écran sans nouvelle requête
+      staleTime: 1000 * 60 * 10,
+      gcTime: 1000 * 60 * 60,
     },
   },
 })

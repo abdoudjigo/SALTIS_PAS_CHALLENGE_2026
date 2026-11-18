@@ -9,6 +9,7 @@ from fastapi.security import APIKeyHeader
 
 from ..erreurs import ErreurApi, reponses_erreurs
 from ..schemas import EtatCache, Sante, Tache
+from ..securite import limiter
 from .outils import service
 
 systeme = APIRouter(prefix="/systeme", tags=["Système et cache"])
@@ -20,6 +21,7 @@ entete_admin = APIKeyHeader(
 
 
 async def exiger_admin(request: Request, jeton: Annotated[str | None, Security(entete_admin)]) -> None:
+    limiter(request, "admin")  # freine la recherche du jeton par essais successifs
     attendu = request.app.state.parametres.api_admin_token.get_secret_value()
     if not attendu:
         raise ErreurApi(403, "administration_desactivee", "Administration désactivée : API_ADMIN_TOKEN n'est pas défini.")

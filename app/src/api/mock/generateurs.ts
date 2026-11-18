@@ -11,7 +11,7 @@ const SANS_RENDEMENT = ['Guédiawaye', 'Pikine']
 const SANS_VULNERABILITE = ['Dakar', ...SANS_RENDEMENT]
 
 // --- Aléatoire reproductible -------------------------------------------------
-type Aleatoire = () => number
+export type Aleatoire = () => number
 
 function graine(texte: string) {
   let h = 1779033703 ^ texte.length
@@ -21,7 +21,7 @@ function graine(texte: string) {
   }
   return h >>> 0
 }
-function rng(texte: string): Aleatoire {
+export function rng(texte: string): Aleatoire {
   let a = graine(texte)
   return () => {
     a |= 0
@@ -31,10 +31,10 @@ function rng(texte: string): Aleatoire {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
-const gauss = (r: Aleatoire) => Math.sqrt(-2 * Math.log(r() || 1e-9)) * Math.cos(2 * Math.PI * r())
-const arrondi = (x: number, n = 1) => Math.round(x * 10 ** n) / 10 ** n
-const borne = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x))
-const entete = (d: Territoire): Territoire => ({
+export const gauss = (r: Aleatoire) => Math.sqrt(-2 * Math.log(r() || 1e-9)) * Math.cos(2 * Math.PI * r())
+export const arrondi = (x: number, n = 1) => Math.round(x * 10 ** n) / 10 ** n
+export const borne = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x))
+export const entete = (d: Territoire): Territoire => ({
   code_departement: d.code_departement, departement: d.departement, code_region: d.code_region,
   region: d.region, zone_agroecologique: d.zone_agroecologique,
 })
@@ -278,7 +278,7 @@ export function suiviDecadaire(code: string, annee: number): LigneSuivi[] {
 }
 
 // --- Choix des cultures (mart_choix_cultures) ---------------------------------
-const CYCLES: Record<string, [number, number, number]> = {
+export const CYCLES: Record<string, [number, number, number]> = {
   'ARACHIDE': [90, 105, 120], 'MIL (SOUNA)': [75, 90, 120], 'SORGHO': [90, 110, 130], 'NIÉBÉ': [60, 75, 90],
   'MAÏS': [80, 100, 120], 'RIZ (IRRIGUÉ)': [100, 120, 140], 'MANIOC': [270, 300, 360], 'SÉSAME': [80, 95, 110],
   'PASTÈQUE': [70, 80, 90], 'COTON': [110, 130, 150], 'TOMATE': [90, 110, 130], 'OIGNON': [100, 120, 140],

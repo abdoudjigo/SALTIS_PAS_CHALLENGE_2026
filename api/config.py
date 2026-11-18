@@ -17,6 +17,12 @@ class Parametres(BaseSettings):
     snowflake_warehouse: str = "SALTIS_WH"
     snowflake_database: str = "SALTIS"
     snowflake_schema_marts: str = "MARTS"
+    # Résultats des modèles d'IA (ml/), chargés par ml/charger_snowflake.py. Facultatifs : absents, l'API sert les marts seuls.
+    snowflake_schema_ml: str = "ML"
+
+    # IA vocale (wolof) : Space Hugging Face voix/space/ (ex. « akai/assaman-suuf-voix ») ; vide = voix wolof désactivée
+    voix_space: str = ""
+    hf_token: SecretStr = SecretStr("")
 
     # Serveur (python -m api)
     api_host: str = "127.0.0.1"
@@ -32,8 +38,19 @@ class Parametres(BaseSettings):
 
     # HTTP
     api_admin_token: SecretStr = SecretStr("")
+    # CORS : « * » pour le développement ; en production le site et l'API ont la même origine (docker-compose.prod.yml : []).
     cors_origines: list[str] = ["*"]
     http_max_age_s: int = 60
+    # Documentation interactive (/docs, /redoc, /openapi.json) : coupée en production (API_DOCS=false)
+    api_docs: bool = True
+
+    # Sécurité : débit par adresse IP et par minute (0 = sans limite), taille des corps JSON
+    limite_requetes_par_minute: int = Field(1200, ge=0)
+    limite_voix_texte_par_minute: int = Field(60, ge=0)
+    limite_voix_synthese_par_minute: int = Field(20, ge=0, description="Reconnaissance et synthèse vocales (coûteuses)")
+    limite_admin_par_minute: int = Field(10, ge=0)
+    taille_max_json_octets: int = Field(64 * 1024, ge=1024)
+    voix_cache_max_fichiers: int = Field(400, ge=0, description="Voix gardées sur disque (au-delà, la voix n'est plus enregistrée)")
 
 
 @lru_cache

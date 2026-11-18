@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_AUTH_DEMO?: string
   readonly VITE_DONNEES_DEMO?: string
   readonly VITE_MAPBOX_TOKEN?: string
+  readonly VITE_MAPBOX_SATELLITE?: string
   readonly VITE_MAPBOX_STYLE?: string
   readonly VITE_ACTIVER_SEMENCIERS?: string
   readonly VITE_EMAIL_CONTACT?: string

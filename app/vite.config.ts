@@ -39,6 +39,12 @@ export default defineConfig(({ mode }) => {
           navigateFallback: '/index.html',
           runtimeCaching: [
             {
+              // Contours de la carte et logos des sources : servis du cache, rafraîchis en arrière-plan
+              urlPattern: ({ url }) => /^\/(geo|logos)\//.test(url.pathname),
+              handler: 'StaleWhileRevalidate',
+              options: { cacheName: 'fonds-et-logos', expiration: { maxEntries: 30 } },
+            },
+            {
               urlPattern: ({ url }) => /\/assets\/mapbox-.*\.(js|css)$/.test(url.pathname),
               handler: 'CacheFirst',
               options: { cacheName: 'mapbox-lib', expiration: { maxEntries: 6 } },
@@ -67,10 +73,15 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            if (id.includes('mapbox-gl') || id.includes('react-map-gl')) return 'mapbox'
-            if (id.includes('recharts') || id.includes('d3-')) return 'charts'
-            if (id.includes('node_modules/react') || id.includes('react-router') || id.includes('scheduler')) return 'react'
+          // Groupes par priorité : un module va au groupe le plus prioritaire qui le capte. Rolldown range aussi
+          // dans un groupe les dépendances de ses modules ; sans priorité, React partait dans « charts » (recharts
+          // en dépend), et chaque page préchargeait alors les graphiques (108 Ko compressés)
+          codeSplitting: {
+            groups: [
+              { name: 'react', test: /node_modules[\\/](react|react-dom|react-router|scheduler|clsx)[\\/]/, priority: 30 },
+              { name: 'mapbox', test: /mapbox-gl|react-map-gl/, priority: 20 },
+              { name: 'charts', test: /recharts|d3-/, priority: 10 },
+            ],
           },
         },
       },

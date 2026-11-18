@@ -27,7 +27,7 @@ export interface OptionsRequete {
 }
 
 function construireUrl(chemin: string, params?: Params) {
-  const url = new URL(config.apiUrl + chemin)
+  const url = new URL(config.apiUrl + chemin, window.location.origin)
   Object.entries(params ?? {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v))
   })
@@ -60,7 +60,7 @@ function messageErreur(contenu: unknown, status: number): string {
 export async function requete<T>(chemin: string, { method = 'GET', params, body, signal, timeout = 15000, sansJeton = false }: OptionsRequete = {}): Promise<T> {
   const controleur = new AbortController()
   const minuteur = setTimeout(() => controleur.abort(new DOMException('timeout', 'TimeoutError')), timeout)
-  signal?.addEventListener('abort', () => controleur.abort(signal.reason))
+  signal?.addEventListener('abort', () => controleur.abort(signal.reason), { once: true })
 
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = sessionStore.token()

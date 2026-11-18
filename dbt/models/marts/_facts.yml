@@ -460,3 +460,26 @@ models:
           - accepted_values:
               arguments:
                 values: ['COHERENT', 'ECART', 'A_VERIFIER']
+
+  - name: fact_eau_departement
+    description: >
+      Ressources en eau mobilisables en saison sèche, une ligne par
+      département : eau de surface et terres proches (ha), nappes (BGS),
+      irrigation équipée vers 2005 (FAO). Indicateurs eau_surface_mobilisable
+      et nappe_accessible, seuils dans dbt_project.yml. Actif seulement si la
+      variable eau_chargee vaut true.
+    columns:
+      - name: id_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: code_departement
+        data_tests: [not_null, unique]
+      - name: eau_surface_mobilisable
+        data_tests: [not_null]
+      - name: nappe_accessible
+        data_tests: [not_null]

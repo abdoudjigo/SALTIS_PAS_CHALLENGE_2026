@@ -184,7 +184,8 @@ class ServiceCache:
             genere_le = datetime.now(timezone.utc)
             version = nouvelle_version(genere_le)
             prefixe = f"{self.p.snowflake_database}.{self.p.snowflake_schema_marts}".upper()
-            construction = await asyncio.to_thread(construire, valides, version, genere_le, prefixe)
+            prefixe_ml = f"{self.p.snowflake_database}.{self.p.snowflake_schema_ml}".upper()
+            construction = await asyncio.to_thread(construire, valides, version, genere_le, prefixe, prefixe_ml)
             t2 = time.perf_counter()
             info = InfoVersion(
                 version=version,

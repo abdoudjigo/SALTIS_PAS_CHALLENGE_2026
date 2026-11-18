@@ -25,7 +25,8 @@ async def _verifier() -> int:
     bruts = creer_lecteur(p, tables_a_lire())()
     valides, ignorees = valider(bruts)
     maintenant = datetime.now(timezone.utc)
-    c = construire(valides, nouvelle_version(maintenant), maintenant, f"{p.snowflake_database}.{p.snowflake_schema_marts}")
+    c = construire(valides, nouvelle_version(maintenant), maintenant, f"{p.snowflake_database}.{p.snowflake_schema_marts}",
+                   f"{p.snowflake_database}.{p.snowflake_schema_ml}".upper())
     print(f"Contrat respecté : {', '.join(f'{k}={len(v)}' for k, v in valides.items())}")
     if ignorees:
         print(f"Colonnes hors contrat (ignorées) : {ignorees}")

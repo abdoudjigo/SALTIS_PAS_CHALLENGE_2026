@@ -65,3 +65,47 @@ def vulnerabilite_classement() -> str:
 
 def vulnerabilite_departement(code: str) -> str:
     return f"vulnerabilite:departement:{code}"
+
+
+# ---- modèles d'IA (SALTIS.ML)
+ANNEE_TYPE = "type"
+
+
+def prev_saison_annee(annee: int) -> str:
+    return f"prev:saison:annee:{annee}"
+
+
+def prev_saison_departement(code: str) -> str:
+    return f"prev:saison:departement:{code}"
+
+
+def semblables(code: str, annee: int, moment: str | None) -> str:
+    return f"prev:semblables:{code}:{annee}:{moment or TOUTES}"
+
+
+def rendement(code: str, annee: int, culture: str | None) -> str:
+    return f"prev:rendement:{code}:{annee}:{culture or TOUTES}"
+
+
+def alerte_recolte(annee: int, moment: str, culture: str | None) -> str:
+    return f"prev:alerte:{annee}:{moment}:{culture or TOUTES}"
+
+
+def semis(code: str, annee: int | None, culture: str | None) -> str:
+    return f"prev:semis:{code}:{annee or ANNEE_TYPE}:{culture or TOUTES}"
+
+
+def semis_carte(annee: int | None, culture: str) -> str:
+    return f"prev:semis-carte:{annee or ANNEE_TYPE}:{culture}"
+
+
+def evaluation(modele: str | None) -> str:
+    return f"prev:evaluation:{modele or TOUTES}"
+
+
+def opportunites(couleur: str | None) -> str:
+    return f"opportunites:carte:{couleur or TOUTES}"
+
+
+def opportunites_departement(code: str) -> str:
+    return f"opportunites:departement:{code}"

@@ -1,8 +1,7 @@
 // Hooks de données (TanStack Query) : cache, déduplication, rechargement en arrière-plan.
 // Les marts changent au plus une fois par jour : on garde les données longtemps en cache.
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query'
 import { api } from '../api'
-import type { OffreSemence, Scenario, Stock } from '../types/marts'
 
 const LONG = 1000 * 60 * 60 // 1 h
 
@@ -13,71 +12,31 @@ export const useCarte = (campagne: number | undefined) =>
   useQuery({ queryKey: ['carte', campagne], queryFn: () => api.carte(campagne!), enabled: Boolean(campagne),
     staleTime: LONG, placeholderData: keepPreviousData })
 
-export const useHistorique = (code: string | null) =>
-  useQuery({ queryKey: ['historique', code], queryFn: () => api.historique(code!), enabled: Boolean(code), staleTime: LONG })
-
-export const useSuivi = (code: string | null, annee: number | undefined) =>
-  useQuery({ queryKey: ['suivi', code, annee], queryFn: () => api.suivi(code!, annee!), enabled: Boolean(code && annee),
+// Options partagées par les hooks et par le préchargement (hooks/precharger.ts) : mêmes clés, mêmes requêtes
+export const optionsChoix = (code: string | null) =>
+  queryOptions({ queryKey: ['choix', code], queryFn: () => api.choixCultures(code!), enabled: Boolean(code),
     staleTime: LONG, placeholderData: keepPreviousData })
+export const useChoixCultures = (code: string | null) => useQuery(optionsChoix(code))
 
-export const useChoixCultures = (code: string | null) =>
-  useQuery({ queryKey: ['choix', code], queryFn: () => api.choixCultures(code!), enabled: Boolean(code),
-    staleTime: LONG, placeholderData: keepPreviousData })
-
-export const useAdequationVarietes = () =>
-  useQuery({ queryKey: ['adequation-varietes'], queryFn: api.adequationVarietes, staleTime: LONG })
-
-export const useBesoins = (filtres: { code_departement?: string } = {}) =>
-  useQuery({ queryKey: ['besoins', filtres], queryFn: () => api.besoins(filtres), staleTime: LONG, placeholderData: keepPreviousData })
+export const optionsBesoins = (filtres: { code_departement?: string } = {}, actif = true) =>
+  queryOptions({ queryKey: ['besoins', filtres], queryFn: () => api.besoins(filtres), enabled: actif, staleTime: LONG, placeholderData: keepPreviousData })
+/** `actif` faux : rien n'est demandé (sans département, la requête lirait tout le pays). */
+export const useBesoins = (filtres: { code_departement?: string } = {}, actif = true) => useQuery(optionsBesoins(filtres, actif))
 
 export const useVulnerabilite = () =>
   useQuery({ queryKey: ['vulnerabilite'], queryFn: api.vulnerabilite, staleTime: LONG })
 
-export const useStocks = () => useQuery({ queryKey: ['stocks'], queryFn: api.stocks })
-export const useScenarios = () => useQuery({ queryKey: ['scenarios'], queryFn: api.scenarios })
-export const useOffreSemences = () => useQuery({ queryKey: ['offre-semences'], queryFn: api.offreSemences })
+export const useTerritoires = () =>
+  useQuery({ queryKey: ['territoires'], queryFn: () => api.territoires(), staleTime: LONG })
 
-export function useEnregistrerStocks() {
-  const qc = useQueryClient()
-  return useMutation({ mutationFn: api.enregistrerStocks, onSuccess: (d: Stock[]) => qc.setQueryData(['stocks'], d) })
-}
+/** La carte des opportunités, tout le pays ; null tant que le mart n'est pas construit (404). */
+export const optionsOpportunites = () => queryOptions({ queryKey: ['opportunites'], queryFn: api.opportunites, staleTime: LONG })
+export const useOpportunites = () => useQuery(optionsOpportunites())
 
-export function useEnregistrerOffreSemences() {
-  const qc = useQueryClient()
-  return useMutation({ mutationFn: api.enregistrerOffreSemences, onSuccess: (d: OffreSemence[]) => qc.setQueryData(['offre-semences'], d) })
-}
+export const optionsOpportunite = (code: string | null) =>
+  queryOptions({ queryKey: ['opportunite', code], queryFn: () => api.opportunite(code!), enabled: Boolean(code), staleTime: LONG })
+export const useOpportunite = (code: string | null) => useQuery(optionsOpportunite(code))
 
-export function useGenererScenario() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: api.genererScenario,
-    onSuccess: (s) => qc.setQueryData<Scenario[]>(['scenarios'], (l = []) => [s, ...l]),
-  })
-}
-
-export function useValiderScenario() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, quantites }: { id: number; quantites: Record<string, number> }) => api.validerScenario(id, quantites),
-    onSuccess: (s) => qc.setQueryData<Scenario[]>(['scenarios'], (l = []) => l.map((x) => (x.id === s.id ? s : x))),
-  })
-}
-
-export function useSupprimerScenario() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: api.supprimerScenario,
-    onSuccess: (_, id) => qc.setQueryData<Scenario[]>(['scenarios'], (l = []) => l.filter((x) => x.id !== id)),
-  })
-}
-
-export type ClePrechargement = 'vulnerabilite' | 'besoins'
-
-// Précharge les données d'un écran au survol d'un lien du menu (navigation instantanée)
-export function usePrechargement() {
-  const qc = useQueryClient()
-  return (cle: ClePrechargement) => {
-    if (cle === 'vulnerabilite') qc.prefetchQuery({ queryKey: ['vulnerabilite'], queryFn: api.vulnerabilite, staleTime: LONG })
-    if (cle === 'besoins') qc.prefetchQuery({ queryKey: ['besoins', {}], queryFn: () => api.besoins({}), staleTime: LONG })
-  }
-}
+/** Suivi décadaire d'un département pour une année ; `[]` si le département n'a pas de série (Guédiawaye). */
+export const useSuivi = (code: string | null, annee: number | undefined) =>
+  useQuery({ queryKey: ['suivi', code, annee], queryFn: () => api.suiviDecadaire(code!, annee!), enabled: Boolean(code && annee), staleTime: LONG })

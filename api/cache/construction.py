@@ -16,20 +16,26 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from ..marts import MARTS
 from ..schemas import (
     Agregat,
+    AnneeSemblable,
     Besoin,
     CarteAgroclimat,
     ChoixCulture,
     CultureRef,
     DepartementRef,
+    EvaluationModele,
     Meta,
     Periodes,
+    PrevisionRendement,
+    PrevisionSaison,
     RegionRef,
+    RisqueSemis,
     SuiviDecadaire,
     TerritoireAgrodistrib,
     Vulnerabilite,
     ZoneRef,
 )
 from . import cles
+from ..schemas.opportunites import CarteOpportunite
 from .cles import SUFFIXE_GZIP, normaliser
 
 SEUIL_GZIP_OCTETS = 1024
@@ -103,6 +109,15 @@ class Index(BaseModel):
     cultures: list[str]
     campagnes: list[int]
     annees_suivi: list[int]
+    # Modèles d'IA (vides tant que SALTIS.ML n'est pas chargé ; valeurs par défaut pour relire un ancien index)
+    annees_prev_saison: list[int] = []
+    annees_semblables: list[int] = []
+    annees_prev_rendement: list[int] = []
+    cultures_prev_rendement: list[str] = []
+    annees_semis: list[int] = []
+    cultures_semis: list[str] = []
+    a_evaluation: bool = False
+    a_opportunites: bool = False
 
     def resoudre_culture(self, texte: str) -> str | None:
         cible = normaliser(texte)
@@ -131,6 +146,8 @@ def valider(bruts: dict[str, list[dict[str, Any]]]) -> tuple[dict[str, list[Any]
     valides: dict[str, list[Any]] = {}
     ignorees: dict[str, list[str]] = {}
     for cle, definition in MARTS.items():
+        if not definition.obligatoire and not bruts.get(cle):
+            continue  # résultat de modèle pas encore chargé : ses routes répondent 404 prevision_indisponible
         if cle not in bruts:
             raise ErreurContrat(f"{definition.table} : mart absent de la lecture")
         lignes = bruts[cle]
@@ -252,13 +269,21 @@ def _grouper(lignes: Iterable[Any], cle: Callable[[Any], Any]) -> dict[Any, list
     return groupes
 
 
-def construire(marts: dict[str, list[Any]], version: str, genere_le: datetime, prefixe_source: str) -> Construction:
+def construire(
+    marts: dict[str, list[Any]], version: str, genere_le: datetime, prefixe_source: str, prefixe_ml: str | None = None
+) -> Construction:
     carte: list[CarteAgroclimat] = marts["carte"]
     suivi: list[SuiviDecadaire] = marts["suivi"]
     choix: list[ChoixCulture] = marts["cultures"]
     besoins: list[Besoin] = marts["besoins"]
     agro: list[TerritoireAgrodistrib] = marts["agrodistrib"]
     vuln: list[Vulnerabilite] = marts["vulnerabilite"]
+    opportunites: list[CarteOpportunite] = marts.get("opportunites", [])
+    prev_saison: list[PrevisionSaison] = marts.get("prev_saison", [])
+    semblables: list[AnneeSemblable] = marts.get("semblables", [])
+    prev_rendement: list[PrevisionRendement] = marts.get("prev_rendement", [])
+    semis: list[RisqueSemis] = marts.get("semis", [])
+    evaluation: list[EvaluationModele] = marts.get("evaluation", [])
 
     b = _Constructeur(version, genere_le, prefixe_source)
     t_carte, t_suivi, t_choix = MARTS["carte"].table, MARTS["suivi"].table, MARTS["cultures"].table
@@ -277,6 +302,14 @@ def construire(marts: dict[str, list[Any]], version: str, genere_le: datetime, p
         cultures=toutes_cultures,
         campagnes=sorted({x.campagne_agricole for x in carte}),
         annees_suivi=sorted({x.annee for x in suivi}),
+        annees_prev_saison=sorted({x.annee for x in prev_saison}),
+        annees_semblables=sorted({x.annee for x in semblables}),
+        annees_prev_rendement=sorted({x.annee for x in prev_rendement}),
+        cultures_prev_rendement=sorted({x.culture for x in prev_rendement}),
+        annees_semis=sorted({x.annee for x in semis if x.annee is not None}),
+        cultures_semis=sorted({x.culture for x in semis}),
+        a_evaluation=bool(evaluation),
+        a_opportunites=bool(opportunites),
     )
     b.c.index = index
 
@@ -420,4 +453,131 @@ def construire(marts: dict[str, list[Any]], version: str, genere_le: datetime, p
             AV_VULNERABILITE,
         )
 
+    _construire_opportunites(b, opportunites)
+    _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, semblables, prev_rendement, semis,
+                           evaluation)
     return b.c
+
+
+# ---------------------------------------------------------------- modèles d'IA (SALTIS.ML)
+
+AV_PREV_SAISON = [
+    "Prévision faite fin mai, avec deux indices océaniques (El Niño, Atlantique sud) : mêmes probabilités pour tout le pays une année donnée.",
+    "Gain modeste par rapport à la climatologie (RPSS +0,06 en validation, +0,17 sur 2016-2025) : toujours afficher les 3 probabilités et la fourchette.",
+]
+AV_PREV_TENDANCE = [
+    "Prévision de tendance : océan de mars-mai pas encore connu pour cette année ; pluie attendue = moyenne des 15 dernières saisons.",
+    "Erreur mesurée sur 2016-2025 : 115 mm (normale seule : 122 mm). Remplacée par la prévision océan dès fin mai de l'année.",
+]
+AV_SEMBLABLES = [
+    "Comparaison avec les années passées du même département : fiable à partir de FIN_JUILLET.",
+    "FIN_MAI : probabilités vides, afficher celles de /previsions/saison (modèle 1) ; les années semblables illustrent.",
+]
+AV_RENDEMENT = [
+    "Gain faible : la prévision ne bat la référence que là où alerte_fiable ou rendement_fiable est vrai.",
+    "Ailleurs, présenter la fourchette comme la récolte habituelle du département, pas comme une prévision de l'année.",
+    "PROJECTION_NON_EVALUEE (2022-2026) : invérifiable, modèle appris sur des superficies récoltées (≤ 2015).",
+]
+AV_ALERTE = [
+    "Classement relatif des départements à surveiller ; prévision de l'année seulement là où alerte_fiable est vrai.",
+    "Chute = rendement sous 80 % de la tendance (moyenne des 10 campagnes précédentes).",
+    "PROJECTION_NON_EVALUEE (2022-2026) : invérifiable.",
+]
+AV_SEMIS = [
+    "Seuils à valider avec les agronomes : pluie de semis ≥ 20 mm, décade sèche < 10 mm, fin de cycle − 20 jours.",
+    "Données décadaires : une période sèche à cheval sur deux décades est mal vue.",
+    "Guédiawaye absent (pas de pluie décadaire).",
+]
+AV_EVALUATION = ["Chaque modèle est comparé à une prévision simple (climatologie, fréquence passée ou tendance) ; détail dans ml/MODELES.md."]
+
+
+def _construire_previsions(
+    b: _Constructeur,
+    prefixe_ml: str,
+    prev_saison: list[PrevisionSaison],
+    semblables: list[AnneeSemblable],
+    prev_rendement: list[PrevisionRendement],
+    semis: list[RisqueSemis],
+    evaluation: list[EvaluationModele],
+) -> None:
+    source = {d.cle: f"{prefixe_ml}.{d.table}" for d in MARTS.values() if d.schema == "ml"}
+
+    # Modèle 1 : par année (carte) et par département (historique)
+    for annee, lignes in _grouper(prev_saison, lambda x: x.annee).items():
+        tendance = all(x.type_prevision == "PREVISION_TENDANCE" for x in lignes)
+        b.ajouter(cles.prev_saison_annee(annee), lignes, PrevisionSaison, source["prev_saison"], {"annee": annee},
+                  AV_PREV_TENDANCE if tendance else AV_PREV_SAISON)
+    for code, lignes in _grouper(prev_saison, lambda x: x.code_departement).items():
+        b.ajouter(cles.prev_saison_departement(code), lignes, PrevisionSaison, source["prev_saison"], {"code_departement": code},
+                  AV_PREV_SAISON)
+
+    # Modèle 2 : département × année, tous moments ou un seul
+    for (code, annee), lignes in _grouper(semblables, lambda x: (x.code_departement, x.annee)).items():
+        filtres = {"code_departement": code, "annee": annee}
+        b.ajouter(cles.semblables(code, annee, None), lignes, AnneeSemblable, source["semblables"], filtres, AV_SEMBLABLES)
+        for moment, du_moment in _grouper(lignes, lambda x: x.moment_prevision).items():
+            b.ajouter(cles.semblables(code, annee, moment), du_moment, AnneeSemblable, source["semblables"],
+                      {**filtres, "moment": moment}, AV_SEMBLABLES)
+
+    # Modèle 3 : un département (toutes cultures ou une), et la carte d'alerte (tous départements)
+    for (code, annee), lignes in _grouper(prev_rendement, lambda x: (x.code_departement, x.annee)).items():
+        filtres = {"code_departement": code, "annee": annee}
+        b.ajouter(cles.rendement(code, annee, None), lignes, PrevisionRendement, source["prev_rendement"], filtres, AV_RENDEMENT)
+        for culture, de_culture in _grouper(lignes, lambda x: x.culture).items():
+            b.ajouter(cles.rendement(code, annee, culture), de_culture, PrevisionRendement, source["prev_rendement"],
+                      {**filtres, "culture": culture}, AV_RENDEMENT)
+    for (annee, moment), lignes in _grouper(prev_rendement, lambda x: (x.annee, x.moment_prevision)).items():
+        filtres = {"annee": annee, "moment": moment}
+        lignes.sort(key=lambda x: (-(x.proba_chute_pct or -1), x.code_departement, x.culture))
+        b.ajouter(cles.alerte_recolte(annee, moment, None), lignes, PrevisionRendement, source["prev_rendement"], filtres, AV_ALERTE)
+        for culture, de_culture in _grouper(lignes, lambda x: x.culture).items():
+            b.ajouter(cles.alerte_recolte(annee, moment, culture), de_culture, PrevisionRendement, source["prev_rendement"],
+                      {**filtres, "culture": culture}, AV_ALERTE)
+
+    # Modèle 4 : un département (frise des décades), et la carte des décades conseillées
+    for (code, annee), lignes in _grouper(semis, lambda x: (x.code_departement, x.annee)).items():
+        filtres = {"code_departement": code, "annee": annee}
+        b.ajouter(cles.semis(code, annee, None), lignes, RisqueSemis, source["semis"], filtres, AV_SEMIS)
+        for culture, de_culture in _grouper(lignes, lambda x: x.culture).items():
+            b.ajouter(cles.semis(code, annee, culture), de_culture, RisqueSemis, source["semis"], {**filtres, "culture": culture},
+                      AV_SEMIS)
+    conseillees = [x for x in semis if x.decade_conseillee]
+    for (annee, culture), lignes in _grouper(conseillees, lambda x: (x.annee, x.culture)).items():
+        b.ajouter(cles.semis_carte(annee, culture), lignes, RisqueSemis, source["semis"], {"annee": annee, "culture": culture},
+                  AV_SEMIS)
+
+    # Fiabilité
+    if evaluation:
+        b.ajouter(cles.evaluation(None), evaluation, EvaluationModele, source["evaluation"], None, AV_EVALUATION)
+        for modele, lignes in _grouper(evaluation, lambda x: x.modele).items():
+            b.ajouter(cles.evaluation(modele), lignes, EvaluationModele, source["evaluation"], {"modele": modele}, AV_EVALUATION)
+
+
+AV_OPPORTUNITES = [
+    "Indicateur de repérage, pas une étude de faisabilité : foncier, salinité, qualité de l'eau et accès à vérifier sur place.",
+    "Saison courte / longue : même calcul que /choix-cultures (cycle qui passe au moins 4 années sur 5).",
+    "Irrigation équipée : FAO GMIA, vers 2005. Nappes : BGS, échelle continentale (grille 5 km).",
+]
+AV_OPPORTUNITES_SANS_EAU = "Couche bleue non évaluée : les sources eau ne sont pas encore chargées (categorie_eau = « non évaluée »)."
+COULEURS = ("bleu", "jaune", "vert")
+
+
+
+def _construire_opportunites(b: _Constructeur, lignes: list[CarteOpportunite]) -> None:
+    """La carte entière, une couleur à la fois (bleu = classement des opportunités), et le détail d'un département."""
+    if not lignes:
+        return
+    table = MARTS["opportunites"].table
+    avertissements = list(AV_OPPORTUNITES)
+    if all(x.categorie_eau == "non évaluée" for x in lignes):
+        avertissements.insert(0, AV_OPPORTUNITES_SANS_EAU)
+    lignes = sorted(lignes, key=lambda x: x.code_departement)
+    b.ajouter(cles.opportunites(None), lignes, CarteOpportunite, table, None, avertissements)
+    for couleur in COULEURS:
+        membres = [x for x in lignes if x.couleur_carte == couleur]
+        if couleur == "bleu":
+            membres.sort(key=lambda x: (x.rang_opportunite_eau is None, x.rang_opportunite_eau or 0, x.code_departement))
+        b.ajouter(cles.opportunites(couleur), membres, CarteOpportunite, table, {"couleur": couleur}, avertissements)
+    for x in lignes:
+        b.ajouter(cles.opportunites_departement(x.code_departement), x, CarteOpportunite, table,
+                  {"code_departement": x.code_departement}, avertissements)

@@ -10,6 +10,7 @@ import {
   CAMPAGNES, adequationVarietes, besoins, carteAgroclimat, choixCultures, historiqueDepartement, suiviDecadaire,
   territoiresAgrodistrib, vulnerabilite,
 } from './generateurs'
+import { routesSynthetiques } from './previsions'
 import { CULTURES, DEPARTEMENTS, INTRANTS, VARIETES, ZONES } from './referentiel'
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -201,6 +202,8 @@ const routes: Route[] = [
   ['GET', /^\/besoins$/, ({ params }) => besoins().filter((b) =>
     (!params.code_departement || b.code_departement === params.code_departement) && (!params.culture || b.culture === params.culture))],
   ['GET', /^\/vulnerabilite$/, () => vulnerabilite()],
+  // Prévisions des modèles et carte des opportunités : données synthétiques (mode démonstration seulement)
+  ...(routesSynthetiques as Route[]),
   ['GET', /^\/agrodistrib\/territoires$/, ({ params }) => territoiresAgrodistrib().filter((t) => !params.culture || t.culture === params.culture)],
 
   ['GET', /^\/organisations\/moi\/stocks$/, ({ user }) => etat.stocks[exigerOrganisation(user).id] ?? []],
