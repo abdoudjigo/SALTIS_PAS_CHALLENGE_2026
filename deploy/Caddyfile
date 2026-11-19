@@ -39,7 +39,7 @@
 		#   - 'wasm-unsafe-eval' : décodeurs WebAssembly de Mapbox GL v3 (modèles 3D) ; pas de 'unsafe-eval' ni de script en ligne
 		#   - style-src 'unsafe-inline' : styles posés par Mapbox GL et React (attribut style)
 		#   - media-src data: : la voix wolof est jouée depuis une URL data:audio/wav
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.mapbox.com; font-src 'self' data:; connect-src 'self' data: blob: https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com; worker-src 'self' blob:; child-src 'self' blob:; media-src 'self' data: blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.mapbox.com; font-src 'self' data:; connect-src 'self' https://formsubmit.co data: blob: https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com; worker-src 'self' blob:; child-src 'self' blob:; media-src 'self' data: blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		-Server
 		-Via
 	}

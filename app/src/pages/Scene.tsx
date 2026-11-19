@@ -10,6 +10,7 @@ import type { Survol, VueCarte } from '../scene/Carte'
 import { cadrer, questionDe, questionOng, type AccesExport, type Cadre, type Fonctionnalite, type Infobulle, type ModeOng, type PropsMode, type Sortie } from '../scene/cadre'
 import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../scene/dossier'
 import { definirCarte, registre } from '../scene/registreExport'
+import { AvisOng } from '../scene/AvisOng'
 import { Dock } from '../scene/Dock'
 import { hauteurCran, type Cran } from '../scene/crans'
 import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/Fenetre'
@@ -249,6 +250,8 @@ export default function Scene() {
             <LogOut className="size-4" />
           </button>
         </div>
+        {/* Avis ONG : en haut au milieu sur ordinateur, à droite sur téléphone */}
+        {user && user.role !== 'PRODUCTEUR' && <div className="pointer-events-auto md:absolute md:top-4 md:left-1/2 md:-translate-x-1/2"><AvisOng annee={cadre?.annee ?? null} etape={actif.titre} /></div>}
       </header>
 
       <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} reponse={sortie.resume} />
