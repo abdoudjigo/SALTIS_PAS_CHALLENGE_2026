@@ -1,6 +1,6 @@
 @docs/etat-modelisation.md
 
-# CLAUDE.md — consignes de travail (projet SALTIS / Assaman & Suuf, équipe AKAI)
+# REGLE.md — consignes de travail (projet SALTIS / Assaman & Suuf, équipe AKAI)
 
 Le contexte du projet, les règles validées, l'état des modèles et les points ouverts sont dans [`docs/etat-modelisation.md`](docs/etat-modelisation.md), importé ci-dessus. Ce fichier ne contient que les consignes pour Claude.
 
