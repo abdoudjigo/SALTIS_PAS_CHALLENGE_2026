@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Assaman & Suuf : aide à la décision agricole au Sénégal, département par département." />
+    <meta name="theme-color" content="#1f5f3a" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Carte : la connexion à Mapbox s'ouvre pendant que le script se charge -->
+    <link rel="preconnect" href="https://api.mapbox.com" crossorigin />
+    <link rel="dns-prefetch" href="https://api.mapbox.com" />
+    <link rel="dns-prefetch" href="https://events.mapbox.com" />
+    <!-- Contours des 6 zones et des 45 départements : demandés tout de suite, repris par le fetch de l'application -->
+    <link rel="preload" href="/geo/zones_agroecologiques.geojson" as="fetch" crossorigin="anonymous" fetchpriority="high" />
+    <link rel="preload" href="/geo/departements.geojson" as="fetch" crossorigin="anonymous" />
+    <title>Assaman & Suuf</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

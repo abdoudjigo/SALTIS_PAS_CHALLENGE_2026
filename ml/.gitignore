@@ -1,0 +1,3 @@
+# Copies locales des tables Snowflake (données, pas du code)
+donnees/
+__pycache__/

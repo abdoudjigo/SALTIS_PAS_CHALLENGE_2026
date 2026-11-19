@@ -10,5 +10,18 @@ data/modules/*
 dbt/target/
 dbt/logs/
 dbt/dbt_packages/
+dbt/.user.yml
 node_modules/
 .DS_Store
+/logs/
+CLAUDE.md
+dataset/*
+!dataset/README.md
+# Front (app/)
+app/dist/
+app/dev-dist/
+*.local
+venv
+# Voix wolof locale (voix/README.md) : environnement et voix déjà produites
+voix/.venv/
+voix/cache/

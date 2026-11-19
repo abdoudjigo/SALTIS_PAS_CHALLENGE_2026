@@ -1,0 +1,548 @@
+version: 2
+
+models:
+
+  - name: fact_rendement_departement
+    description: >
+      Superficies, productions et rendements par département, campagne et
+      culture (DAPSA via HarvestStat et FEWS NET, 1981-2024). Grille complète :
+      est_observe indique si une valeur a été publiée. Superficie récoltée
+      jusqu'en 2015, superficie semée ensuite (voir type_superficie).
+    columns:
+      - name: id_rendement
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: campagne_agricole
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_temps')
+                field: campagne_agricole
+      - name: est_observe
+        data_tests: [not_null]
+
+  - name: fact_saison_departement
+    description: >
+      Bilan de chaque saison des pluies par département (1981-2025) :
+      quantité, calendrier, répartition, chaleur, végétation, classe de
+      saison et alertes. Source de référence des variables climatiques
+      départementales.
+    columns:
+      - name: id_saison
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: campagne_agricole
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_temps')
+                field: campagne_agricole
+      - name: pluie_saison_mm
+        data_tests: [not_null]
+      - name: classe_saison
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['très sèche', 'sèche', 'normale', 'humide', 'très humide']
+      - name: source_calendrier
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['CHIRPS journalier', 'NASA POWER']
+
+  - name: fact_pluviometrie_decadaire
+    description: >
+      Suivi des pluies décade par décade par département (CHIRPS, 1981-2025) :
+      pluie observée, normale, anomalie et cumul depuis le 1er juin comparé à
+      la normale. 44 départements (Guédiawaye absent). Cumul et part de saison
+      renseignés pour les décades 16 à 30 uniquement.
+    columns:
+      - name: id_pluie_decade
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: annee
+        data_tests: [not_null]
+      - name: numero_decade_annee
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+                quote: false
+      - name: campagne_agricole
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_temps')
+                field: campagne_agricole
+      - name: est_decade_saison
+        data_tests: [not_null]
+      - name: pluie_mm
+        data_tests: [not_null]
+      - name: pluie_normale_mm
+        data_tests: [not_null]
+
+
+  - name: fact_climatologie_decadaire
+    description: >
+      Climatologie décadaire de référence 1991-2020, au niveau du département
+      (44, Guédiawaye absent) et de la zone agroécologique (6) : pluie moyenne,
+      médiane, quantiles 1 année sur 5 et 4 années sur 5, maximum, jours de
+      pluie, séquences sèches, probabilités, cumul moyen et parts de saison.
+      Une ligne porte exactement une clé géographique selon niveau_geographique.
+      Les valeurs de zone viennent de la source zonale, jamais recalculées
+      depuis les départements. Toutes les mesures sont NON ADDITIVES (moyennes,
+      médianes, quantiles, probabilités, parts) : ne jamais les sommer entre
+      territoires, entre niveaux ni entre décades.
+    columns:
+      - name: id_climatologie
+        data_tests: [not_null, unique]
+      - name: niveau_geographique
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['DEPARTEMENT', 'ZONE']
+      - name: id_departement
+        description: Renseigné uniquement si niveau_geographique = DEPARTEMENT.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_zone_agroecologique
+        description: Renseigné uniquement si niveau_geographique = ZONE.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+      - name: numero_decade_annee
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_temps')
+                field: numero_decade_annee
+      - name: periode_reference
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['1991-2020']
+
+  - name: fact_adequation_culture
+    description: >
+      Adéquation de chaque culture au climat de chaque département, par classe
+      de cycle (courte, moyenne, longue). score_adequation = round(0,6 x
+      proba_cycle_couvert_pct + 0,4 x proba_besoin_eau_couvert_pct du cycle
+      moyen), calculé par la source ; niveau : adaptée > 80, à risque > 50,
+      déconseillée <= 50. Score nul pour 'irrigation requise' et
+      'non évaluée (culture pluriannuelle)'. Colonnes de l'équipe, à côté de
+      celles de la source (inchangées) : _calc = calcul décadaire brut par
+      cycle (int_couverture_eau_cycle) ; _final = cycle moyen de la source, et
+      pour les cycles court et long, cycle moyen de la source + écart calculé
+      entre le cycle et le cycle moyen.
+    columns:
+      - name: id_adequation_culture
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: classe_cycle
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['courte', 'moyenne', 'longue']
+      - name: proba_besoin_eau_couvert_pct
+        description: >
+          Renseignée uniquement pour le cycle moyen ; reprise aussi dans le
+          score des cycles court et long.
+      - name: niveau_adequation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
+      - name: proba_besoin_eau_couvert_calc_pct
+        description: >
+          Part des années 1991-2020 où la pluie efficace du cycle couvre au
+          moins 80 % du besoin en eau (approximation décadaire FAO, validée sur
+          le cycle moyen). Calcul brut, gardé pour la traçabilité. NULL pour
+          Guédiawaye (pas de données décadaires) et les cultures irriguées ou
+          pluriannuelles.
+      - name: nb_annees_calc
+        description: Nombre d'années utilisées pour proba_besoin_eau_couvert_calc_pct.
+      - name: proba_besoin_eau_couvert_final_pct
+        description: >
+          Cycle moyen : valeur de la source. Cycles court et long : valeur de
+          la source pour le cycle moyen + (calcul du cycle - calcul du cycle
+          moyen), bornée entre 0 et 100.
+      - name: score_adequation_final
+        description: round(0,6 x proba_cycle_couvert_pct + 0,4 x proba_besoin_eau_couvert_final_pct).
+      - name: niveau_adequation_final
+        description: >
+          Mêmes seuils que la source (> 80 adaptée, > 50 à risque) appliqués au
+          score final ; valeur de la source pour 'irrigation requise' et
+          'non évaluée' ; NULL pour les cycles court et long de Guédiawaye.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
+      - name: methode_eau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['FAO décadaire v1, ancrage sur le cycle moyen de la source']
+
+  - name: fact_adequation_variete
+    description: >
+      Adéquation des variétés documentées au climat de chaque département.
+      Mil souna (type hâtif) absent (cycle inconnu) ; Sahel 177 irrigué,
+      sans probabilité de cycle couvert.
+    columns:
+      - name: id_adequation_variete
+        data_tests: [not_null, unique]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: id_variete
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_variete')
+                field: id_variete
+      - name: niveau_adequation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['adaptée', 'à risque', 'déconseillée', 'irrigation requise']
+
+  - name: fact_facteurs_limitants
+    description: >
+      Rendement moyen et atteignable, écart, facteur climatique limitant
+      principal, corrélations avec le rendement et recommandations de sol,
+      par zone agroécologique et culture. Sur 16 lignes
+      (est_rendement_national = true), les rendements sont des valeurs
+      nationales FAOSTAT recopiées sur la zone : ne pas les lire comme des
+      valeurs zonales. 'données insuffisantes' et 'aucun facteur climatique
+      net' sont des valeurs légitimes.
+    columns:
+      - name: id_facteur_limitant
+        data_tests: [not_null, unique]
+      - name: id_zone_agroecologique
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: rendement_moyen_kg_ha
+        data_tests: [not_null]
+      - name: rendement_atteignable_kg_ha
+        data_tests: [not_null]
+      - name: ecart_rendement_kg_ha
+        data_tests: [not_null]
+      - name: source_rendement
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['départements (DAPSA)', 'national (FAOSTAT)']
+      - name: est_rendement_national
+        data_tests: [not_null]
+      - name: facteur_limitant_principal
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['eau', 'sequence_seche', 'chaleur', 'demarrage_tardif', 'aucun facteur climatique net', 'données insuffisantes']
+      - name: apport_organique_recommande
+        data_tests: [not_null]
+      - name: amendement_ph_recommande
+        data_tests: [not_null]
+      - name: fractionnement_azote_recommande
+        data_tests: [not_null]
+
+  - name: fact_reference_agronomique
+    description: >
+      Doses de référence par zone agroécologique (nulle = dose nationale),
+      culture, intrant et source. Une ligne par dose et par source : une dose
+      ISRA s'ajoute sans écraser les références actuelles. type_intrant :
+      PRODUIT (engrais, fumier, semences), ELEMENT (N, P2O5, K2O) ou EAU
+      (irrigation). On n'additionne JAMAIS des doses de types ou d'unités
+      différents : produits et éléments décrivent la même fertilisation, et
+      les unités diffèrent (kg/ha, t/ha, m3/ha). Une dose à 0 signifie
+      « besoin nul » ; une dose inconnue ne donne pas de ligne (« dose à
+      saisir »). VALIDEE est réservé aux doses validées par un spécialiste :
+      aucune aujourd'hui. Sources : doses actuelles (Tounkara 2022, Faye 2020,
+      extrapolations, source web) et doses nationales PIA (IFDC-CORAF, fiches
+      ISRA). dose_retenue : dose retenue dans au moins une zone par la règle de
+      priorité de int_reference_dose (nb_zones_retenue zones).
+    columns:
+      - name: dose_retenue
+        data_tests: [not_null]
+      - name: nb_zones_retenue
+        data_tests: [not_null]
+      - name: rang_priorite
+        description: 1 = recherche propre à la zone, 2 = nationale (PIA), 3 = NON_VERIFIEE.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+                quote: false
+      - name: id_reference_agronomique
+        data_tests: [not_null, unique]
+      - name: id_zone_agroecologique
+        description: Nulle pour une dose nationale (portee_geographique = NATIONAL).
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+      - name: portee_geographique
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ZONE', 'NATIONAL']
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: code_intrant
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_intrant')
+                field: code_intrant
+      - name: type_intrant
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['PRODUIT', 'ELEMENT', 'EAU']
+      - name: dose
+        data_tests: [not_null]
+      - name: unite
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['kg/ha', 't/ha', 'm3/ha']
+      - name: statut_validation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'NON_VERIFIEE', 'A_COMPLETER']
+      - name: source_reference
+        data_tests: [not_null]
+      - name: note_source
+        data_tests: [not_null]
+
+  - name: fact_besoin_reference
+    description: >
+      Besoins de référence historiques, pas prévisionnels. Par département et
+      culture : superficie de référence (moyenne des dernières campagnes
+      connues, voir annees_reference et type_superficie) x dose RETENUE de la
+      zone / 1000 (fumier en t/ha : sans division), calculée dans dbt
+      (int_reference_dose). 43 départements : Guédiawaye et Pikine absents.
+      Besoins (t) ADDITIFS : besoin_azote_n_t, besoin_phosphate_p2o5_t,
+      besoin_potasse_k2o_t (éléments) et besoin_npk_15_15_15_t,
+      besoin_npk_15_10_10_t, besoin_npk_6_20_10_t, besoin_uree_t,
+      besoin_dap_t, besoin_semences_t (produits) ; ne jamais additionner
+      éléments et produits. Culture sans formule d'engrais retenue : besoins
+      NULL (« dose à saisir »), jamais 0. Formule retenue : produit engrais
+      absent = 0 (« pas dans la formule » ; phosphate de fond de 400 kg/ha tous
+      les 3 ans exclu du besoin annuel, phosphate_fond_exclu). besoin_fumier_t
+      toujours NULL (non chiffré, hors totaux ; dose dans
+      fact_reference_agronomique).
+    columns:
+      - name: id_besoin_reference
+        data_tests: [not_null, unique]
+      - name: a_formule_engrais_retenue
+        data_tests: [not_null]
+      - name: phosphate_fond_exclu
+        data_tests: [not_null]
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+      - name: superficie_reference_ha
+        data_tests: [not_null]
+      - name: annees_reference
+        data_tests: [not_null]
+      - name: type_superficie
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['semée', 'récoltée']
+      - name: besoin_semences_applicable
+        description: >
+          Faux seulement si la dose de semis retenue est la dose de repiquage
+          irrigué (Faye 2020) appliquée hors de la Vallée (riz pluvial). Avec la
+          dose PIA du riz pluvial (60 kg/ha), vrai partout aujourd'hui.
+        data_tests: [not_null]
+      - name: statut_validation_engrais
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'NON_VERIFIEE', 'A_COMPLETER']
+      - name: statut_validation_semis
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'NON_VERIFIEE', 'A_COMPLETER']
+      - name: coherence_dose_n
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['COHERENT', 'ECART', 'A_VERIFIER']
+      - name: coherence_dose_semis
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['COHERENT', 'ECART', 'A_VERIFIER']
+
+  - name: fact_eau_departement
+    description: >
+      Ressources en eau mobilisables en saison sèche, une ligne par
+      département : eau de surface et terres proches (ha), nappes (BGS),
+      irrigation équipée vers 2005 (FAO). Indicateurs eau_surface_mobilisable
+      et nappe_accessible, seuils dans dbt_project.yml. Actif seulement si la
+      variable eau_chargee vaut true.
+    columns:
+      - name: id_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: code_departement
+        data_tests: [not_null, unique]
+      - name: eau_surface_mobilisable
+        data_tests: [not_null]
+      - name: nappe_accessible
+        data_tests: [not_null]
+
+  - name: fact_cadre_harmonise
+    description: >
+      Cadre harmonisé (CILSS / IPC) par département × cycle × type de période
+      (current / projected), cycles depuis 2014 (HDX, CC BY). Keur Massar
+      fusionné dans Pikine (effectifs additionnés, phase la plus haute,
+      fusion_keur_massar). Effectifs en personnes, additifs entre départements
+      d'un même cycle et type de période seulement, jamais entre cycles ou
+      types de période. Phases non additives. Hors score de vulnérabilité.
+    columns:
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: code_departement
+        data_tests: [not_null]
+      - name: annee_cycle
+        data_tests: [not_null]
+      - name: code_cycle
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+      - name: type_periode
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['current', 'projected']
+      - name: phase_class
+        data_tests: [not_null]
+      - name: fusion_keur_massar
+        data_tests: [not_null]

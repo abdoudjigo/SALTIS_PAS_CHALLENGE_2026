@@ -1,10 +1,633 @@
 version: 2
+
 models:
-  - name: mart_saisons
+
+  # ------------------------------------------------------------------
+  # Dimensions
+  # ------------------------------------------------------------------
+
+  - name: dim_temps
+    description: >
+      Calendrier journalier 1980-2035 avec mois, décade (1 à 36), campagne
+      agricole (juin N à mai N+1) et saison.
+    columns:
+      - name: id_temps
+        data_tests: [not_null, unique]
+      - name: date_complete
+        data_tests: [not_null, unique]
+      - name: decade_mois
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+                quote: false
+      - name: numero_decade_annee
+        data_tests: [not_null]
+      - name: campagne_agricole
+        data_tests: [not_null]
+
+  - name: dim_geographie
+    description: >
+      Référentiel des 45 départements avec leur région et leur zone
+      agroécologique. Région et zone sont deux regroupements parallèles
+      (Louga, Matam et Tambacounda couvrent deux zones) : pas de hiérarchie.
+    columns:
+      - name: id_departement
+        data_tests: [not_null, unique]
+      - name: code_departement
+        data_tests: [not_null, unique]
+      - name: departement
+        data_tests: [not_null]
+      - name: region
+        data_tests: [not_null]
+      - name: id_region
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: id_region
+      - name: code_region
+        description: Déduit du code département (règle GADM), à confirmer avec GID_1.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: code_region
+      - name: id_zone_agroecologique
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone_agroecologique')
+                field: id_zone_agroecologique
+
+  - name: dim_region
+    description: >
+      Référentiel des 14 régions administratives, dérivé du profil
+      agroclimatique. Regroupement parallèle à la zone agroécologique,
+      sans lien région -> zone.
+    columns:
+      - name: id_region
+        data_tests: [not_null, unique]
+      - name: code_region
+        description: Déduit du code département (SEN.10.1_1 -> SEN.10_1, règle GADM), à confirmer avec GID_1.
+        data_tests: [not_null, unique]
+      - name: region
+        data_tests: [not_null, unique]
+      - name: nb_departements
+        data_tests: [not_null]
+
+  - name: dim_intrant
+    description: >
+      Référentiel des 11 intrants de référence (seed ref_intrants) : produits
+      (dont NPK 15-10-10 et 6-20-10 des PIA), éléments fertilisants et eau,
+      avec unité et teneurs N-P2O5-K2O.
+    columns:
+      - name: id_intrant
+        data_tests: [not_null, unique]
+      - name: code_intrant
+        data_tests: [not_null, unique]
+      - name: type_intrant
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['PRODUIT', 'ELEMENT', 'EAU']
+      - name: unite
+        data_tests: [not_null]
+
+  - name: dim_zone_agroecologique
+    description: Référentiel des 6 zones agroécologiques.
+    columns:
+      - name: id_zone_agroecologique
+        data_tests: [not_null, unique]
+      - name: zone_agroecologique
+        data_tests: [not_null, unique]
+
+  - name: dim_culture
+    description: >
+      Référentiel des cultures présentes dans les rendements, les besoins et
+      les variétés.
+    columns:
+      - name: id_culture
+        data_tests: [not_null, unique]
+      - name: culture
+        data_tests: [not_null, unique]
+
+  - name: dim_variete
+    description: >
+      Référentiel des variétés documentées (incomplet, à compléter avec le
+      catalogue DISEM / ISRA).
+    columns:
+      - name: id_variete
+        data_tests: [not_null, unique]
+      - name: variete
+        data_tests: [not_null]
+      - name: id_culture
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_culture')
+                field: id_culture
+
+  # ------------------------------------------------------------------
+  # Marts
+  # ------------------------------------------------------------------
+
+  - name: mart_vulnerabilite_departement
+    description: >
+      Score de vulnérabilité agricole par département, RELATIF et INDICATIF
+      (méthode v1) : rang centile 0-100 parmi les départements, 100 = le plus
+      vulnérable. 60 % aléa sécheresse (alertes sécheresse 1991-2020, CV des
+      pluies, pluie de l'année sèche en sens inverse) + 40 % sensibilité des
+      rendements (variabilité et tendance, 1991-2015). Classes par quintiles,
+      relatives : elles comparent les départements entre eux. Score NULL si
+      une dimension manque (Guédiawaye, Pikine). Excès de pluie, probabilité
+      de saison sèche, séquence sèche de 15 jours et part des cultures sont
+      affichés hors score. À valider avec les techniciens.
     columns:
       - name: code_departement
-        tests: [not_null]
-  - name: mart_adequation
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: score_alea_secheresse
+        data_tests: [not_null]
+      - name: nb_dimensions_disponibles
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+                quote: false
+      - name: classe_vulnerabilite
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['très faible (relatif)', 'faible (relatif)', 'moyenne (relatif)', 'élevée (relatif)', 'très élevée (relatif)']
+      - name: confiance_rendement
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['faible', 'normale']
+      - name: methode_version
+        data_tests: [not_null]
+
+  - name: mart_ml_prevision_pluie
+    description: >
+      Jeu de données du modèle de prévision de la pluie de saison, par
+      département et année (1981-2025). Variables connues fin mai seulement
+      (indices océaniques mars-mai ONI, TNA, TSA, AMO ; pluie N-1 ; humidité
+      du sol avril-mai ; normale 1991-2020). Cibles pluie_saison_mm et
+      classe_saison issues de fact_saison_departement. jeu : ENTRAINEMENT
+      (<= 2015) / TEST (2016-2025). Les indices océaniques sont identiques
+      pour tous les départements d'une même année ; l'AMO s'arrête en 2022
+      (nulle de 2023 à 2025) ; les valeurs nulles restent nulles.
     columns:
       - name: code_departement
-        tests: [not_null]
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: annee
+        data_tests: [not_null]
+      - name: jeu
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ENTRAINEMENT', 'TEST']
+      - name: pluie_saison_mm
+        data_tests: [not_null]
+      - name: classe_saison
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['très sèche', 'sèche', 'normale', 'humide', 'très humide']
+
+  - name: mart_carte_agroclimat
+    description: >
+      Écran carte agroclimatique : bilan de chaque saison par département
+      et campagne (fact_saison_departement), normale, alertes,
+      risque_saison et vulnérabilité (relative). Un seul écran carte avec
+      des filtres ; le détail de la vulnérabilité est dans
+      mart_vulnerabilite_departement.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: campagne_agricole
+        data_tests: [not_null]
+      - name: risque_saison
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['sécheresse et excès de pluie', 'sécheresse', 'excès de pluie', 'normal']
+
+  - name: mart_suivi_decadaire
+    description: >
+      Écran de suivi décade par décade : pluie observée, normale 1991-2020
+      et écart côte à côte, pour la décade et en cumul depuis le 1er juin,
+      avec la fourchette climatologique du département. 44 départements
+      (Guédiawaye absent).
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: numero_decade_annee
+        data_tests: [not_null]
+      - name: libelle_decade
+        data_tests: [not_null]
+      - name: pluie_mm
+        data_tests: [not_null]
+
+  - name: mart_choix_cultures
+    description: >
+      Écran choix des cultures et des variétés : une ligne par département,
+      culture et option (type_option CYCLE ou VARIETE). Comparer sur
+      proba_cycle_couvert_pct (rang_option), pas sur le score. Cycles : score,
+      probabilité eau et niveau principaux = valeurs finales de l'équipe (cycle
+      moyen de la source ; cycles court et long ancrés sur lui avec l'écart
+      décadaire entre cycles) ; valeurs de la source à côté (suffixe _source).
+      Colonnes propres à un type NULL pour l'autre.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: type_option
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['CYCLE', 'VARIETE']
+      - name: option
+        data_tests: [not_null]
+      - name: niveau_adequation
+        data_tests: [not_null]
+      - name: methode_niveau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['FAO décadaire v1, ancrage sur le cycle moyen de la source', 'source', 'source, sans données décadaires']
+      - name: niveau_adequation_source
+        data_tests: [not_null]
+
+  - name: dim_prix_intrant
+    description: >
+      Prix des engrais par produit et campagne (seed ref_prix_intrants, exposé
+      tel quel). prix_cession_sac_50kg_fcfa : prix payé par le producteur
+      (subventionné) ; subvention_tonne_fcfa ; cout_reel_sac_50kg_fcfa =
+      cession + subvention / 20. Urée et DAP : A_SAISIR, valeurs NULL.
+    columns:
+      - name: code_intrant
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_intrant')
+                field: code_intrant
+      - name: campagne
+        data_tests: [not_null]
+      - name: prix_cession_sac_50kg_fcfa
+        description: Prix payé par le producteur (FCFA par sac de 50 kg, subventionné) ; NULL si A_SAISIR.
+      - name: subvention_tonne_fcfa
+        description: Subvention de l'État (FCFA par tonne) ; NULL si A_SAISIR.
+      - name: cout_reel_sac_50kg_fcfa
+        description: Prix de cession + subvention / 20 (FCFA par sac) ; NULL si A_SAISIR.
+      - name: statut_validation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'A_SAISIR']
+
+  - name: mart_besoins
+    description: >
+      Écran besoins en intrants : besoins de référence historiques, pas
+      prévisionnels, par département et culture. Les 45 départements
+      apparaissent (Guédiawaye et Pikine : « pas de superficie agricole de
+      référence »). Besoins (t) = superficie x dose retenue de la zone
+      (recherche propre à la zone, puis PIA national, puis NON_VERIFIEE).
+      ADDITIFS : superficie_reference_ha, besoin_azote_n_t,
+      besoin_phosphate_p2o5_t, besoin_potasse_k2o_t, besoin_npk_15_15_15_t,
+      besoin_npk_15_10_10_t, besoin_npk_6_20_10_t, besoin_uree_t,
+      besoin_dap_t, besoin_semences_retenu_t (à totaliser pour les
+      semences) ; ne jamais additionner éléments et produits. Non additifs :
+      doses et irrigation par hectare, statuts, sources, libellés. Culture
+      sans formule : besoin NULL (« dose à saisir »), jamais 0 ; produit
+      absent d'une formule retenue : 0 (libelle_<produit> = « pas dans la
+      formule », note_dap pour le phosphate de fond exclu). besoin_fumier_t
+      toujours NULL, hors totaux (libelle_fumier « non chiffré : fumure
+      organique conseillée si possible »).
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: irrigation_requise
+        data_tests: [not_null]
+      - name: message_departement
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['pas de superficie agricole de référence']
+      - name: libelle_besoin_engrais
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'calculé']
+      - name: libelle_semences
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['non applicable (riz pluvial)', 'dose à saisir', 'superficie de référence nulle', 'calculé']
+      - name: libelle_npk_15_15_15
+        description: "Libellé du besoin en NPK 15-15-15 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_15_10_10
+        description: "Libellé du besoin en NPK 15-10-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_6_20_10
+        description: "Libellé du besoin en NPK 6-20-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_uree
+        description: "Libellé du besoin en urée : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_dap
+        description: "Libellé du besoin en DAP 18-46-0 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: note_dap
+        description: Texte quand la formule retenue cite un phosphate de fond (400 kg/ha tous les 3 ans), exclu du besoin annuel ; NULL sinon.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['phosphate de fond (400 kg tous les 3 ans) volontairement exclu du besoin annuel']
+      - name: libelle_fumier
+        description: Fumier non chiffré (besoin_fumier_t toujours NULL, hors totaux).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['non chiffré : fumure organique conseillée si possible']
+      - name: besoin_fumier_t
+        description: Toujours NULL (fumier non chiffré) ; ne jamais l'additionner.
+      - name: besoin_npk_15_10_10_t
+        description: Besoin en NPK 15-10-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: besoin_npk_6_20_10_t
+        description: Besoin en NPK 6-20-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: source_reference_engrais
+        description: Source de la formule d'engrais retenue (int_reference_dose) ; NULL sans formule.
+      - name: source_reference_semis
+        description: Source de la dose de semis retenue ; NULL sans dose.
+
+  - name: mart_territoires_agrodistrib
+    description: >
+      Critères par département et culture pour AgroDistrib, seulement là où
+      la culture existe (superficie de référence > 0). Additifs : superficie
+      et besoins (t), y compris besoin_npk_15_10_10_t et besoin_npk_6_20_10_t
+      (PIA) ; semences : besoin_semences_retenu_t ; besoin_fumier_t toujours
+      NULL, exclu des totaux et du budget (libelle_fumier). Produit absent
+      d'une formule retenue : 0 ; culture sans formule : NULL (libellés
+      libelle_<produit>, note_dap). Non additifs : tout le
+      reste (statuts et sources des doses retenues compris). Potentiel de gain : valeurs
+      de zone (niveau_source_potentiel = 'ZONE'), qui ne s'additionnent
+      jamais et ne distinguent pas les départements d'une même zone.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: culture
+        data_tests: [not_null]
+      - name: superficie_reference_ha
+        data_tests: [not_null]
+      - name: besoin_semences_applicable
+        description: Faux seulement si la dose de repiquage irrigué est appliquée hors Vallée (riz pluvial) ; aucune ligne aujourd'hui (dose PIA du riz pluvial).
+        data_tests: [not_null]
+      - name: niveau_source_potentiel
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ZONE']
+      - name: potentiel_evalue
+        data_tests: [not_null]
+      - name: libelle_npk_15_15_15
+        description: "Libellé du besoin en NPK 15-15-15 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_15_10_10
+        description: "Libellé du besoin en NPK 15-10-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_6_20_10
+        description: "Libellé du besoin en NPK 6-20-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_uree
+        description: "Libellé du besoin en urée : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_dap
+        description: "Libellé du besoin en DAP 18-46-0 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: note_dap
+        description: Texte quand la formule retenue cite un phosphate de fond (400 kg/ha tous les 3 ans), exclu du besoin annuel ; NULL sinon.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['phosphate de fond (400 kg tous les 3 ans) volontairement exclu du besoin annuel']
+      - name: libelle_fumier
+        description: Fumier non chiffré (besoin_fumier_t toujours NULL, hors totaux).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['non chiffré : fumure organique conseillée si possible']
+      - name: besoin_fumier_t
+        description: Toujours NULL (fumier non chiffré) ; ne jamais l'additionner.
+      - name: besoin_npk_15_10_10_t
+        description: Besoin en NPK 15-10-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: besoin_npk_6_20_10_t
+        description: Besoin en NPK 6-20-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: source_reference_engrais
+        description: Source de la formule d'engrais retenue (int_reference_dose) ; NULL sans formule.
+      - name: source_reference_semis
+        description: Source de la dose de semis retenue ; NULL sans dose.
+
+  - name: mart_carte_opportunites
+    description: >
+      Écran carte des opportunités, un département par ligne (45). Une carte,
+      trois couleurs : jaune (saison courte, semences à cycle court), vert
+      (saison longue, cycle long possible), bleu (eau mobilisable et peu
+      exploitée en saison sèche : contre-saison pour l'agriculteur,
+      aménagement ou forage pour l'investisseur). Le fond jaune / vert vient
+      du module B (mart_choix_cultures) ; la couche bleue n'est évaluée
+      qu'une fois les sources « eau » chargées (variable eau_chargee).
+      Messages prêts à afficher : conseil_agriculteur, conseil_investisseur.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: couleur_carte
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['bleu', 'jaune', 'vert']
+      - name: couleur_fond
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['jaune', 'vert']
+      - name: couche_eau
+        data_tests: [not_null]
+      - name: classe_saison_pluie
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['courte', 'longue', 'non évaluée']
+      - name: categorie_eau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - 'eau de surface peu exploitée'
+                  - 'nappe accessible'
+                  - 'eau de surface déjà exploitée'
+                  - "pas d''eau mobilisable identifiée"
+                  - 'non évaluée'
+      - name: conseil_agriculteur
+        data_tests: [not_null]
+
+  - name: mart_cadre_harmonise_departement
+    description: >
+      Écran Cadre harmonisé, dernier cycle disponible, un département par
+      ligne (45 au plus). Période retenue : celle marquée usethisperiod,
+      projection si les deux le sont ou aucune ; libellé en français, dates,
+      periode_terminee (au jour du build, date_calcul). Phases et population
+      en phases 3 à 5 de la période retenue, de la situation courante et de
+      la projection. Additif (entre départements seulement) : population_*.
+      Non additif : phases, libellés. Jamais d'agrégation entre cycles. Pikine
+      inclut Keur Massar (note_fusion). Hors score de vulnérabilité.
+      Source : Cadre harmonisé, CILSS et partenaires, via HDX, licence CC BY.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: phase_retenue
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+      - name: type_periode_retenue
+        description: Période affichée (current = situation courante, projected = projection).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['current', 'projected']
+      - name: libelle_periode_retenue
+        description: Libellé français de la période retenue, ex. « mars 2026, projection juin-août 2026 ».
+      - name: date_debut_periode_retenue
+        description: Premier jour de la période retenue.
+      - name: date_fin_periode_retenue
+        description: Dernier jour de la période retenue ; le front recalcule periode_terminee depuis cette date.
+      - name: periode_terminee
+        description: Vrai si date_fin_periode_retenue < date_calcul (jour du dbt build).
+      - name: mention_periode
+        description: « période terminée, prochain cycle attendu » quand periode_terminee, NULL sinon.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['période terminée, prochain cycle attendu']
+      - name: libelle_phase_retenue
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['minimale', 'sous pression', 'crise', 'urgence', 'famine']
+      - name: population_phase3_5_retenue
+        description: Population en phases 3 à 5 (personnes) de la période retenue ; additive entre départements d'un même cycle et d'une même période seulement.
+      - name: fusion_keur_massar
+        description: Vrai pour Pikine (inclut Keur Massar, créé en 2021, absent de GADM).
+        data_tests: [not_null]
+      - name: note_fusion
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Pikine et Keur Massar réunis (Keur Massar, créé en 2021, n''existe pas dans GADM)"]
+      - name: source
+        data_tests: [not_null]
+      - name: licence
+        data_tests: [not_null]
+

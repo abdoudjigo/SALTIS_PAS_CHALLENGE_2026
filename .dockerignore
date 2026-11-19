@@ -1,0 +1,17 @@
+venv
+.venv
+**/node_modules
+app/dist
+app/dev-dist
+.git
+.env
+**/.env.local
+ml/donnees
+voix/cache
+voix/.venv
+dataset
+data
+dbt
+**/__pycache__
+.pytest_cache
+.ruff_cache

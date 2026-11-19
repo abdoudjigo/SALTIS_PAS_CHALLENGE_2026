@@ -1,10 +1,19 @@
 pandas
+openpyxl  # lecture du Cadre harmonisé (.xlsx)
 sqlalchemy
 psycopg2-binary
 python-dotenv
-dbt-postgres
+dbt-snowflake
 fastapi
 uvicorn
+redis
+pydantic-settings
+snowflake-connector-python
+gradio_client  # IA vocale : appel du Space « voix wolof »
 scikit-learn
 xgboost
 ruff
+# tests de l'API
+httpx
+fakeredis
+pytest

@@ -9,31 +9,62 @@ Les agriculteurs doivent savoir **comment sera la pluie de la campagne** (courte
 ## Les 4 modules
 | Module | Question | Tables (dbt marts) |
 |---|---|---|
-| A. Suivi & anticipation agroclimatique | Quelle pluie, quelle saison ? | `mart_saisons`, `mart_profil_agro` |
-| B. Choix cultures & variétés | Que semer, avec quel cycle ? | `mart_adequation` |
-| C. Besoins & rendements | Combien d'intrants, quels facteurs limitants ? | `mart_besoins`, `mart_rendements` |
-| D. AgroDistrib | Comment répartir les intrants ? | `mart_agrodistrib` |
+| A. Suivi & anticipation agroclimatique | Quelle pluie, quelle saison ? | `mart_carte_agroclimat`, `mart_suivi_decadaire` |
+| B. Choix cultures & variétés | Que semer, avec quel cycle ? | `mart_choix_cultures` |
+| C. Besoins & rendements | Combien d'intrants, quels facteurs limitants ? | `mart_besoins` (et les faits `fact_rendement_departement`, `fact_facteurs_limitants`) |
+| D. AgroDistrib | Comment répartir les intrants ? | `mart_territoires_agrodistrib`, `mart_vulnerabilite_departement` |
 
-## Architecture (volontairement simple)
+Prévision de la pluie (ML) : `mart_ml_prevision_pluie`. Détail des colonnes : [`docs/contrat-donnees.md`](./docs/contrat-donnees.md).
+
+## Architecture
 ```
 sources (CHIRPS, NASA POWER, SoilGrids, DAPSA…)
-   └─ ingestion/  (Python)  ──►  PostgreSQL (schéma raw)
-                                   └─ dbt/  (staging → marts)  ──►  PostgreSQL (schéma marts)
-                                                                      ├─ ml/   (prévision pluie, rendement)
-                                                                      ├─ api/  (FastAPI)
-                                                                      └─ app/  (front carte Mapbox)
+   └─ CSV ──► Snowflake SALTIS.RAW
+                 └─ dbt/ (staging → intermediate → faits, dimensions, marts) ──► Snowflake SALTIS.STAGING / INTERMEDIATE / MARTS
+                                                   ├─ ml/   (prévision pluie, rendement)
+                                                   └─ api/  (FastAPI + cache Redis) ──► app/ (front carte Mapbox)
 ```
-Pas de Redis, Airflow ni Kafka : on n'en a pas besoin pour une démo en une semaine. `make` suffit pour orchestrer.
+L'API (`api/`) lit les marts de `SALTIS.MARTS` une seule fois, précalcule toutes ses réponses et les sert depuis un cache complet (en mémoire, ou **Redis** en option ; versionné, compressé) : Snowflake n'est jamais appelé pendant une requête. Détail : [`api/README.md`](./api/README.md). Le chargeur Python historique (`ingestion/`) utilise encore PostgreSQL.
+
+Pas d'Airflow ni de Kafka : on n'en a pas besoin pour une démo en une semaine. `make` suffit pour orchestrer.
 
 ## Démarrage rapide
 ```bash
 cp .env.example .env
-make up          # PostgreSQL via Docker
 make install     # venv + dépendances
-make load        # charge data/modules/*.csv dans le schéma raw
-make dbt-run     # construit staging + marts
-make api         # http://localhost:8000/docs
+make dbt-run     # construit staging + marts dans Snowflake
+python -m api    # charge les marts puis sert l'API → http://localhost:8080/docs (Ctrl + C pour arrêter)
+make front-install && make front   # front React (données d'exemple) : http://localhost:5173
 ```
+
+Front (React, Tailwind, PWA, Mapbox), contrat d'API attendu et **déploiement gratuit du front, de l'API et du modèle ML** : [`app/README.md`](./app/README.md).
+
+## Cible Snowflake pour dbt
+
+dbt cible Snowflake. Pour exécuter les modèles dans le compte où les CSV sont déjà chargés :
+
+1. Installer les dépendances du projet (`python -m venv .venv`, puis `.\.venv\Scripts\python.exe -m pip install -r requirements.txt` sous Windows).
+2. Copier `.env.example` vers `.env`, puis renseigner `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER` et `SNOWFLAKE_PASSWORD`. L'identifiant du compte est celui attendu par le connecteur Snowflake, pas l'URL complète de Snowsight.
+3. Le profil utilise l'authentification Snowflake par mot de passe. Ne pas configurer l'authentification par navigateur pour ce profil et ne jamais commiter de mot de passe.
+4. Depuis PowerShell, charger les variables locales, puis vérifier la connexion et lancer dbt :
+
+```powershell
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^\s*([^#=]+)=(.*)$') {
+        [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
+    }
+}
+.\dbt.ps1 debug --profiles-dir . --target snowflake
+.\dbt.ps1 seed  --profiles-dir . --target snowflake
+.\dbt.ps1 run   --profiles-dir . --target snowflake
+.\dbt.ps1 test  --profiles-dir . --target snowflake
+```
+
+`dbt.ps1` (à la racine) lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
+
+Le profil Snowflake utilise par défaut le rôle `SYSADMIN`, l'entrepôt `SALTIS_WH` et la base `SALTIS`. Les modèles configurés avec `+schema: staging` et `+schema: marts` sont créés dans `SALTIS.STAGING` et `SALTIS.MARTS`; le schéma `RAW` est déclaré comme source et n'est pas modifié par dbt. La description des transformations, des grains et des limites des modèles est dans [`dbt/README.md`](./dbt/README.md).
+
+**État de la modélisation** (décisions validées, règles, état des modèles, points à signaler, questions pour l'ISRA) : [`docs/etat-modelisation.md`](./docs/etat-modelisation.md).
 
 ## Données
 Les gros fichiers ne vont **pas** dans Git (voir `.gitignore`). Les tables `a_*`, `b_*`, `c_*`, `d_*` se partagent via un dossier Drive commun, à déposer dans `data/modules/`. Détail des colonnes : `docs/data-dictionary.md`.

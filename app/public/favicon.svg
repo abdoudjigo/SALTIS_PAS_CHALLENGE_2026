@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Assaman &amp; Suuf">
+  <title>Assaman &amp; Suuf</title>
+  <defs>
+    <linearGradient id="as-ciel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b5a8e"/>
+      <stop offset="0.7" stop-color="#2f9cf0"/>
+      <stop offset="1" stop-color="#a9dcff"/>
+    </linearGradient>
+    <linearGradient id="as-champ" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f5f3a"/>
+      <stop offset="1" stop-color="#12391f"/>
+    </linearGradient>
+    <clipPath id="as-disque"><circle cx="32" cy="32" r="28.5"/></clipPath>
+  </defs>
+  <circle cx="32" cy="32" r="32" fill="#12391f"/>
+  <g clip-path="url(#as-disque)">
+    <rect width="64" height="64" fill="url(#as-ciel)"/>
+    <!-- soleil -->
+    <circle cx="25" cy="30" r="10" fill="#f2b544"/>
+    <!-- pluie -->
+    <g stroke="#dcecf8" stroke-width="2" stroke-linecap="round">
+      <path d="M39 13.5 l-2 5"/><path d="M45.5 12 l-2 5"/><path d="M52 13.5 l-2 5"/><path d="M42.5 21.5 l-2 5"/><path d="M49 20 l-2 5"/>
+    </g>
+    <!-- collines -->
+    <path d="M-2 38 C 10 33, 22 33, 32 36.5 S 52 39, 66 33 V 66 H -2 Z" fill="#2f7d4f"/>
+    <path d="M-2 44 C 14 39.5, 30 40, 40 42.5 S 58 44, 66 41 V 66 H -2 Z" fill="url(#as-champ)"/>
+    <!-- sillons -->
+    <g fill="none" stroke="#2f7d4f" stroke-opacity="0.7" stroke-width="1.3" stroke-linecap="round">
+      <path d="M44 46 C 50 50, 54 56, 56 64"/><path d="M48 45.5 C 56 49, 62 54, 66 60"/><path d="M40 47 C 44 52, 46 58, 46 66"/>
+    </g>
+    <!-- rivière en perspective -->
+    <path d="M30.6 37.2 C 33.4 39.8, 27.8 43, 25.6 47 C 23.4 51, 26 56, 21 66 L 33 66 C 34.4 58, 30.4 53, 31.6 48.4 C 32.8 44, 35.8 40.6, 31.8 37 Z" fill="#dcecf8"/>
+  </g>
+  <circle cx="32" cy="32" r="28.5" fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="1.1"/>
+</svg>
