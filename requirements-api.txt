@@ -1,8 +1,0 @@
-# API de la plateforme, en production (image Docker de deploy/). Le développement utilise requirements.txt.
-fastapi
-uvicorn[standard]
-pydantic-settings
-redis
-snowflake-connector-python
-gradio_client
-numpy

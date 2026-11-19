@@ -2,34 +2,7 @@ name: saltis
 version: "1.0"
 profile: saltis
 model-paths: ["models"]
-macro-paths: ["macros"]
-test-paths: ["tests"]
-seed-paths: ["seeds"]
-
 models:
   saltis:
-    staging:      {+materialized: view,  +schema: staging}
-    intermediate: {+materialized: view,  +schema: intermediate}
-    marts:        {+materialized: table, +schema: marts}
-
-seeds:
-  saltis:
-    +schema: staging
-
-vars:
-  # Carte des opportunités (docs/carte-opportunites.md).
-  # Passer à true une fois les 3 tables SALTIS.RAW.E_* chargées : active stg_eau_*,
-  # fact_eau_departement et la couche bleue de mart_carte_opportunites.
-  eau_chargee: true
-  # Seuils de décision, à revoir avec les techniciens (ANCAR, SAED, DGPRE) :
-  seuil_cycle_long_j: 110                # saison « longue » si un cycle d'au moins 110 j passe 4 années sur 5
-  seuil_surface_inexploitee_ha: 200      # eau de surface mobilisable : au moins 200 ha nus près d'une eau permanente
-  seuil_part_nappe_accessible_pct: 25    # nappe accessible (≤ 25 m et ≥ 1 L/s) sur au moins 25 % du département
-  seuil_exploitation_forte_pct: 50       # au-delà de 50 % des terres proches déjà vertes, l'eau est déjà exploitée
-
-  # Passer à true une fois SALTIS.RAW.GEO_DEPARTEMENTS chargée (GADM 4.1) :
-  # active stg_geo_departements (contours des départements), les centroïdes
-  # GADM dans dim_geographie (latitude_centroide_gadm, longitude_centroide_gadm)
-  # et le test geo_departements_correspondance. latitude et longitude viennent
-  # du seed ref_departements, indépendamment de cette variable.
-  geo_departements_charge: false
+    staging: {+materialized: view, +schema: staging}
+    marts: {+materialized: table, +schema: marts}

@@ -1,9 +1,0 @@
-# Space ZeroGPU : torch 2.8 ou plus, Gradio 4 ou plus (versions fixées par l'image du Space)
-torch>=2.8
-transformers
-accelerate
-librosa
-soundfile
-numpy
-git+https://github.com/huggingface/parler-tts.git
-spaces

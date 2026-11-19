@@ -1,4 +1,0 @@
-version_modele,periode,nb_lignes,rpss_vs_climatologie,classe_juste_pct,classe_juste_climatologie_pct,rmse_modele_mm,rmse_normale_mm,fourchette_contient_observe_pct
-m1-v1,validation 1981-2015 (une année de côté),1575,0.057,41.7,37.7,,,
-m1-v1,test 2016-2025,450,0.172,46.2,38.4,112.8,121.8,78.7
-m1-v1,"tendance 15 ans, test 2016-2025 (sans océan, années à venir)",450,0.095,,,115.1,121.8,

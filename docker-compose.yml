@@ -4,22 +4,5 @@ services:
     env_file: .env
     ports: ["${POSTGRES_PORT:-5432}:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
-
-  # Cache de l'API : toutes les réponses des marts, précalculées (environ 15 Mo par version).
-  # noeviction : Redis ne supprime jamais une clé de lui-même ; l'API élague les anciennes versions.
-  # appendonly : le cache survit à un redémarrage, sans relire Snowflake.
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
-    ports: ["${REDIS_PORT:-6379}:6379"]
-    volumes: [redisdata:/data]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
-
 volumes:
   pgdata:
-  redisdata:

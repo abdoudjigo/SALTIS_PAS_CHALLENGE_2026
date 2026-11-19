@@ -1,13 +1,12 @@
 saltis:
-  target: snowflake
+  target: dev
   outputs:
-    snowflake:
-      type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user: "{{ env_var('SNOWFLAKE_USER') }}"
-      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
-      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
-      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
-      database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
-      schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | as_number }}"
+      user: "{{ env_var('POSTGRES_USER', 'saltis') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'x') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'saltis') }}"
+      schema: public
       threads: 4
