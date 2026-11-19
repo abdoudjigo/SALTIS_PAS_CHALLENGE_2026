@@ -23,6 +23,10 @@ export interface Intrant {
   nom_intrant: string
   /** colonne du mart de besoins correspondant à cet intrant */
   colonne_besoin: ColonneBesoin
+  /** colonne qui explique un besoin NULL ou nul (« dose à saisir », « pas dans la formule ») */
+  colonne_libelle?: string | null
+  /** faux pour le fumier : non chiffré, jamais dans les totaux, le budget ni la répartition */
+  dans_totaux?: boolean
 }
 
 export interface Referentiels {
@@ -163,11 +167,24 @@ export type StatutDose = 'VALIDEE' | 'A_CONFIRMER' | 'NON_VERIFIEE' | 'A_COMPLET
 
 export type ColonneBesoin =
   | 'besoin_azote_n_t' | 'besoin_phosphate_p2o5_t' | 'besoin_potasse_k2o_t'
-  | 'besoin_npk_15_15_15_t' | 'besoin_uree_t' | 'besoin_dap_t' | 'besoin_fumier_t' | 'besoin_semences_retenu_t'
+  | 'besoin_npk_15_15_15_t' | 'besoin_npk_15_10_10_t' | 'besoin_npk_6_20_10_t' | 'besoin_uree_t' | 'besoin_dap_t' | 'besoin_fumier_t' | 'besoin_semences_retenu_t'
 
 export type Besoins = Record<ColonneBesoin, number | null>
 
-export interface LigneBesoin extends Territoire, Besoins {
+/** État du besoin d'un produit (libelle_<produit>) : « pas dans la formule » = dose nulle, connue. */
+export type LibelleProduit = 'calculé' | 'pas dans la formule' | 'dose à saisir' | 'superficie de référence nulle'
+/** Colonnes d'explication des besoins par produit, et la note du DAP (api/schemas/besoins.py, agrodistrib.py). */
+export interface LibellesProduits {
+  libelle_npk_15_15_15?: LibelleProduit | null
+  libelle_npk_15_10_10?: LibelleProduit | null
+  libelle_npk_6_20_10?: LibelleProduit | null
+  libelle_uree?: LibelleProduit | null
+  libelle_dap?: LibelleProduit | null
+  note_dap?: string | null
+  libelle_fumier?: string | null
+}
+
+export interface LigneBesoin extends Territoire, Besoins, LibellesProduits {
   culture: string | null
   message_departement: string | null
   superficie_reference_ha: number | null
@@ -217,12 +234,15 @@ export interface LigneVulnerabilite extends Territoire {
   [rang: `rang_${string}`]: number | null
 }
 
-export interface LigneTerritoireAgrodistrib extends Territoire, Besoins {
+export interface LigneTerritoireAgrodistrib extends Territoire, Besoins, LibellesProduits {
   culture: string
   superficie_reference_ha: number
   besoin_semences_applicable: boolean
   statut_validation_engrais: StatutDose
   statut_validation_semis: StatutDose
+  /** source de la dose retenue (recherche de la zone, catalogue PIA…) */
+  source_reference_engrais?: string | null
+  source_reference_semis?: string | null
   niveau_source_potentiel: 'ZONE'
   rendement_moyen_kg_ha: number | null
   rendement_atteignable_kg_ha: number | null
@@ -305,4 +325,63 @@ export interface OffreSemence {
   quantite_t: number | null
   campagne: number
   zones_couvertes: string[]
+}
+
+// --- Prix des intrants (DIM_PRIX_INTRANT, GET /prix-intrants) ---------------------------------------
+/** Un produit, une campagne. Prix null = « à saisir », jamais 0. */
+export interface PrixIntrant {
+  code_intrant: string
+  nom_intrant: string | null
+  campagne: number
+  /** prix payé par le producteur, subventionné (FCFA / sac de 50 kg) */
+  prix_cession_sac_50kg_fcfa: number | null
+  subvention_tonne_fcfa: number | null
+  /** prix de cession + subvention / 20 (FCFA / sac de 50 kg) */
+  cout_reel_sac_50kg_fcfa: number | null
+  statut_validation: 'VALIDEE' | 'A_CONFIRMER' | 'A_SAISIR'
+  source: string | null
+}
+
+// --- Cadre harmonisé (MART_CADRE_HARMONISE_DEPARTEMENT, GET /cadre-harmonise) --------------------------
+export type PhaseCH = 1 | 2 | 3 | 4 | 5
+export type LibellePhaseCH = 'minimale' | 'sous pression' | 'crise' | 'urgence' | 'famine'
+
+/** Un département, dernier cycle du Cadre harmonisé. Hors score de vulnérabilité ; populations additives, phases jamais. */
+export interface LigneCadreHarmonise extends Territoire {
+  annee_cycle: number | null
+  code_cycle: number | null
+  libelle_cycle_source: string | null
+  libelle_cycle: string | null
+  type_periode_retenue: 'current' | 'projected' | null
+  /** « mars 2026, projection juin-août 2026 » : toujours affiché */
+  libelle_periode_retenue: string | null
+  date_debut_periode_retenue: string | null
+  date_fin_periode_retenue: string | null
+  periode_terminee: boolean | null
+  /** « période terminée, prochain cycle attendu » si la période est passée */
+  mention_periode: string | null
+  phase_retenue: PhaseCH | null
+  libelle_phase_retenue: LibellePhaseCH | null
+  population_retenue: number | null
+  population_phase3_5_retenue: number | null
+  libelle_periode_courante: string | null
+  phase_courante: PhaseCH | null
+  population_courante: number | null
+  population_phase3_5_courante: number | null
+  libelle_periode_projetee: string | null
+  phase_projetee: PhaseCH | null
+  population_projetee: number | null
+  population_phase3_5_projetee: number | null
+  /** vrai pour Pikine : Pikine et Keur Massar réunis */
+  fusion_keur_massar: boolean
+  note_fusion: string | null
+  source: string
+  licence: string
+}
+
+/** Palette officielle des phases (GET /referentiels/phases-cadre-harmonise). */
+export interface PhaseCadreHarmonise {
+  phase: PhaseCH
+  libelle: LibellePhaseCH
+  couleur: string
 }

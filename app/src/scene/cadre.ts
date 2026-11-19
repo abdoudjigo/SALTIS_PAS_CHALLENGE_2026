@@ -1,12 +1,13 @@
 // Contrat entre la scène et ses fonctionnalités : chaque fonctionnalité reçoit le « cadre » (référentiels,
 // sélection, position) et publie sa « sortie » (ce que la carte doit montrer, la légende, l'infobulle).
-import type { PaddingOptions } from 'mapbox-gl'
+import type { Map as CarteMapbox, PaddingOptions } from 'mapbox-gl'
 import { useEffect, useMemo, type ComponentType, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { Utilisateur } from '../types/auth'
 import type { Referentiels } from '../types/marts'
 import { anneeAVenir, anneeCouverte, anneesPassees, DERNIERE_ANNEE_PREVISION, type CodeModele } from '../types/previsions'
 import type { Camera, VueCarte } from './Carte'
+import type { LigneCheck } from './fiche'
 import { emprise, SENEGAL, type Contours, type LonLat } from './geo'
 
 export interface Infobulle {
@@ -26,6 +27,32 @@ export interface Sortie {
   aEcouterWo?: string[]
   /** un clic sur la carte pose un point (position de la parcelle, dépôt du stock) */
   surPoint?: (position: LonLat) => void
+  /** étapes de l'ONG : ce que le dossier exporté reprend de l'étape (phase D2), calculé une seule fois, ici */
+  etape?: EtapeExport
+}
+
+/** Ce qu'une étape de l'ONG donne au dossier exporté (PDF, phase D2). */
+export interface EtapeExport {
+  titre: string
+  question: string
+  /** la checklist de la fiche, 3 lignes au plus (états ok, attention, non, info) */
+  lignes: LigneCheck[]
+  /** un tableau court (en-têtes, puis lignes de texte déjà formatées) */
+  tableau?: { colonnes: string[]; lignes: string[][] }
+  legende?: { titre: string; entrees: { couleur: string; libelle: string }[] }
+}
+
+/** Scénarios de répartition de l'étape 5 (règles dans repartition.ts). Le dossier de l'ONG est dans dossier.ts. */
+export type ScenarioRepartition = 'proportionnel' | 'urgence' | 'production'
+
+/** Accès de l'export (phase D2) : la carte unique, les données des étapes, et la mise en vue d'une étape. */
+export interface AccesExport {
+  /** l'instance Mapbox unique de la scène (null avant le chargement ou sans WebGL) */
+  carte: () => CarteMapbox | null
+  /** la dernière sortie publiée par chaque étape ouverte */
+  etapes: () => Partial<Record<ModeOng, EtapeExport>>
+  /** ouvre l'étape et attend que la carte soit posée (événement `idle`) ; rejet si la carte disparaît ou après 20 s */
+  activer: (id: ModeOng) => Promise<void>
 }
 
 export interface Cadre {
@@ -46,6 +73,7 @@ export interface Cadre {
   culture: string | null
   choisirCulture: (culture: string | null) => void
   marge: Partial<PaddingOptions>
+  exporter: AccesExport
 }
 
 export interface PropsMode {
@@ -74,6 +102,23 @@ export const PARCOURS_AGRICULTEUR = [
 ] as const
 export type ModeAgriculteur = (typeof PARCOURS_AGRICULTEUR)[number]['id']
 export const questionDe = (id: ModeAgriculteur) => PARCOURS_AGRICULTEUR.find((p) => p.id === id)!.question
+
+/** Le parcours de l'ONG et des services de l'État, en 7 étapes, dans l'ordre du bouton « Suivant ». */
+export const PARCOURS_ONG = [
+  { id: 'campagne', question: 'Où agir en priorité ?' },
+  { id: 'saison', question: 'Que prévoit la saison ?' },
+  { id: 'alerte', question: 'Où la récolte peut-elle chuter ?' },
+  { id: 'besoins', question: 'Combien faut-il, et pour quel budget ?' },
+  { id: 'repartir', question: 'Comment répartir mon stock, et livrer quand ?' },
+  { id: 'potentiel', question: 'Où sont les zones à fort potentiel ?' },
+  { id: 'exporter', question: 'Exporter le dossier' },
+] as const
+export type ModeOng = (typeof PARCOURS_ONG)[number]['id']
+export type IdEtape = ModeAgriculteur | ModeOng
+export const questionOng = (id: ModeOng) => PARCOURS_ONG.find((p) => p.id === id)!.question
+/** Le parcours du profil : celui de l'agriculteur, ou celui de l'ONG et des services de l'État. */
+export const parcoursDe = (cadre: Pick<Cadre, 'user'>): readonly { id: IdEtape; question: string }[] =>
+  cadre.user.role === 'PRODUCTEUR' ? PARCOURS_AGRICULTEUR : PARCOURS_ONG
 
 export const cadrer = {
   pays: (cadre: Cadre, options: Pick<Camera, 'inclinaison' | 'cap' | 'duree'> = {}): Camera => ({ emprise: SENEGAL.emprise, marge: cadre.marge, ...options }),

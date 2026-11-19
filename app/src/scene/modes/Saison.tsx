@@ -14,16 +14,16 @@ import { lazy, Suspense, useMemo } from 'react'
 import { useSuivi } from '../../hooks/donnees'
 import { useActuelles, etatActuel, etatPrevision, usePrevisionSaison } from '../../hooks/previsions'
 import { mm, nombre } from '../../lib/format'
-import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
+import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { CLASSES3, couleurPluie, degrade, parts3, tendance } from '../couleurs'
 import { datesDecade, MODELES, natureAnnee } from '../fiabilite'
-import { Attente, ChampAnnee, MethodeModele } from '../previsions'
+import { Attente, MethodeModele } from '../previsions'
 import { dire } from '../lecture'
 import { CLASSE_WO, FIN_WO, pctWo, wo } from '../wolof'
 import { anneeSecheARisque, SEUIL_SAISON_INCERTAINE_PCT } from '../conseil'
 import { aLire, puceAnnee, type LigneCheck } from '../fiche'
 import { FicheReponse } from '../FicheReponse'
-import { AFaire, Cle, Cles, Degrade, Detail, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Parts, Reponse, type Action } from '../ui'
+import { AFaire, Cle, Cles, Degrade, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Parts, type Action } from '../ui'
 
 const CourbeCumul = lazy(() => import('../CourbeCumul'))
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
@@ -133,12 +133,18 @@ export default function Saison({ cadre, publier }: PropsMode) {
       : { etat: (ligne.classe_observee === t.classe ? 'ok' : 'info') as LigneCheck['etat'],
         texte: `Tombée : saison **${ligne.classe_observee}**${ligne.classe_observee === t.classe ? ', comme prévu' : `, prévue ${t.classe}`}` }] : []),
   ]
+  // ONG, pendant ou après une campagne : le cumul observé depuis le 1er juin face à la normale (/suivi-decadaire)
+  if (!agriculteur && passee && ligne)
+    lignesFiche.splice(1, 0, !finSuivi || ecartFin === null
+      ? { etat: 'info', texte: suivi === undefined ? 'Cumul observé : chargement' : 'Cumul observé non disponible ici' }
+      : { etat: 'info', texte: `Cumul observé fin ${MOIS[datesDecade(finSuivi.numero_decade_annee).mois]} : **${nombre(ecartFin + 0, { signe: true })} %** face à la normale` })
   const cleLignes = lignesFiche.map((l) => l.texte).join('|')
 
   const sortie = useMemo<Sortie>(() => {
     const parCode = new Map(lignes?.map((l) => [l.code_departement, l]))
     return {
       aEcouter: agriculteur ? (t ? aLire(titre, lignesFiche) : undefined) : t && probas ? ecouterSaison(annee, t.classe, t.proba, probas, ligne, a.tendance, passee, [`${titre}.`, phrase, ...faire]) : undefined,
+      etape: agriculteur ? undefined : { titre, question: questionOng('saison'), lignes: lignesFiche.slice(0, 3), legende: { titre: `Pluie prévue · saison ${annee}`, entrees: [200, 450, 750, 1050, 1350].map((v) => ({ couleur: couleurPluie(v), libelle: `${nombre(v)} mm` })) } },
       aEcouterWo: t ? ecouterSaisonWo(annee, t.classe, t.proba, ligne, a.tendance, passee) : undefined,
       resume,
       vue: {
@@ -155,8 +161,8 @@ export default function Saison({ cadre, publier }: PropsMode) {
   }, [lignes, code, cadre, annee, t, ligne, probas, a.tendance, passee, titre, phrase, resume, cleFaire, cleLignes, agriculteur])
   usePublier(publier, sortie)
 
-  if (agriculteur)
-    return (
+  // Les deux profils lisent la même fiche (ONG : étape 2 du parcours)
+  return (
       <FicheReponse cadre={cadre} mode="saison" cle={`${code}-${annee}`} puces={[puceAnnee(cadre, a, ligne)]} titre={titre} teinte={t?.couleur} lignes={lignesFiche}
         etat={<Attente etat={etat} objet={`la saison ${annee}`} />} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo}
         detail={t ? (
@@ -211,62 +217,4 @@ export default function Saison({ cadre, publier }: PropsMode) {
           </>
         ) : undefined} />
     )
-
-  return (
-    <div>
-      <Reponse vivant cle={`${code}-${annee}`} titre={titre} phrase={phrase} />
-      <Attente etat={etat} objet={`la saison ${annee}`} />
-
-      <AFaire aller={cadre.aller} actions={actions} note={passee ? undefined : 'Conseil indicatif, à confirmer avec votre conseiller agricole.'} />
-
-      {probas && <div className="mt-5"><Parts parts={parts3(probas)} /></div>}
-
-      {t && (
-        <Cles>
-          <Cle valeur={nombre(t.proba)} unite="%" libelle={`de chances : saison ${t.classe}`} teinte={t.couleur} />
-          {ligne && <Cle valeur={nombre(passee ? ligne.pluie_observee_mm : ligne.pluie_prevue_mm)} unite="mm" libelle={passee ? 'pluie tombée' : 'pluie attendue'} />}
-          {ligne && <Cle valeur={nombre(ligne.pluie_normale_mm)} unite="mm" libelle="en année normale" />}
-        </Cles>
-      )}
-
-      {t && <LigneFiabilite parties={[natureAnnee(annee, a.aVenir, ligne), a.tendance ? 'prévision de tendance' : MODELES.M1.fiabilite]} />}
-
-      <ChampAnnee cadre={cadre} a={a} saison={ligne} />
-
-      {ligne && (
-        <Detail>
-          <Groupe titre={`Pluie de la saison · ${ligne.departement}`}>
-            <Fourchette bas={ligne.pluie_basse_mm} haut={ligne.pluie_haute_mm} valeur={ligne.pluie_prevue_mm} repere={ligne.pluie_normale_mm} couleur={CLASSES3.humide.couleur}
-              description={`Pluie prévue ${mm(ligne.pluie_prevue_mm)}, entre ${mm(ligne.pluie_basse_mm)} et ${mm(ligne.pluie_haute_mm)} ; normale ${mm(ligne.pluie_normale_mm)}`} />
-            <p className="mt-1.5 mb-2 text-2xs text-white/60">Bande : fourchette · point : prévision · trait : normale</p>
-            <Lignes>
-              <Ligne libelle="Pluie prévue" valeur={mm(ligne.pluie_prevue_mm)} />
-              <Ligne libelle="Fourchette" valeur={ligne.pluie_basse_mm === null || ligne.pluie_haute_mm === null ? 'non disponible' : `${nombre(ligne.pluie_basse_mm)} – ${mm(ligne.pluie_haute_mm)}`} detail="8 chances sur 10" />
-              <Ligne libelle="Normale" valeur={mm(ligne.pluie_normale_mm)} detail="moyenne 1991-2020" />
-              {passee && <Ligne libelle="Réellement tombée" valeur={ligne.pluie_observee_mm === null ? 'non disponible' : mm(ligne.pluie_observee_mm)} />}
-            </Lignes>
-          </Groupe>
-          {passee && (
-            <Groupe titre="Pluie tombée depuis le 1er juin, face à la normale">
-              {suivi === undefined ? <p className="text-xs text-white/60">Chargement…</p> : !finSuivi ? <p className="text-xs text-white/60">Suivi par périodes de 10 jours non disponible pour ce département.</p> : (
-                <>
-                  <Suspense fallback={<div className="h-44" />}>
-                    <CourbeCumul lignes={suivi} description={`Pluie cumulée depuis le 1er juin ${annee} à ${ligne.departement}, comparée à la normale. ${phraseCourbe ?? ''}`} />
-                  </Suspense>
-                  <p className="mt-1 text-2xs text-white/60">Trait plein : pluie tombée · pointillés : normale 1991-2020</p>
-                  {phraseCourbe && <p className="mt-2 text-sm text-white/80">{phraseCourbe}</p>}
-                </>
-              )}
-            </Groupe>
-          )}
-        </Detail>
-      )}
-
-      <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }]} avertissements={donnees?.avertissements}>
-        <p>Indicatif. « Plutôt » : c'est la classe la plus probable, pas une certitude ; les trois chances se lisent ensemble.</p>
-        <p>{passee ? 'Année passée rejouée : le modèle ne connaissait pas cette saison.' : a.tendance ? `${annee} : l'océan de mars à mai n'est pas encore connu.` : `Prévision ${annee} faite avec l'état des océans de mars à mai (NOAA). Aucune pluie ${annee} n'est encore observée.`} Les chances sont les mêmes dans tout le pays ; seule la pluie attendue change d'un département à l'autre.</p>
-        {agriculteur && !passee && <p>Conseils de semis : règles simples tirées de la classe la plus probable, à faire valider par l'ANCAR. Courbe : suivi décadaire (CHIRPS), cumul des décades de juin à octobre.</p>}
-      </MethodeModele>
-    </div>
-  )
 }

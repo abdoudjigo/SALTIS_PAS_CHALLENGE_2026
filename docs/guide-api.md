@@ -143,6 +143,8 @@ Le paramètre `culture` est **optionnel** et ne tient compte ni des accents ni d
 | `GET /referentiels/zones` | Les 6 zones agroécologiques et leurs départements |
 | `GET /referentiels/cultures` | Les 12 cultures, avec leur nom exact |
 | `GET /referentiels/periodes` | Les campagnes (1981-2025) et années disponibles |
+| `GET /referentiels/intrants` | Les produits et la colonne de besoin à lire (`colonne_besoin`) ; fumier hors totaux |
+| `GET /referentiels/phases-cadre-harmonise` | Les 5 phases du Cadre harmonisé et leurs couleurs officielles |
 
 ### A · Agroclimat — « Quelle pluie, quelle saison ? »
 
@@ -174,15 +176,16 @@ curl -G "http://localhost:8080/api/v1/choix-cultures/SEN.7.1_1" --data-urlencode
 
 | Route | Ce qu'elle renvoie |
 |---|---|
-| `GET /besoins/departements/{code}?culture=` | Besoins **de référence** d'un département, par culture : superficie, azote, urée, NPK, DAP, fumier, semences (en tonnes), irrigation, statut de validation des doses |
+| `GET /besoins/departements/{code}?culture=` | Besoins **de référence** d'un département, par culture : superficie, azote, urée, NPK 15-15-15, 15-10-10 et 6-20-10, DAP, semences (en tonnes), irrigation, source et statut de la dose retenue |
 | `GET /besoins/totaux?niveau=&culture=` | Les mêmes besoins **additionnés** : `niveau=NATIONAL` (par défaut), `REGION` ou `ZONE` |
+| `GET /prix-intrants?campagne=` | Prix des intrants par sac de 50 kg (cession, subvention, coût réel), statut et source ; `null` = à saisir |
 
 ```bash
 curl "http://localhost:8080/api/v1/besoins/departements/SEN.7.1_1"
 curl "http://localhost:8080/api/v1/besoins/totaux?niveau=REGION&culture=mais"
 ```
 
-> Ce sont des besoins **historiques** (superficie × dose), pas des prévisions. `null` veut dire « dose à saisir », jamais 0. Dans les totaux, `valeurs_manquantes` donne le nombre de lignes non additionnées : si ce nombre est supérieur à 0, le total est partiel.
+> Ce sont des besoins **historiques** (superficie × dose), pas des prévisions. `null` veut dire « dose à saisir », jamais 0 ; 0 veut dire « pas dans la formule ». Le fumier n'est pas chiffré (`null`) et reste hors totaux. Dans les totaux, `valeurs_manquantes` donne le nombre de lignes non additionnées : si ce nombre est supérieur à 0, le total est partiel.
 
 ### D · AgroDistrib — « Comment répartir les intrants ? »
 
@@ -199,6 +202,13 @@ curl "http://localhost:8080/api/v1/vulnerabilite"
 ```
 
 > La vulnérabilité est un score **relatif** (il compare les départements entre eux) et **indicatif**. Il est `null` pour Dakar, Guédiawaye et Pikine.
+
+### F · Cadre harmonisé — « Où l'insécurité alimentaire est-elle forte ? »
+
+| Route | Ce qu'elle renvoie |
+|---|---|
+| `GET /cadre-harmonise` | Les 45 départements, dernier cycle : phases courante, projetée et retenue, personnes en phases 3 à 5, période (CILSS, licence CC BY) |
+| `GET /cadre-harmonise/{code}` | Le détail d'un département ; `periode_terminee` recalculée à chaque requête |
 
 ### Système
 

@@ -80,9 +80,12 @@ export const VARIETES: Variete[] = [
 ]
 
 export const INTRANTS: Intrant[] = [
-  { code_intrant: 'NPK_15_15_15', nom_intrant: 'NPK 15-15-15', colonne_besoin: 'besoin_npk_15_15_15_t' },
-  { code_intrant: 'UREE', nom_intrant: 'Urée 46-0-0', colonne_besoin: 'besoin_uree_t' },
-  { code_intrant: 'DAP_18_46_0', nom_intrant: 'DAP 18-46-0', colonne_besoin: 'besoin_dap_t' },
-  { code_intrant: 'FUMIER', nom_intrant: 'Fumier', colonne_besoin: 'besoin_fumier_t' },
-  { code_intrant: 'SEMENCES', nom_intrant: 'Semences', colonne_besoin: 'besoin_semences_retenu_t' },
+  { code_intrant: 'NPK_15_15_15', nom_intrant: 'NPK 15-15-15', colonne_besoin: 'besoin_npk_15_15_15_t', colonne_libelle: 'libelle_npk_15_15_15', dans_totaux: true },
+  { code_intrant: 'NPK_15_10_10', nom_intrant: 'NPK 15-10-10', colonne_besoin: 'besoin_npk_15_10_10_t', colonne_libelle: 'libelle_npk_15_10_10', dans_totaux: true },
+  { code_intrant: 'NPK_6_20_10', nom_intrant: 'NPK 6-20-10', colonne_besoin: 'besoin_npk_6_20_10_t', colonne_libelle: 'libelle_npk_6_20_10', dans_totaux: true },
+  { code_intrant: 'UREE', nom_intrant: 'Urée 46-0-0', colonne_besoin: 'besoin_uree_t', colonne_libelle: 'libelle_uree', dans_totaux: true },
+  { code_intrant: 'DAP_18_46_0', nom_intrant: 'DAP 18-46-0', colonne_besoin: 'besoin_dap_t', colonne_libelle: 'libelle_dap', dans_totaux: true },
+  // Fumier : non chiffré, jamais dans les totaux, le budget ni la répartition
+  { code_intrant: 'FUMIER', nom_intrant: 'Fumier', colonne_besoin: 'besoin_fumier_t', colonne_libelle: 'libelle_fumier', dans_totaux: false },
+  { code_intrant: 'SEMENCES', nom_intrant: 'Semences', colonne_besoin: 'besoin_semences_retenu_t', colonne_libelle: 'libelle_semences', dans_totaux: true },
 ]

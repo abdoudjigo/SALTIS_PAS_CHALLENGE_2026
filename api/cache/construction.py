@@ -18,15 +18,19 @@ from ..schemas import (
     Agregat,
     AnneeSemblable,
     Besoin,
+    CadreHarmonise,
     CarteAgroclimat,
     ChoixCulture,
     CultureRef,
     DepartementRef,
     EvaluationModele,
+    IntrantRef,
     Meta,
     Periodes,
+    PhaseCadreHarmonise,
     PrevisionRendement,
     PrevisionSaison,
+    PrixIntrant,
     RegionRef,
     RisqueSemis,
     SuiviDecadaire,
@@ -35,6 +39,7 @@ from ..schemas import (
     ZoneRef,
 )
 from . import cles
+from ..schemas.cadre_harmonise import LIBELLES_PHASES
 from ..schemas.opportunites import CarteOpportunite
 from .cles import SUFFIXE_GZIP, normaliser
 
@@ -64,12 +69,15 @@ AV_BESOINS = [
     "NULL = dose à saisir ou non applicable, jamais 0.",
     "Ne pas additionner produits et éléments fertilisants : ils décrivent la même fertilisation.",
     "Totaliser les semences sur besoin_semences_retenu_t.",
+    "Fumier non chiffré (besoin_fumier_t NULL) : hors totaux, budget et répartition.",
+    "Dose retenue : recherche propre à la zone, puis catalogue PIA national (voir source_reference_*).",
     "Aucune dose n'est encore validée par un spécialiste.",
 ]
 AV_AGREGATS = [
     "Somme des seules colonnes additives ; total partiel quand valeurs_manquantes > 0.",
     "Ne pas additionner produits et éléments fertilisants : ils décrivent la même fertilisation.",
     "Besoins de référence historiques, pas prévisionnels.",
+    "Fumier non chiffré : hors totaux.",
 ]
 AV_AGRODISTRIB = [
     "Seuls superficie et besoins s'additionnent.",
@@ -87,11 +95,12 @@ COLONNES_ADDITIVES = [
     "besoin_phosphate_p2o5_t",
     "besoin_potasse_k2o_t",
     "besoin_npk_15_15_15_t",
+    "besoin_npk_15_10_10_t",
+    "besoin_npk_6_20_10_t",
     "besoin_uree_t",
     "besoin_dap_t",
-    "besoin_fumier_t",
     "besoin_semences_retenu_t",
-]
+]  # fumier : non chiffré (besoin_fumier_t toujours NULL), hors totaux, budget et répartition
 NIVEAUX = ("NATIONAL", "REGION", "ZONE")
 
 
@@ -118,6 +127,8 @@ class Index(BaseModel):
     cultures_semis: list[str] = []
     a_evaluation: bool = False
     a_opportunites: bool = False
+    campagnes_prix: list[int] = []
+    a_cadre_harmonise: bool = False
 
     def resoudre_culture(self, texte: str) -> str | None:
         cible = normaliser(texte)
@@ -279,6 +290,8 @@ def construire(
     agro: list[TerritoireAgrodistrib] = marts["agrodistrib"]
     vuln: list[Vulnerabilite] = marts["vulnerabilite"]
     opportunites: list[CarteOpportunite] = marts.get("opportunites", [])
+    prix: list[PrixIntrant] = marts.get("prix", [])
+    cadre: list[CadreHarmonise] = marts.get("cadre_harmonise", [])
     prev_saison: list[PrevisionSaison] = marts.get("prev_saison", [])
     semblables: list[AnneeSemblable] = marts.get("semblables", [])
     prev_rendement: list[PrevisionRendement] = marts.get("prev_rendement", [])
@@ -310,6 +323,8 @@ def construire(
         cultures_semis=sorted({x.culture for x in semis}),
         a_evaluation=bool(evaluation),
         a_opportunites=bool(opportunites),
+        campagnes_prix=sorted({x.campagne for x in prix}),
+        a_cadre_harmonise=bool(cadre),
     )
     b.c.index = index
 
@@ -453,7 +468,11 @@ def construire(
             AV_VULNERABILITE,
         )
 
+    b.ajouter(cles.ref("intrants"), INTRANTS, IntrantRef, SOURCE_INTRANTS)
+    b.ajouter(cles.ref("phases-cadre-harmonise"), PHASES_CH, PhaseCadreHarmonise, SOURCE_PHASES_CH)
     _construire_opportunites(b, opportunites)
+    _construire_prix(b, prix)
+    _construire_cadre_harmonise(b, cadre)
     _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, semblables, prev_rendement, semis,
                            evaluation)
     return b.c
@@ -581,3 +600,65 @@ def _construire_opportunites(b: _Constructeur, lignes: list[CarteOpportunite]) -
     for x in lignes:
         b.ajouter(cles.opportunites_departement(x.code_departement), x, CarteOpportunite, table,
                   {"code_departement": x.code_departement}, avertissements)
+
+
+# ---------------------------------------------------------------- référentiel des intrants, prix, Cadre harmonisé
+
+# Produits du seed dbt ref_intrants (noms et teneurs repris tels quels) qui ont une colonne de besoin.
+SOURCE_INTRANTS = "dbt/seeds/ref_intrants.csv"
+INTRANTS = [
+    IntrantRef(code_intrant="NPK_15_15_15", nom_intrant="NPK 15-15-15", colonne_besoin="besoin_npk_15_15_15_t",
+               colonne_libelle="libelle_npk_15_15_15", dans_totaux=True, teneur_n_pct=15, teneur_p2o5_pct=15, teneur_k2o_pct=15),
+    IntrantRef(code_intrant="NPK_15_10_10", nom_intrant="NPK 15-10-10", colonne_besoin="besoin_npk_15_10_10_t",
+               colonne_libelle="libelle_npk_15_10_10", dans_totaux=True, teneur_n_pct=15, teneur_p2o5_pct=10, teneur_k2o_pct=10),
+    IntrantRef(code_intrant="NPK_6_20_10", nom_intrant="NPK 6-20-10", colonne_besoin="besoin_npk_6_20_10_t",
+               colonne_libelle="libelle_npk_6_20_10", dans_totaux=True, teneur_n_pct=6, teneur_p2o5_pct=20, teneur_k2o_pct=10),
+    IntrantRef(code_intrant="UREE", nom_intrant="Urée 46-0-0", colonne_besoin="besoin_uree_t", colonne_libelle="libelle_uree",
+               dans_totaux=True, teneur_n_pct=46, teneur_p2o5_pct=0, teneur_k2o_pct=0),
+    IntrantRef(code_intrant="DAP_18_46_0", nom_intrant="DAP 18-46-0", colonne_besoin="besoin_dap_t", colonne_libelle="libelle_dap",
+               dans_totaux=True, teneur_n_pct=18, teneur_p2o5_pct=46, teneur_k2o_pct=0),
+    IntrantRef(code_intrant="FUMIER", nom_intrant="Fumier", colonne_besoin="besoin_fumier_t", colonne_libelle="libelle_fumier",
+               dans_totaux=False),
+    IntrantRef(code_intrant="SEMENCES", nom_intrant="Semences", colonne_besoin="besoin_semences_retenu_t",
+               colonne_libelle="libelle_semences", dans_totaux=True),
+]
+NOMS_INTRANTS = {x.code_intrant: x.nom_intrant for x in INTRANTS}
+
+SOURCE_PHASES_CH = "Cadre harmonisé (CILSS), palette officielle des phases"
+COULEURS_PHASES_CH = {1: "#CDFACD", 2: "#FAE61E", 3: "#E67800", 4: "#C80000", 5: "#640000"}
+PHASES_CH = [PhaseCadreHarmonise(phase=p, libelle=libelle, couleur=COULEURS_PHASES_CH[p]) for p, libelle in LIBELLES_PHASES.items()]
+
+AV_PRIX = [
+    "Prix NULL = à saisir (statut A_SAISIR), jamais 0.",
+    "Coût réel = prix de cession + subvention de l'État / 20 sacs par tonne.",
+    "Prix A_CONFIRMER : sources publiques citées dans `source`, à vérifier.",
+]
+AV_CADRE = [
+    "Dernier cycle du Cadre harmonisé ; hors score de vulnérabilité.",
+    "Période retenue : celle marquée à utiliser par le Cadre harmonisé, sinon la projection ; periode_terminee recalculée à la requête.",
+    "Pikine inclut Keur Massar (fusion_keur_massar).",
+    "Populations additives entre départements ; phases jamais.",
+    "Licence CC BY : citer la source.",
+]
+
+
+def _construire_prix(b: _Constructeur, lignes: list[PrixIntrant]) -> None:
+    if not lignes:
+        return
+    table = MARTS["prix"].table
+    lignes = sorted((x.model_copy(update={"nom_intrant": x.nom_intrant or NOMS_INTRANTS.get(x.code_intrant)}) for x in lignes),
+                    key=lambda x: (x.campagne, x.code_intrant))
+    table = f"{b.prefixe_source}.{table}"
+    b.ajouter(cles.prix_intrants(None), lignes, PrixIntrant, table, None, AV_PRIX)
+    for campagne, membres in _grouper(lignes, lambda x: x.campagne).items():
+        b.ajouter(cles.prix_intrants(campagne), membres, PrixIntrant, table, {"campagne": campagne}, AV_PRIX)
+
+
+def _construire_cadre_harmonise(b: _Constructeur, lignes: list[CadreHarmonise]) -> None:
+    if not lignes:
+        return
+    table = MARTS["cadre_harmonise"].table
+    lignes = sorted(lignes, key=lambda x: x.code_departement)
+    b.ajouter(cles.cadre_harmonise(None), lignes, CadreHarmonise, table, None, AV_CADRE)
+    for x in lignes:
+        b.ajouter(cles.cadre_harmonise(x.code_departement), x, CadreHarmonise, table, {"code_departement": x.code_departement}, AV_CADRE)

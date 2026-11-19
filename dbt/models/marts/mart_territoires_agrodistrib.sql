@@ -8,7 +8,9 @@
 -- zone_agroecologique servent à agréger (deux regroupements parallèles, pas de hiérarchie).
 --
 -- Additivité :
---   - ADDITIFS (somme par région ou zone autorisée) : superficie_reference_ha et besoins (t) ;
+--   - ADDITIFS (somme par région ou zone autorisée) : superficie_reference_ha et besoins (t),
+--     sauf besoin_fumier_t, toujours NULL et exclu des totaux (« non chiffré : fumure organique
+--     conseillée si possible ») ; produit absent d'une formule retenue = 0, culture sans formule = NULL ;
 --     les semences à totaliser sont besoin_semences_retenu_t ;
 --   - NON ADDITIFS : tout le reste (rendements, potentiel, probabilités, sol, vulnérabilité).
 --
@@ -81,13 +83,31 @@ select
     b.besoin_phosphate_p2o5_t,
     b.besoin_potasse_k2o_t,
     b.besoin_npk_15_15_15_t,
+    b.besoin_npk_15_10_10_t,
+    b.besoin_npk_6_20_10_t,
     b.besoin_uree_t,
     b.besoin_dap_t,
     b.besoin_fumier_t,
+
+    -- Libellés par produit engrais (règle du 19/11/2026)
+    {% for col, nom in [('besoin_npk_15_15_15_t', 'npk_15_15_15'), ('besoin_npk_15_10_10_t', 'npk_15_10_10'),
+                        ('besoin_npk_6_20_10_t', 'npk_6_20_10'), ('besoin_uree_t', 'uree'), ('besoin_dap_t', 'dap')] %}
+    case
+                when not b.a_formule_engrais_retenue     then 'dose à saisir'
+        when b.superficie_reference_ha = 0       then 'superficie de référence nulle'
+        when b.{{ col }} = 0                     then 'pas dans la formule'
+        else 'calculé'
+    end as libelle_{{ nom }},
+    {% endfor %}
+    iff(b.phosphate_fond_exclu,
+        'phosphate de fond (400 kg tous les 3 ans) volontairement exclu du besoin annuel', null) as note_dap,
+    'non chiffré : fumure organique conseillée si possible' as libelle_fumier,
     b.besoin_semences_applicable,
     iff(b.besoin_semences_applicable, b.besoin_semences_t, null) as besoin_semences_retenu_t,
     b.statut_validation_engrais,
+    b.source_reference_engrais,
     b.statut_validation_semis,
+    b.source_reference_semis,
 
     -- Potentiel de gain (valeurs de zone, non additives)
     'ZONE' as niveau_source_potentiel,

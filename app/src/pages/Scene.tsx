@@ -1,13 +1,15 @@
 // La scène : après la connexion, une seule carte plein écran. Chaque fonctionnalité du dock change la carte
 // (caméra, lumière, volumes, arcs) et ouvre son panneau. Deux profils : agriculteur, ONG et services de l'État.
-import { BarChart3, CalendarDays, ClipboardList, CloudSun, Droplets, LogOut, MapPinned, Scale, ShieldAlert, Sprout, TriangleAlert, Truck } from 'lucide-react'
+import { BarChart3, CalendarDays, ClipboardList, CloudSun, Droplets, FileDown, LogOut, MapPinned, Scale, Sparkles, Sprout, TriangleAlert, Truck } from 'lucide-react'
 import { lazy, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ComponentType, type Ref } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { config } from '../config'
 import { useReferentiels } from '../hooks/donnees'
 import { usePrechargerDepartement } from '../hooks/precharger'
 import type { Survol, VueCarte } from '../scene/Carte'
-import { cadrer, questionDe, type Cadre, type Fonctionnalite, type Infobulle, type PropsMode, type Sortie } from '../scene/cadre'
+import { cadrer, questionDe, questionOng, type AccesExport, type Cadre, type Fonctionnalite, type Infobulle, type ModeOng, type PropsMode, type Sortie } from '../scene/cadre'
+import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../scene/dossier'
+import { definirCarte, registre } from '../scene/registreExport'
 import { Dock } from '../scene/Dock'
 import { hauteurCran, type Cran } from '../scene/crans'
 import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/Fenetre'
@@ -40,28 +42,32 @@ const Surface = mode(() => import('../scene/modes/Surface'))
 const ContreSaison = mode(() => import('../scene/modes/ContreSaison'))
 const AlerteRecolte = mode(() => import('../scene/modes/AlerteRecolte'))
 const Campagne = mode(() => import('../scene/modes/Campagne'))
-const Vulnerabilite = mode(() => import('../scene/modes/Vulnerabilite'))
 const BesoinsPays = mode(() => import('../scene/modes/BesoinsPays'))
 const Repartir = mode(() => import('../scene/modes/Repartir'))
+const Potentiel = mode(() => import('../scene/modes/Potentiel'))
+const Exporter = mode(() => import('../scene/modes/Exporter'))
 
 const F = {
   parcelle: { id: 'parcelle', titre: 'Ma parcelle', question: questionDe('parcelle'), phrase: 'Se localiser : le sol, les risques, les cultures et la campagne de son champ.', icone: MapPinned, composant: Parcelle },
   // Un bouton par modèle d'IA (ml/MODELES.md), et deux boutons qui en combinent plusieurs : « Ma parcelle », « Préparer la campagne »
   saison: { id: 'saison', titre: 'La saison qui vient', question: questionDe('saison'), phrase: 'La pluie de l’année choisie : sèche, normale ou humide, et combien.', icone: CloudSun, composant: Saison },
   semis: { id: 'semis', titre: 'Quand semer', question: questionDe('semis'), phrase: 'La période de semis la moins risquée, culture par culture.', icone: CalendarDays, composant: QuandSemer },
-  alerte: { id: 'alerte', titre: 'Alerte récolte', phrase: 'Les départements où la récolte risque de chuter.', icone: TriangleAlert, composant: AlerteRecolte },
-  campagne: { id: 'campagne', titre: 'Préparer la campagne', phrase: 'Pluie attendue, risque pour la récolte, vulnérabilité : où regarder d’abord.', icone: ClipboardList, composant: Campagne },
+  alerte: { id: 'alerte', titre: 'Alerte récolte', question: questionOng('alerte'), phrase: 'Les départements où la récolte risque de chuter.', icone: TriangleAlert, composant: AlerteRecolte },
+  // La vulnérabilité n'est plus une étape : sa carte et son classement sont la vue « vulnérabilité » de l'étape 1
+  campagne: { id: 'campagne', titre: 'Où agir en priorité', question: questionOng('campagne'), phrase: 'Cadre harmonisé, alerte récolte, saison, vulnérabilité : où regarder d’abord.', icone: ClipboardList, composant: Campagne },
   semer: { id: 'semer', titre: 'Quelle culture', question: questionDe('semer'), phrase: 'Les cultures adaptées à son département, leurs cycles et la récolte attendue.', icone: Sprout, composant: Semer },
   surface: { id: 'surface', titre: 'Mes besoins', question: questionDe('surface'), phrase: 'Sa culture, sa surface, son année : ce qu’il faut, et ce qu’on peut en attendre.', icone: Scale, composant: Surface },
   contreSaison: { id: 'contreSaison', titre: 'Contre-saison', question: questionDe('contreSaison'), phrase: 'L’eau disponible en saison sèche près de vos terres, et ce qu’elle permet.', icone: Droplets, composant: ContreSaison },
-  vulnerabilite: { id: 'vulnerabilite', titre: 'Vulnérabilité', phrase: 'Les départements où une mauvaise saison pèse le plus.', icone: ShieldAlert, composant: Vulnerabilite },
-  besoins: { id: 'besoins', titre: 'Besoins du pays', phrase: 'Semences et engrais nécessaires, département par département.', icone: BarChart3, composant: BesoinsPays },
-  repartir: { id: 'repartir', titre: 'Répartir un stock', phrase: 'Du dépôt aux départements : la carte trace la proposition.', icone: Truck, composant: Repartir },
+  besoins: { id: 'besoins', titre: 'Besoins et budget', question: questionOng('besoins'), phrase: 'Semences et engrais nécessaires, en sacs, en tonnes et en francs CFA.', icone: BarChart3, composant: BesoinsPays },
+  repartir: { id: 'repartir', titre: 'Répartir et livrer', question: questionOng('repartir'), phrase: 'Trois scénarios de répartition du stock, et la date limite de livraison.', icone: Truck, composant: Repartir },
+  potentiel: { id: 'potentiel', titre: 'Fort potentiel', question: questionOng('potentiel'), phrase: 'Contre-saison et gain de rendement : des repérages indicatifs.', icone: Sparkles, composant: Potentiel },
+  exporter: { id: 'exporter', titre: 'Exporter le dossier', question: questionOng('exporter'), phrase: 'Le dossier de la campagne, à partager.', icone: FileDown, composant: Exporter },
 } satisfies Record<string, Fonctionnalite>
 
 function fonctionnalitesDe(user: Utilisateur): { profil: string; liste: Fonctionnalite[] } {
   if (user.role === 'PRODUCTEUR') return { profil: 'Agriculteur', liste: [F.parcelle, F.saison, F.semer, F.semis, F.surface, F.contreSaison] }
-  return { profil: "ONG et services de l'État", liste: [F.campagne, F.saison, F.alerte, F.vulnerabilite, F.besoins, F.repartir] }
+  // Les 7 étapes de l'ONG, dans l'ordre du bouton « Suivant » (PARCOURS_ONG)
+  return { profil: "ONG et services de l'État", liste: [F.campagne, { ...F.saison, question: questionOng('saison') }, F.alerte, F.besoins, F.repartir, F.potentiel, F.exporter] }
 }
 
 function useEcran() {
@@ -81,6 +87,9 @@ function useEcran() {
   }, [])
   return taille
 }
+
+// Délai maximal d'une mise en vue pour l'export : au-delà, l'attente est rejetée
+const DELAI_ACTIVER_MS = 20000
 
 interface PoigneeBulle {
   montrer: (survol: Survol | null) => void
@@ -124,6 +133,18 @@ export default function Scene() {
   // Sans carte (pas de WebGL), pas de légende : elle décrirait une carte absente
   const [sansCarte, setSansCarte] = useState(false)
   const [sortie, setSortie] = useState<Sortie>({ vue: {} })
+  // Les choix de l'ONG, gardés pour la session de l'onglet, propres à l'utilisateur (vidés à la déconnexion)
+  const cleDossier = `${CLE_DOSSIER}.${user?.id ?? 'anonyme'}`
+  const [dossier, setDossier] = useState<DossierOng>(() => lireDossier(cleDossier))
+  const majDossier = useCallback((modif: Partial<DossierOng>) => setDossier((d) => ({ ...d, ...modif })), [])
+  const valeurDossier = useMemo(() => ({ dossier, majDossier }), [dossier, majDossier])
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(cleDossier, JSON.stringify(dossier))
+    } catch {
+      /* stockage indisponible : le dossier reste en mémoire */
+    }
+  }, [dossier, cleDossier])
   const bulle = useRef<PoigneeBulle>(null)
   const racine = useRef<HTMLDivElement>(null)
 
@@ -139,10 +160,44 @@ export default function Scene() {
     setCran(1)
   }, [])
   const aller = ouvrir
+  const exporter = useMemo<AccesExport>(() => ({
+    carte: () => registre.carte,
+    etapes: () => ({ ...registre.etapes }),
+    activer: (id) => new Promise<void>((fini, echec) => {
+      ouvrir(id)
+      let poseur = 0
+      let limite = 0
+      let carteSuivie: typeof registre.carte = null
+      const posee = () => terminer()
+      const perdue = () => terminer(new Error('La carte a disparu pendant la mise en vue.'))
+      function terminer(erreur?: Error) {
+        clearTimeout(poseur)
+        clearTimeout(limite)
+        carteSuivie?.off('idle', posee)
+        registre.surPerte.delete(perdue)
+        if (erreur) echec(erreur)
+        else fini()
+      }
+      registre.surPerte.add(perdue)
+      limite = window.setTimeout(() => terminer(new Error(`Mise en vue de l'étape « ${id} » trop longue.`)), DELAI_ACTIVER_MS)
+      // Laisse l'étape publier sa vue, puis attend que la carte ait fini de bouger et de dessiner
+      poseur = window.setTimeout(() => {
+        carteSuivie = registre.carte
+        if (!carteSuivie) return terminer(new Error('Carte indisponible (pas encore chargée, ou pas de WebGL).'))
+        carteSuivie.once('idle', posee)
+        carteSuivie.triggerRepaint()
+      }, 400)
+    }),
+  }), [ouvrir])
   const cadre = useMemo<Cadre | null>(
-    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee: setAnnee, culture, choisirCulture: setCulture, aller, marge } : null),
-    [ref, contours, user, selection, position, anneeChoisie, culture, aller, marge],
+    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee: setAnnee, culture, choisirCulture: setCulture, aller, marge, exporter } : null),
+    [ref, contours, user, selection, position, anneeChoisie, culture, aller, marge, exporter],
   )
+  // La sortie de l'étape ouverte, gardée pour l'export
+  const publier = useCallback((s: Sortie) => {
+    setSortie(s)
+    if (s.etape) registre.etapes[idMode as ModeOng] = s.etape
+  }, [idMode])
   // Les autres fonctionnalités du profil se téléchargent pendant que la première s'affiche
   useEffect(() => {
     const minuteur = window.setTimeout(() => liste.forEach((f) => void chargeurs.get(f.composant)?.()), 1200)
@@ -153,10 +208,12 @@ export default function Scene() {
   // sortie, la scène se redessine (carte, légende, résumé) sans redessiner la fonctionnalité elle-même
   const Composant = actif.composant
   const contenu = useMemo(() => cadre && (
-    <Suspense fallback={null}>
-      <Composant key={actif.id} cadre={cadre} publier={setSortie} />
-    </Suspense>
-  ), [Composant, actif.id, cadre])
+    <DossierContext.Provider value={valeurDossier}>
+      <Suspense fallback={null}>
+        <Composant key={actif.id} cadre={cadre} publier={publier} />
+      </Suspense>
+    </DossierContext.Provider>
+  ), [Composant, actif.id, cadre, publier, valeurDossier])
   const vue = useMemo<VueCarte | null>(() => (cadre ? { ambiance: 'jour', camera: cadrer.pays(cadre), ...sortie.vue } : null), [cadre, sortie.vue])
 
   return (
@@ -166,7 +223,7 @@ export default function Scene() {
         <Suspense fallback={null}>
           <Carte vue={vue} contours={contours} contoursZones={contoursZones} departements={ref?.departements} depart={{ centre: [-32, 18], zoom: 1.6 }}
             onDepartement={setSelection} onPoint={sortie.surPoint} onSurvol={(s) => bulle.current?.montrer(s)}
-            onManipulation={(enCours) => racine.current?.classList.toggle('scene-manip', enCours)} />
+            onManipulation={(enCours) => racine.current?.classList.toggle('scene-manip', enCours)} onCarte={definirCarte} />
         </Suspense>
         </GardeCarte>
       ) : (
@@ -184,7 +241,7 @@ export default function Scene() {
           <img src="/favicon.svg" alt="" className="size-9 rounded-lg" />
           <div className="leading-tight">
             <p className="font-titre text-md font-semibold text-white">Assaman & Suuf</p>
-            <p className="text-2xs text-white/55">{profil}
+            <p className="text-2xs text-white/60">{profil}
               {config.donneesDemo && <span className="ml-1.5 rounded-full border border-white/20 px-1.5 whitespace-nowrap text-white/70" title="Données de démonstration synthétiques : elles illustrent la plateforme et ne servent pas à décider.">Démo · données synthétiques</span>}
             </p>
           </div>
@@ -201,7 +258,7 @@ export default function Scene() {
 
       {/* La fonctionnalité s'ouvre dans une fenêtre flottante (pop-up), un tiroir sur téléphone */}
       {cadre && (
-        <Fenetre cle={actif.id} titre={actif.titre} icone={actif.icone} resume={sortie.resume} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo} ecouteEnTete={user?.role !== 'PRODUCTEUR'} large={large} hauteurEcran={ecran.h} cran={cran} onCran={setCran} legende={sansCarte ? undefined : sortie.legende}>
+        <Fenetre cle={actif.id} titre={actif.titre} icone={actif.icone} resume={sortie.resume} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo} ecouteEnTete={false} large={large} hauteurEcran={ecran.h} cran={cran} onCran={setCran} legende={sansCarte ? undefined : sortie.legende}>
           {contenu}
         </Fenetre>
       )}

@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 
-from .commun import ClasseVulnerabilite, Confiance, NiveauAdequation, NiveauAgregat, StatutValidation, Territoire
+from .commun import ClasseVulnerabilite, Confiance, LibelleProduit, NiveauAdequation, NiveauAgregat, StatutValidation, Territoire
 
 
 class TerritoireAgrodistrib(Territoire):
@@ -15,13 +15,24 @@ class TerritoireAgrodistrib(Territoire):
     besoin_phosphate_p2o5_t: float | None = Field(description="Additif (t)")
     besoin_potasse_k2o_t: float | None = Field(description="Additif (t)")
     besoin_npk_15_15_15_t: float | None = Field(description="Additif (t)")
+    besoin_npk_15_10_10_t: float | None = Field(None, description="Additif (t)")
+    besoin_npk_6_20_10_t: float | None = Field(None, description="Additif (t)")
     besoin_uree_t: float | None = Field(description="Additif (t)")
     besoin_dap_t: float | None = Field(description="Additif (t)")
-    besoin_fumier_t: float | None = Field(description="Additif (t)")
-    besoin_semences_retenu_t: float | None = Field(description="Additif (t), riz pluvial de Casamance exclu")
-    besoin_semences_applicable: bool | None = Field(None, description="Faux pour le riz pluvial de Casamance (dose de semis non applicable)")
+    besoin_fumier_t: float | None = Field(description="Toujours NULL (non chiffré) : hors totaux, budget et répartition")
+    besoin_semences_retenu_t: float | None = Field(description="Additif (t) ; NULL si la dose de semis n'est pas applicable")
+    besoin_semences_applicable: bool | None = Field(None, description="Vrai partout depuis la dose PIA du riz pluvial ; faux = non applicable")
+    libelle_npk_15_15_15: LibelleProduit | None = None
+    libelle_npk_15_10_10: LibelleProduit | None = None
+    libelle_npk_6_20_10: LibelleProduit | None = None
+    libelle_uree: LibelleProduit | None = None
+    libelle_dap: LibelleProduit | None = None
+    note_dap: str | None = Field(None, description="Phosphate de fond exclu du besoin annuel, quand c'est le cas")
+    libelle_fumier: str | None = Field(None, description="« non chiffré : fumure organique conseillée si possible »")
     statut_validation_engrais: StatutValidation | None
+    source_reference_engrais: str | None = Field(None, description="Source de la dose d'engrais retenue")
     statut_validation_semis: StatutValidation | None
+    source_reference_semis: str | None = Field(None, description="Source de la dose de semis retenue")
     # Potentiel de gain (valeurs de zone, non additives)
     niveau_source_potentiel: str | None = Field(description="`ZONE` : valeur de zone portée sur le département")
     rendement_moyen_kg_ha: float | None
@@ -101,9 +112,10 @@ class Agregat(BaseModel):
     besoin_phosphate_p2o5_t: float | None
     besoin_potasse_k2o_t: float | None
     besoin_npk_15_15_15_t: float | None
+    besoin_npk_15_10_10_t: float | None
+    besoin_npk_6_20_10_t: float | None
     besoin_uree_t: float | None
     besoin_dap_t: float | None
-    besoin_fumier_t: float | None
     besoin_semences_retenu_t: float | None
     irrigation_totale_m3: float | None = Field(default=None, description="Besoins seulement : cultures en irrigation requise")
     valeurs_manquantes: dict[str, int] = Field(

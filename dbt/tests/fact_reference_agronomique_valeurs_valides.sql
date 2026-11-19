@@ -70,3 +70,19 @@ select id_reference_agronomique, 'besoin_eau_mm renseigné hors irrigation'
 from fait
 where type_intrant <> 'EAU'
   and besoin_eau_mm is not null
+
+union all
+
+-- Dose dans la fourchette quand elle est donnée (PIA)
+select id_reference_agronomique, 'dose hors de la fourchette dose_min - dose_max'
+from fait
+where dose < dose_min
+   or dose > dose_max
+
+union all
+
+-- dose_retenue cohérente avec le nombre de zones où la dose est retenue
+select id_reference_agronomique, 'dose_retenue incohérente avec nb_zones_retenue'
+from fait
+where dose_retenue <> (nb_zones_retenue > 0)
+   or (portee_geographique = 'ZONE' and nb_zones_retenue > 1)

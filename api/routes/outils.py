@@ -60,8 +60,17 @@ def resoudre_culture(index: Index, culture: str | None) -> str | None:
     return canonique
 
 
-async def servir(request: Request, cle: Callable[[Index], str] | str, valider: Callable[[Index], None] | None = None) -> Response:
-    """Valide les paramètres avec l'index de la version active, puis sert la réponse stockée."""
+async def servir(
+    request: Request,
+    cle: Callable[[Index], str] | str,
+    valider: Callable[[Index], None] | None = None,
+    transformer: Callable[[bytes], bytes] | None = None,
+    suffixe_etag: str = "",
+) -> Response:
+    """Valide les paramètres avec l'index de la version active, puis sert la réponse stockée.
+
+    `transformer` (facultatif) réécrit le JSON stocké à la requête (ex. un état qui dépend de la date du jour) ;
+    `suffixe_etag` distingue alors les variantes dans l'ETag."""
     debut = time.perf_counter()
     cache = service(request)
     version, index = await cache.etat_actif()
@@ -71,7 +80,7 @@ async def servir(request: Request, cle: Callable[[Index], str] | str, valider: C
 
     max_age = request.app.state.parametres.http_max_age_s
     entetes = {
-        "ETag": f'W/"{version}"',
+        "ETag": f'W/"{version}{suffixe_etag}"',
         "Cache-Control": f"public, max-age={max_age}, stale-while-revalidate={max_age * 5}",
         "Vary": "Accept-Encoding",
         "X-Data-Version": version,
@@ -86,8 +95,11 @@ async def servir(request: Request, cle: Callable[[Index], str] | str, valider: C
         raise ErreurApi(404, "aucune_donnee", "Aucune donnée pour cette combinaison de paramètres.", AIDE_DEPARTEMENTS)
     contenu, compresse, version_servie = trouve
     if version_servie != version:
-        entetes["ETag"], entetes["X-Data-Version"] = f'W/"{version_servie}"', version_servie
+        entetes["ETag"], entetes["X-Data-Version"] = f'W/"{version_servie}{suffixe_etag}"', version_servie
 
+    if transformer:
+        contenu = transformer(gzip.decompress(contenu) if compresse else contenu)
+        compresse = False
     if compresse and "gzip" in request.headers.get("accept-encoding", "").lower():
         entetes["Content-Encoding"] = "gzip"
     elif compresse:

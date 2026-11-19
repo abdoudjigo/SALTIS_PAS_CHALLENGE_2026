@@ -3,9 +3,10 @@ version: 2
 seeds:
   - name: ref_intrants
     description: >
-      Référentiel des 9 intrants de référence (produits, éléments fertilisants,
-      eau) avec leur unité et leurs teneurs en N, P2O5 et K2O (%). Base de
-      dim_intrant ; SALTIS.APP.intrants (C3) reprendra ces code_intrant.
+      Référentiel des 11 intrants de référence (produits, éléments fertilisants,
+      eau) avec leur unité et leurs teneurs en N, P2O5 et K2O (%), dont
+      NPK_15_10_10 et NPK_6_20_10 (formules PIA). Base de dim_intrant ;
+      SALTIS.APP.intrants (C3) reprendra ces code_intrant.
     config:
       column_types:
         code_intrant: varchar
@@ -64,4 +65,90 @@ seeds:
       - name: culture
         data_tests: [not_null, unique]
       - name: cycle_jours
+        data_tests: [not_null]
+
+  - name: ref_doses_pia
+    description: >
+      Doses nationales des 6 cultures prioritaires (arachide, mil, niébé,
+      sorgho, maïs, riz), catalogue IFDC-CORAF des Paquets d'Intrants
+      Agricoles pour le Sénégal v1.1 (fiches variétales ISRA). Zone vide =
+      portée nationale, statut A_CONFIRMER. dose retenue dans la fourchette
+      dose_min-dose_max selon regle ; lignes ELEMENT = somme produit x teneur
+      (ref_intrants). Riz : fiches du riz pluvial, appliquées hors Vallée.
+      Clé (culture, zone, code_intrant) unique : tests/ref_doses_pia_valeurs_valides.sql.
+    config:
+      column_types:
+        culture: varchar
+        zone_agroecologique: varchar
+        portee_geographique: varchar
+        code_intrant: varchar
+        type_intrant: varchar
+        dose: float
+        unite: varchar
+        dose_min: float
+        dose_max: float
+        regle: varchar
+        statut_validation: varchar
+        source_reference: varchar
+        note_source: varchar
+    columns:
+      - name: culture
+        data_tests: [not_null]
+      - name: portee_geographique
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['NATIONAL', 'ZONE']
+      - name: code_intrant
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ref_intrants')
+                field: code_intrant
+      - name: dose
+        data_tests: [not_null]
+      - name: statut_validation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'NON_VERIFIEE']
+      - name: source_reference
+        data_tests: [not_null]
+
+  - name: ref_prix_intrants
+    description: >
+      Prix des engrais, campagne 2026, une ligne par produit :
+      prix_cession_sac_50kg_fcfa (prix payé par le producteur, subventionné),
+      subvention_tonne_fcfa, cout_reel_sac_50kg_fcfa = cession + subvention / 20.
+      Sources : APS (30 sept. 2025), circulaire du 30 avril 2026. Urée et DAP :
+      A_SAISIR, valeurs vides (prix non trouvés). Clé (code_intrant, campagne)
+      unique et coût réel : tests/ref_prix_intrants_valeurs_valides.sql.
+    config:
+      column_types:
+        code_intrant: varchar
+        campagne: integer
+        prix_cession_sac_50kg_fcfa: float
+        subvention_tonne_fcfa: float
+        cout_reel_sac_50kg_fcfa: float
+        statut_validation: varchar
+        source: varchar
+    columns:
+      - name: code_intrant
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ref_intrants')
+                field: code_intrant
+      - name: campagne
+        data_tests: [not_null]
+      - name: statut_validation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'A_SAISIR']
+      - name: source
         data_tests: [not_null]

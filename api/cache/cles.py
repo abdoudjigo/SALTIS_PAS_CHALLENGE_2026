@@ -109,3 +109,11 @@ def opportunites(couleur: str | None) -> str:
 
 def opportunites_departement(code: str) -> str:
     return f"opportunites:departement:{code}"
+
+
+def prix_intrants(campagne: int | None) -> str:
+    return f"prix:{campagne or TOUTES}"
+
+
+def cadre_harmonise(code: str | None) -> str:
+    return f"cadre-harmonise:{code or TOUTES}"

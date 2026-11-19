@@ -160,8 +160,11 @@ async def _recolte(i: Intention, nom: str, lecteur: Lecteur) -> Reponse:
     return Reponse("culture", fr, wo, i.code_departement, nom, i.culture, i.annee, "projection (récolte habituelle et saison prévue)")
 
 
-INTRANTS = [("besoin_semences_retenu_t", "semences", "jiwu"), ("besoin_npk_15_15_15_t", "NPK 15-15-15", "NPK"),
-            ("besoin_uree_t", "urée", "ure"), ("besoin_dap_t", "DAP", "DAP"), ("besoin_fumier_t", "fumier", "fumie")]
+# (colonne de besoin, nom français, nom court lu en wolof : nom du produit, aucune traduction inventée).
+# Fumier absent : non chiffré (besoin_fumier_t toujours NULL), hors totaux.
+INTRANTS = [("besoin_semences_retenu_t", "semences", "jiwu"), ("besoin_npk_15_15_15_t", "NPK 15-15-15", "NPK 15-15-15"),
+            ("besoin_npk_15_10_10_t", "NPK 15-10-10", "NPK 15-10-10"), ("besoin_npk_6_20_10_t", "NPK 6-20-10", "NPK 6-20-10"),
+            ("besoin_uree_t", "urée", "ure"), ("besoin_dap_t", "DAP", "DAP")]
 
 
 async def _besoins(i: Intention, nom: str, lecteur: Lecteur) -> Reponse:
@@ -175,6 +178,8 @@ async def _besoins(i: Intention, nom: str, lecteur: Lecteur) -> Reponse:
     connus_fr, connus_wo, manquants = [], [], []
     for colonne, libelle_fr, libelle_wo in INTRANTS:
         t = ligne.get(colonne)
+        if ligne.get(colonne.replace("besoin_", "libelle_").removesuffix("_t")) == "pas dans la formule":
+            continue  # produit absent de la formule retenue : on ne le cite pas
         if t is None:
             manquants.append(libelle_fr)
             continue

@@ -2,7 +2,7 @@
 // la réponse (une phrase, un à trois chiffres), le détail (groupes de lignes), la méthode (repliée).
 // Pas de cartes dans les cartes : des filets fins, l'espace et la typographie font la structure.
 import clsx from 'clsx'
-import { ChevronDown, Info } from 'lucide-react'
+import { Check, ChevronDown, Info } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import { VIDE } from '../lib/format'
 
@@ -73,31 +73,31 @@ export function Cle({ valeur, unite, libelle, teinte, large = false }: { valeur:
   return (
     <div className={clsx(large && 'col-span-2')}>
       <p className="text-2xl leading-none font-semibold text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>
-        {valeur}{unite && <span className="ml-1 text-xs font-normal text-white/55">{unite}</span>}
+        {valeur}{unite && <span className="ml-1 text-xs font-normal text-white/60">{unite}</span>}
       </p>
-      <p className="mt-1.5 text-2xs leading-snug text-white/55">{libelle}</p>
+      <p className="mt-1.5 text-2xs leading-snug text-white/60">{libelle}</p>
     </div>
   )
 }
 
 // --- Niveau 2 : le détail ------------------------------------------------------------------------
-const ETIQUETTE = 'text-2xs font-medium tracking-etiquette text-white/50 uppercase'
+const ETIQUETTE = 'text-2xs font-medium tracking-etiquette text-white/60 uppercase'
 
 /** Groupe de mesures, séparé par un filet. `replie` : fermé au départ (listes longues). */
-export function Groupe({ titre, children, replie, complement }: { titre: string; children: ReactNode; replie?: boolean; complement?: string }) {
+export function Groupe({ titre, children, replie, complement, id }: { titre: string; children: ReactNode; replie?: boolean; complement?: string; id?: string }) {
   const [ouvert, setOuvert] = useState(!replie)
   const repliable = replie !== undefined
   return (
     <section className="mt-5 border-t border-white/[0.09] pt-3.5">
       {repliable ? (
-        <h3>
+        <h3 id={id}>
           <button type="button" onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} className={clsx(ETIQUETTE, '-my-2 flex min-h-11 w-full items-center justify-between gap-3 text-left transition hover:text-white')}>
-            <span>{titre}{complement && <span className="ml-2 tracking-normal text-white/35 normal-case">{complement}</span>}</span>
+            <span>{titre}{complement && <span className="ml-2 tracking-normal text-white/60 normal-case">{complement}</span>}</span>
             <ChevronDown className={clsx('size-4 shrink-0 transition-transform duration-300', ouvert && 'rotate-180')} aria-hidden />
           </button>
         </h3>
       ) : (
-        <h3 className={ETIQUETTE}>{titre}{complement && <span className="ml-2 tracking-normal text-white/35 normal-case">{complement}</span>}</h3>
+        <h3 id={id} className={ETIQUETTE}>{titre}{complement && <span className="ml-2 tracking-normal text-white/60 normal-case">{complement}</span>}</h3>
       )}
       {ouvert && <div className="mt-3">{children}</div>}
     </section>
@@ -112,7 +112,7 @@ export function Ligne({ libelle, valeur, detail, teinte }: { libelle: string; va
       <dd className="text-right">
         {/* Une valeur absente se dit « non disponible », jamais 0 ni un tiret seul */}
         <span className="text-sm font-medium text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>{valeur === VIDE ? 'non disponible' : valeur}</span>
-        {detail && <span className="block text-2xs text-white/45">{detail}</span>}
+        {detail && <span className="block text-2xs text-white/60">{detail}</span>}
       </dd>
     </div>
   )
@@ -131,13 +131,13 @@ export function Barre({ part, couleur }: { part: number | null; couleur: string 
 export function Rang({ rang, nom, part, couleur, valeur, actif, onClick }: { rang?: number; nom: string; part: number | null; couleur: string; valeur: string; actif?: boolean; onClick?: () => void }) {
   const contenu = (
     <>
-      {rang !== undefined && <span className="w-5 text-2xs text-white/40 tabular-nums">{rang}</span>}
+      {rang !== undefined && <span className="w-5 text-2xs text-white/60 tabular-nums">{rang}</span>}
       <span className="min-w-0 flex-1 truncate text-sm text-white">{nom}</span>
       <span className="w-16 shrink-0"><Barre part={part} couleur={couleur} /></span>
       <span className="w-14 shrink-0 text-right text-sm font-medium text-white tabular-nums">{valeur}</span>
     </>
   )
-  const classes = clsx('flex min-h-9 w-full items-center gap-2.5 text-left', actif && 'rounded-md bg-white/[0.09] shadow-[inset_2px_0_0_var(--color-soleil-500)]')
+  const classes = clsx('flex min-h-11 w-full items-center gap-2.5 text-left', actif && 'rounded-md bg-white/[0.09] shadow-[inset_2px_0_0_var(--color-soleil-500)]')
   return onClick
     ? <li><button type="button" onClick={onClick} aria-current={actif ? 'true' : undefined} className={clsx(classes, '-mx-2 w-[calc(100%+1rem)] rounded-md px-2 transition hover:bg-white/[0.06]')}>{contenu}</button></li>
     : <li className={classes}>{contenu}</li>
@@ -187,7 +187,7 @@ export function Detail({ children, libelle = 'Voir le détail' }: { children: Re
  * (normale, rendement habituel). Sans fourchette complète, rien n'est dessiné : « non disponible ».
  */
 export function Fourchette({ bas, haut, valeur, repere, couleur, description }: { bas: number | null; haut: number | null; valeur?: number | null; repere?: number | null; couleur: string; description: string }) {
-  if (bas === null || haut === null) return <p className="text-xs text-white/50">Fourchette non disponible</p>
+  if (bas === null || haut === null) return <p className="text-xs text-white/60">Fourchette non disponible</p>
   const bornes = [bas, haut, repere ?? bas]
   const [min, max] = [Math.min(...bornes) * 0.82, Math.max(...bornes) * 1.12]
   const x = (v: number) => `${((v - min) / (max - min || 1)) * 100}%`
@@ -212,7 +212,7 @@ export function Methode({ children }: { children: ReactNode }) {
   const [ouvert, setOuvert] = useState(false)
   return (
     <section className="mt-5 border-t border-white/[0.09]">
-      <button type="button" onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} className="flex min-h-11 w-full items-center gap-2 text-left text-xs text-white/55 transition hover:text-white">
+      <button type="button" onClick={() => setOuvert((o) => !o)} aria-expanded={ouvert} className="flex min-h-11 w-full items-center gap-2 text-left text-xs text-white/60 transition hover:text-white">
         <Info className="size-3.5 shrink-0" aria-hidden />
         <span className="flex-1">Méthode et limites</span>
         <ChevronDown className={clsx('size-4 shrink-0 transition-transform duration-300', ouvert && 'rotate-180')} aria-hidden />
@@ -224,7 +224,7 @@ export function Methode({ children }: { children: ReactNode }) {
 
 // --- Commandes -----------------------------------------------------------------------------------
 export function Champ({ libelle, children, className }: { libelle: string; children: ReactNode; className?: string }) {
-  return <label className={clsx('block text-2xs text-white/55', className)}>{libelle}<span className="mt-1 block">{children}</span></label>
+  return <label className={clsx('block text-2xs text-white/60', className)}>{libelle}<span className="mt-1 block">{children}</span></label>
 }
 
 /** Choix exclusif entre quelques options courtes (moment de la saison, critère de classement). */
@@ -233,7 +233,7 @@ export function Segments<T extends string>({ libelle, options, valeur, onChange 
     <div role="radiogroup" aria-label={libelle} className="flex rounded-lg border border-white/12 p-0.5">
       {options.map((o) => (
         <button key={o.id} type="button" role="radio" aria-checked={o.id === valeur} onClick={() => onChange(o.id)}
-          className={clsx('min-h-10 flex-1 rounded-md px-1 text-xs font-medium transition', o.id === valeur ? 'bg-soleil-500 text-encre-nuit' : 'text-white/70 hover:bg-white/[0.07] hover:text-white')}>
+          className={clsx('min-h-11 flex-1 rounded-md px-1 text-xs font-medium transition', o.id === valeur ? 'bg-soleil-500 text-encre-nuit' : 'text-white/70 hover:bg-white/[0.07] hover:text-white')}>
           {o.libelle}
         </button>
       ))}
@@ -289,9 +289,9 @@ export function Lien({ children, onClick, compact = false }: { children: ReactNo
   return <button type="button" onClick={onClick} className={clsx('inline-flex items-center text-sm font-medium text-soleil-500 underline-offset-4 hover:underline', compact ? '-my-3 min-h-11 align-baseline whitespace-nowrap' : 'min-h-11')}>{children}</button>
 }
 
-export function Bouton({ children, onClick, plein = false, disabled, className }: { children: ReactNode; onClick?: () => void; plein?: boolean; disabled?: boolean; className?: string }) {
+export function Bouton({ children, onClick, plein = false, disabled, className, decritPar }: { children: ReactNode; onClick?: () => void; plein?: boolean; disabled?: boolean; className?: string; decritPar?: string }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled}
+    <button type="button" onClick={onClick} disabled={disabled} aria-describedby={decritPar}
       className={clsx('inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3.5 text-sm font-medium transition active:scale-[0.98] disabled:opacity-50',
         plein ? 'bg-soleil-500 text-encre-nuit hover:bg-soleil-100' : 'border border-white/15 text-white hover:border-white/40 hover:bg-white/5', className)}>
       {children}
@@ -329,7 +329,7 @@ export function Degrade({ titre, gauche, droite, degrade, note }: { titre: strin
       <p className={ETIQUETTE}>{titre}</p>
       <div className="mt-2 h-1.5 rounded-full" style={{ background: degrade }} />
       <div className="mt-1.5 flex justify-between text-2xs text-white/60 tabular-nums"><span>{gauche}</span><span>{droite}</span></div>
-      {note && <p className="mt-1.5 text-2xs leading-snug text-white/45">{note}</p>}
+      {note && <p className="mt-1.5 text-2xs leading-snug text-white/60">{note}</p>}
     </div>
   )
 }
@@ -348,3 +348,19 @@ export function Categories({ titre, entrees }: { titre: string; entrees: { coule
     </div>
   )
 }
+
+/** Une liste d'options à cocher (une seule à la fois), dans le menu d'une puce. */
+export function Options<T extends string | null>({ nom, options, valeur, choisir, fermer }: { nom: string; options: { id: T; libelle: string }[]; valeur: T; choisir: (id: T) => void; fermer: () => void }) {
+  return (
+    <div role="radiogroup" aria-label={nom} className="-m-1 max-h-64 overflow-y-auto overscroll-contain">
+      {options.map((o) => (
+        <button key={o.id ?? ''} type="button" role="radio" aria-checked={o.id === valeur} onClick={() => { choisir(o.id); fermer() }}
+          className={clsx('flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition hover:bg-white/[0.07]', o.id === valeur ? 'font-semibold text-soleil-500' : 'text-white')}>
+          <span className="flex-1">{o.libelle}</span>
+          {o.id === valeur && <Check className="size-4 shrink-0" aria-hidden />}
+        </button>
+      ))}
+    </div>
+  )
+}
+

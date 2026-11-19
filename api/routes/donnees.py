@@ -14,7 +14,9 @@ from ..schemas import (
     ChoixCulture,
     CultureRef,
     DepartementRef,
+    IntrantRef,
     Periodes,
+    PhaseCadreHarmonise,
     RegionRef,
     Reponse,
     SuiviDecadaire,
@@ -67,6 +69,20 @@ async def lister_cultures(request: Request):
                   summary="Campagnes et années disponibles")
 async def lister_periodes(request: Request):
     return await servir(request, cles.ref("periodes"))
+
+
+@referentiels.get("/intrants", response_model=Reponse[list[IntrantRef]], responses=reponses_erreurs(503),
+                  summary="Les produits et leur colonne de besoin")
+async def lister_intrants(request: Request):
+    """Produits du seed `ref_intrants`, avec la colonne de besoin (t) à lire dans `/besoins` et `/agrodistrib`
+    et la colonne de libellé qui explique un besoin NULL ou nul. Fumier : `dans_totaux` faux (non chiffré)."""
+    return await servir(request, cles.ref("intrants"))
+
+
+@referentiels.get("/phases-cadre-harmonise", response_model=Reponse[list[PhaseCadreHarmonise]], responses=reponses_erreurs(503),
+                  summary="Phases du Cadre harmonisé et leurs couleurs officielles")
+async def lister_phases_cadre_harmonise(request: Request):
+    return await servir(request, cles.ref("phases-cadre-harmonise"))
 
 
 # ============================================================ Module A : carte agroclimatique

@@ -14,6 +14,11 @@
     'VALLÉE DU FLEUVE SÉNÉGAL'
 {%- endmacro %}
 
+{# Source du semis Faye et al. (2020) appliqué hors de sa zone (riz pluvial) : semences non applicables #}
+{% macro source_semis_faye_extrapole() -%}
+    'Faye et al. (2020), extrapolé'
+{%- endmacro %}
+
 {# Engrais (produits et éléments) #}
 {% macro statut_validation_engrais(statut_dose) -%}
     case
@@ -49,6 +54,6 @@
     case
         when {{ origine_dose_semis }} ilike 'Faye%'
          and upper(trim({{ zone_agroecologique }})) = {{ zone_reference_faye() }} then 'Faye et al. (2020)'
-        when {{ origine_dose_semis }} ilike 'Faye%'                             then 'Faye et al. (2020), extrapolé'
+        when {{ origine_dose_semis }} ilike 'Faye%'                             then {{ source_semis_faye_extrapole() }}
     end
 {%- endmacro %}

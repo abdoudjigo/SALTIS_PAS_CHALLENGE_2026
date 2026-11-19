@@ -6,8 +6,8 @@ import { sessionStore } from '../auth/session'
 import { cultureMontree, sansCulturesRetirees } from '../lib/cultures'
 import type { Session, Utilisateur } from '../types/auth'
 import type {
-  CarteOpportunite, Departement, LigneBesoin, LigneCarte, LigneChoixCulture, LigneSuivi, LigneTerritoireAgrodistrib,
-  LigneVulnerabilite, Referentiels,
+  CarteOpportunite, Departement, Intrant, LigneBesoin, LigneCadreHarmonise, LigneCarte, LigneChoixCulture, LigneSuivi,
+  LigneTerritoireAgrodistrib, LigneVulnerabilite, PhaseCadreHarmonise, PrixIntrant, Referentiels,
 } from '../types/marts'
 import type { CodeModele, EvaluationModele, Moment, Prevision, PrevisionRendement, PrevisionSaison, RisqueSemis } from '../types/previsions'
 import { ApiError, requete, type OptionsRequete } from './client'
@@ -48,12 +48,14 @@ async function previsions<T>(chemin: string, params?: OptionsRequete['params']):
 }
 
 async function referentielsReels(): Promise<Referentiels> {
-  const [departements, zones, cultures, periodes, { INTRANTS, VARIETES }] = await Promise.all([
+  const [departements, zones, cultures, periodes, intrants, { INTRANTS, VARIETES }] = await Promise.all([
     marts<Departement[]>('/referentiels/departements'),
     marts<{ zone_agroecologique: string }[]>('/referentiels/zones'),
     marts<{ culture: string }[]>('/referentiels/cultures'),
     marts<{ campagnes_agroclimat: number[] }>('/referentiels/periodes'),
-    // L'API n'expose pas encore dim_intrant ni dim_variete : libellés repris du référentiel du front
+    // Produits du seed ref_intrants (colonne de besoin, colonne d'explication, dans les totaux ou non)
+    ou404<Intrant[] | null>(marts<Intrant[]>('/referentiels/intrants'), null),
+    // L'API n'expose pas encore dim_variete ; une API plus ancienne n'a pas non plus /referentiels/intrants
     import('./mock/referentiel'),
   ])
   return {
@@ -61,7 +63,7 @@ async function referentielsReels(): Promise<Referentiels> {
     zones: zones.map((z) => z.zone_agroecologique),
     cultures: cultures.map((c) => c.culture),
     campagnes: periodes.campagnes_agroclimat,
-    intrants: INTRANTS,
+    intrants: intrants ?? INTRANTS,
     varietes: VARIETES,
   }
 }
@@ -130,6 +132,18 @@ export const api = {
     ou404<CarteOpportunite[] | null>(reel ? marts<CarteOpportunite[]>('/opportunites') : exemple<CarteOpportunite[]>('/opportunites'), null),
   opportunite: (code: string) =>
     ou404<CarteOpportunite | null>(reel ? marts<CarteOpportunite>(`/opportunites/${enc(code)}`) : exemple<CarteOpportunite>(`/opportunites/${enc(code)}`), null),
+
+  // Prix des intrants (dim_prix_intrant), toutes campagnes : un seul appel, filtré ensuite (une campagne sans prix
+  // répondrait 404). null tant que la table n'est pas construite
+  prixIntrants: () => ou404<PrixIntrant[] | null>(reel ? marts<PrixIntrant[]>('/prix-intrants') : exemple<PrixIntrant[]>('/prix-intrants'), null),
+
+  // Cadre harmonisé (mart_cadre_harmonise_departement), dernier cycle ; null tant que le mart n'est pas construit
+  cadreHarmonise: () => ou404<LigneCadreHarmonise[] | null>(reel ? marts<LigneCadreHarmonise[]>('/cadre-harmonise') : exemple<LigneCadreHarmonise[]>('/cadre-harmonise'), null),
+  cadreHarmoniseDepartement: (code: string) =>
+    ou404<LigneCadreHarmonise | null>(reel ? marts<LigneCadreHarmonise>(`/cadre-harmonise/${enc(code)}`) : exemple<LigneCadreHarmonise>(`/cadre-harmonise/${enc(code)}`), null),
+  /** Palette officielle des phases du Cadre harmonisé */
+  phasesCadreHarmonise: () =>
+    ou404<PhaseCadreHarmonise[] | null>(reel ? marts<PhaseCadreHarmonise[]>('/referentiels/phases-cadre-harmonise') : exemple<PhaseCadreHarmonise[]>('/referentiels/phases-cadre-harmonise'), null),
 
   // IA — résultats des 4 modèles (SALTIS.ML), voir ml/MODELES.md
   previsionSaison: (annee: number) => previsions<PrevisionSaison>(`/saison/${annee}`),

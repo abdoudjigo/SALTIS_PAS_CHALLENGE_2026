@@ -28,6 +28,9 @@ Référence pour l'API et le front : ce que chaque mart contient, à quel grain,
 | `MART_TERRITOIRES_AGRODISTRIB` | Critères de répartition (module D) | département × culture cultivée | 345 |
 | `MART_VULNERABILITE_DEPARTEMENT` | Détail de la vulnérabilité | département | 45 |
 | `MART_ML_PREVISION_PLUIE` | Jeu de données ML (équipe ML) | département × année | 2 025 |
+| `MART_CARTE_OPPORTUNITES` | Carte des opportunités | département | 45 |
+| `MART_CADRE_HARMONISE_DEPARTEMENT` | Cadre harmonisé, dernier cycle | département | 45 |
+| `DIM_PRIX_INTRANT` | Prix des engrais | intrant × campagne | 5 |
 
 ---
 
@@ -140,22 +143,26 @@ order by type_option, rang_option;
 | `annees_reference`, `type_superficie` | texte | Années de référence (ex. `2019-2021`), `semée` ou `récoltée` |
 | `reference_anterieure_2015` | booléen | Dernière année de référence < 2015 (référence ancienne) |
 | `besoin_azote_n_t`, `besoin_phosphate_p2o5_t`, `besoin_potasse_k2o_t` | t | Éléments fertilisants |
-| `besoin_npk_15_15_15_t`, `besoin_uree_t`, `besoin_dap_t`, `besoin_fumier_t` | t | Produits (**ne pas additionner produits et éléments** : même fertilisation) |
+| `besoin_npk_15_15_15_t`, `besoin_npk_15_10_10_t`, `besoin_npk_6_20_10_t`, `besoin_uree_t`, `besoin_dap_t` | t | Produits (**ne pas additionner produits et éléments** : même fertilisation) ; 0 si absent de la formule retenue, NULL sans formule |
+| `besoin_fumier_t` | t | Toujours NULL (non chiffré), hors totaux |
+| `libelle_npk_15_15_15`, `libelle_npk_15_10_10`, `libelle_npk_6_20_10`, `libelle_uree`, `libelle_dap` | texte | `dose à saisir`, `superficie de référence nulle`, `pas dans la formule`, `calculé` |
+| `note_dap` | texte | « phosphate de fond (400 kg tous les 3 ans) volontairement exclu du besoin annuel », sinon NULL |
+| `libelle_fumier` | texte | « non chiffré : fumure organique conseillée si possible » |
 | `libelle_besoin_engrais` | texte | `dose à saisir`, `superficie de référence nulle`, `calculé` |
-| `besoin_semences_t` | t | Valeur de la source |
-| `besoin_semences_applicable`, `besoin_semences_retenu_t` | booléen / t | **Totaliser sur `besoin_semences_retenu_t`** (NULL pour le riz pluvial de Casamance) |
+| `besoin_semences_t` | t | Superficie × dose de semis retenue |
+| `besoin_semences_applicable`, `besoin_semences_retenu_t` | booléen / t | **Totaliser sur `besoin_semences_retenu_t`** (aucune ligne non applicable depuis la dose PIA du riz, 60 kg/ha) |
 | `libelle_semences` | texte | `non applicable (riz pluvial)`, `dose à saisir`, `superficie de référence nulle`, `calculé` |
 | `besoin_irrigation_mm`, `volume_irrigation_m3_ha` | mm / m³/ha | Références de **zone** (FAO-56, efficience 60 %), non additives |
 | `irrigation_requise`, `irrigation_totale_m3` | booléen / m³ | Volume total seulement pour les cultures en « irrigation requise » |
 | `statut_validation_engrais`, `statut_validation_semis` | texte | `VALIDEE`, `A_CONFIRMER`, `NON_VERIFIEE`, `A_COMPLETER` (aucune dose `VALIDEE` aujourd'hui) |
-| `source_reference_engrais`, `source_reference_semis` | texte | Source de la dose |
+| `source_reference_engrais`, `source_reference_semis` | texte | Source de la dose retenue (`int_reference_dose` : recherche propre à la zone, puis PIA national, puis `NON_VERIFIEE`) |
 | `coherence_dose_n`, `coherence_dose_semis` | texte | `COHERENT`, `ECART`, `A_VERIFIER` |
 
-**Limites** : dose inconnue → besoin NULL (afficher « dose à saisir », jamais 0) ; dose à 0 → besoin 0 (produit absent de la formule). Doses chiffrées seulement pour le mil, le maïs, le sorgho et le riz irrigué ; aucune n'est validée par un spécialiste. Années de référence anciennes pour 13 lignes.
+**Limites** : culture sans formule → besoin NULL (afficher « dose à saisir », jamais 0) ; produit absent de la formule retenue → 0. Formules chiffrées pour l'arachide, le maïs, le mil, le niébé, le riz et le sorgho ; aucune n'est validée par un spécialiste (`A_CONFIRMER` au mieux). Années de référence anciennes pour 13 lignes.
 
 ```sql
--- Totaux nationaux de référence (semences : colonne retenue)
-select sum(besoin_azote_n_t) as azote_t, sum(besoin_uree_t) as uree_t, sum(besoin_semences_retenu_t) as semences_t
+-- Totaux nationaux de référence (semences : colonne retenue) ; au 19/11/2026 : azote 152 042 t, NPK 6-20-10 221 084 t, semences 125 053 t
+select sum(besoin_azote_n_t) as azote_t, sum(besoin_npk_6_20_10_t) as npk_6_20_10_t, sum(besoin_semences_retenu_t) as semences_t
 from SALTIS.MARTS.MART_BESOINS;
 ```
 
@@ -167,7 +174,8 @@ from SALTIS.MARTS.MART_BESOINS;
 
 | Groupe | Colonnes | Additif ? |
 |---|---|---|
-| Besoin | `superficie_reference_ha`, `besoin_*_t` (7 besoins d'engrais et `besoin_semences_retenu_t`), `besoin_semences_applicable` (faux pour le riz pluvial de Casamance), `statut_validation_engrais`, `statut_validation_semis` | **Oui** (superficie et besoins) |
+| Besoin | `superficie_reference_ha`, `besoin_*_t` (éléments N, P2O5, K2O ; produits NPK 15-15-15, 15-10-10, 6-20-10, urée, DAP ; `besoin_semences_retenu_t`) | **Oui** (superficie et besoins ; jamais éléments + produits ; `besoin_fumier_t` toujours NULL, hors totaux) |
+| Libellés et sources | `libelle_npk_15_15_15`, `libelle_npk_15_10_10`, `libelle_npk_6_20_10`, `libelle_uree`, `libelle_dap` (`dose à saisir`, `superficie de référence nulle`, `pas dans la formule`, `calculé`), `note_dap`, `libelle_fumier`, `besoin_semences_applicable`, `statut_validation_*`, `source_reference_engrais`, `source_reference_semis` | Non |
 | Potentiel de gain | `niveau_source_potentiel` (`ZONE`), `rendement_moyen_kg_ha`, `rendement_atteignable_kg_ha`, `ecart_rendement_kg_ha`, `potentiel_evalue`, `potentiel_gain_kg_ha` | Non |
 | Capacité à valoriser | `meilleur_niveau_adequation`, `proba_cycle_couvert_moyen_pct`, `facteur_limitant_principal` (zone), `proba_saison_seche_pct` | Non |
 | Sol | `classe_texture`, `ph_eau`, `reserve_utile_mm`, `carbone_organique_g_kg` (département) ; `amendement_ph_recommande`, `fractionnement_azote_recommande` (zone) | Non |
@@ -265,6 +273,51 @@ from SALTIS.MARTS.MART_CARTE_OPPORTUNITES
 where couche_eau
 order by rang_opportunite_eau;
 ```
+
+---
+
+## 9. `MART_CADRE_HARMONISE_DEPARTEMENT`
+
+**Grain** : un département, 45 lignes, dernier cycle du Cadre harmonisé (aujourd'hui mars 2026). Source : « Cadre harmonisé, CILSS et partenaires ; données via HDX (Food Security and Nutrition Working Group, Afrique de l'Ouest et du Centre) », licence CC BY (colonnes `source`, `licence`, à citer).
+
+| Colonne | Unité | Description |
+|---|---|---|
+| `annee_cycle`, `code_cycle`, `libelle_cycle`, `libelle_cycle_source` | texte | Cycle (`mars 2026` ; source `Jan-May`) |
+| `type_periode_retenue`, `libelle_periode_retenue` | texte | Période affichée : celle marquée `usethisperiod`, sinon la projection (ex. « mars 2026, projection juin-août 2026 ») |
+| `date_debut_periode_retenue`, `date_fin_periode_retenue` | date | Bornes de la période retenue |
+| `periode_terminee`, `mention_periode` | booléen / texte | Fin de période < `date_calcul` ; mention « période terminée, prochain cycle attendu », sinon NULL |
+| `phase_retenue`, `libelle_phase_retenue` | 1-5 / texte | `minimale`, `sous pression`, `crise`, `urgence`, `famine` |
+| `population_retenue`, `population_phase3_5_retenue` | personnes | Période retenue (décimales de la source) |
+| `libelle_periode_courante`, `phase_courante`, `population_courante`, `population_phase3_5_courante` | | Situation courante du même cycle |
+| `libelle_periode_projetee`, `phase_projetee`, `population_projetee`, `population_phase3_5_projetee` | | Projection du même cycle |
+| `fusion_keur_massar`, `note_fusion` | booléen / texte | Pikine inclut Keur Massar (créé en 2021, absent de GADM) |
+| `source`, `licence`, `date_calcul` | texte / date | Citation, CC BY, jour du build |
+
+**Limites** : populations additives entre départements d'une même période seulement, **jamais entre cycles ni entre courante et projection** ; phases non additives. `periode_terminee` est figé au build : le front le recalcule depuis `date_fin_periode_retenue`. Hors score de vulnérabilité.
+
+```sql
+-- Population en phases 3 à 5 par région, période retenue (au 19/11/2026 : total 836 787, Diourbel en tête avec 127 868)
+select region, sum(population_phase3_5_retenue) as pop_3_5, max(phase_retenue) as phase_max
+from SALTIS.MARTS.MART_CADRE_HARMONISE_DEPARTEMENT
+group by region
+order by pop_3_5 desc;
+```
+
+---
+
+## 10. `DIM_PRIX_INTRANT`
+
+**Grain** : un intrant, une campagne (5 lignes, campagne 2026). Sources : APS (30 sept. 2025) et circulaire du ministère de l'Agriculture du 30 avril 2026.
+
+| Colonne | Unité | Description |
+|---|---|---|
+| `code_intrant`, `campagne` | texte / année | `NPK_15_15_15`, `NPK_15_10_10`, `NPK_6_20_10`, `UREE`, `DAP_18_46_0` |
+| `prix_cession_sac_50kg_fcfa` | FCFA / sac | Prix payé par le producteur (subventionné) |
+| `subvention_tonne_fcfa` | FCFA / t | Subvention de l'État |
+| `cout_reel_sac_50kg_fcfa` | FCFA / sac | Cession + subvention / 20 |
+| `statut_validation`, `source` | texte | `A_CONFIRMER` ou `A_SAISIR` ; texte de la source |
+
+**Limites** : urée et DAP `A_SAISIR`, prix NULL (« à saisir », jamais 0).
 
 ---
 

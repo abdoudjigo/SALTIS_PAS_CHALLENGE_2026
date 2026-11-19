@@ -91,6 +91,11 @@ interface PropsCarte {
   className?: string
   /** Landing : palette claire de la vitrine, quelle que soit la lumière (le globe du hero est de nuit) */
   vitrine?: boolean
+  /**
+   * L'instance Mapbox unique, pour la capture du dossier exporté (phase D2) : appelée après `load`, puis avec null
+   * au démontage. Aucune seconde carte : l'export lit `once`, `triggerRepaint` et `getCanvas` de celle-ci.
+   */
+  onCarte?: (carte: mapboxgl.Map | null) => void
 }
 
 const VIDE = { type: 'FeatureCollection' as const, features: [] }
@@ -122,18 +127,18 @@ function elementRepere(r: Repere) {
   return el
 }
 
-export default function Carte({ vue, contours, contoursZones, departements, depart, interactive = true, onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, className, vitrine = false }: PropsCarte) {
+export default function Carte({ vue, contours, contoursZones, departements, depart, interactive = true, onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, className, vitrine = false, onCarte }: PropsCarte) {
   const conteneur = useRef<HTMLDivElement>(null)
   const carteRef = useRef<mapboxgl.Map | null>(null)
   const [prete, setPrete] = useState(false)
   // Zones éteintes (chapitres suivants) : elles ne réagissent ni au survol ni au clic
   const zonesActives = useRef(Boolean(vue.zones))
-  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation })
+  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, onCarte })
   const vueRef = useRef(vue)
   const departRef = useRef(depart)
   useEffect(() => {
     zonesActives.current = Boolean(vue.zones)
-    rappels.current = { onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation }
+    rappels.current = { onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, onCarte }
     vueRef.current = vue
   })
 
@@ -174,6 +179,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       },
     })
     carteRef.current = carte
+    carte.once('load', () => rappels.current.onCarte?.(carte))
     if (!interactive)
       for (const geste of [carte.scrollZoom, carte.boxZoom, carte.dragRotate, carte.dragPan, carte.keyboard, carte.doubleClickZoom, carte.touchZoomRotate, carte.touchPitch]) geste.disable()
     carte.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
@@ -358,6 +364,7 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       cancelAnimationFrame(imageSurvol)
       observateur.disconnect()
       carteRef.current = null
+      rappels.current.onCarte?.(null)
       setPrete(false)
       carte.remove()
     }

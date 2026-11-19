@@ -337,8 +337,23 @@ models:
       les unités diffèrent (kg/ha, t/ha, m3/ha). Une dose à 0 signifie
       « besoin nul » ; une dose inconnue ne donne pas de ligne (« dose à
       saisir »). VALIDEE est réservé aux doses validées par un spécialiste :
-      aucune aujourd'hui.
+      aucune aujourd'hui. Sources : doses actuelles (Tounkara 2022, Faye 2020,
+      extrapolations, source web) et doses nationales PIA (IFDC-CORAF, fiches
+      ISRA). dose_retenue : dose retenue dans au moins une zone par la règle de
+      priorité de int_reference_dose (nb_zones_retenue zones).
     columns:
+      - name: dose_retenue
+        data_tests: [not_null]
+      - name: nb_zones_retenue
+        data_tests: [not_null]
+      - name: rang_priorite
+        description: 1 = recherche propre à la zone, 2 = nationale (PIA), 3 = NON_VERIFIEE.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+                quote: false
       - name: id_reference_agronomique
         data_tests: [not_null, unique]
       - name: id_zone_agroecologique
@@ -397,14 +412,26 @@ models:
     description: >
       Besoins de référence historiques, pas prévisionnels. Par département et
       culture : superficie de référence (moyenne des dernières campagnes
-      connues, voir annees_reference et type_superficie) x dose de référence
-      de la zone. 43 départements : Guédiawaye et Pikine absents. Besoin nul
-      (null) quand la dose est à compléter, jamais remplacé par 0. « Riz
-      (irrigué) » inclut le riz pluvial de Casamance : la dose de semis de
-      40 kg/ha (repiquage irrigué) ne s'applique pas au riz pluvial.
+      connues, voir annees_reference et type_superficie) x dose RETENUE de la
+      zone / 1000 (fumier en t/ha : sans division), calculée dans dbt
+      (int_reference_dose). 43 départements : Guédiawaye et Pikine absents.
+      Besoins (t) ADDITIFS : besoin_azote_n_t, besoin_phosphate_p2o5_t,
+      besoin_potasse_k2o_t (éléments) et besoin_npk_15_15_15_t,
+      besoin_npk_15_10_10_t, besoin_npk_6_20_10_t, besoin_uree_t,
+      besoin_dap_t, besoin_semences_t (produits) ; ne jamais additionner
+      éléments et produits. Culture sans formule d'engrais retenue : besoins
+      NULL (« dose à saisir »), jamais 0. Formule retenue : produit engrais
+      absent = 0 (« pas dans la formule » ; phosphate de fond de 400 kg/ha tous
+      les 3 ans exclu du besoin annuel, phosphate_fond_exclu). besoin_fumier_t
+      toujours NULL (non chiffré, hors totaux ; dose dans
+      fact_reference_agronomique).
     columns:
       - name: id_besoin_reference
         data_tests: [not_null, unique]
+      - name: a_formule_engrais_retenue
+        data_tests: [not_null]
+      - name: phosphate_fond_exclu
+        data_tests: [not_null]
       - name: id_departement
         data_tests:
           - not_null
@@ -431,10 +458,9 @@ models:
                 values: ['semée', 'récoltée']
       - name: besoin_semences_applicable
         description: >
-          Faux pour « Riz (irrigué) » en Casamance (riz surtout pluvial, dose de
-          repiquage irrigué) : exclure ces lignes des totaux de semences et
-          afficher « non applicable (riz pluvial) ». La valeur du besoin n'est
-          pas modifiée.
+          Faux seulement si la dose de semis retenue est la dose de repiquage
+          irrigué (Faye 2020) appliquée hors de la Vallée (riz pluvial). Avec la
+          dose PIA du riz pluvial (60 kg/ha), vrai partout aujourd'hui.
         data_tests: [not_null]
       - name: statut_validation_engrais
         data_tests:
@@ -482,4 +508,41 @@ models:
       - name: eau_surface_mobilisable
         data_tests: [not_null]
       - name: nappe_accessible
+        data_tests: [not_null]
+
+  - name: fact_cadre_harmonise
+    description: >
+      Cadre harmonisé (CILSS / IPC) par département × cycle × type de période
+      (current / projected), cycles depuis 2014 (HDX, CC BY). Keur Massar
+      fusionné dans Pikine (effectifs additionnés, phase la plus haute,
+      fusion_keur_massar). Effectifs en personnes, additifs entre départements
+      d'un même cycle et type de période seulement, jamais entre cycles ou
+      types de période. Phases non additives. Hors score de vulnérabilité.
+    columns:
+      - name: id_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: id_departement
+      - name: code_departement
+        data_tests: [not_null]
+      - name: annee_cycle
+        data_tests: [not_null]
+      - name: code_cycle
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+      - name: type_periode
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['current', 'projected']
+      - name: phase_class
+        data_tests: [not_null]
+      - name: fusion_keur_massar
         data_tests: [not_null]

@@ -40,3 +40,12 @@ export const useOpportunite = (code: string | null) => useQuery(optionsOpportuni
 /** Suivi décadaire d'un département pour une année ; `[]` si le département n'a pas de série (Guédiawaye). */
 export const useSuivi = (code: string | null, annee: number | undefined) =>
   useQuery({ queryKey: ['suivi', code, annee], queryFn: () => api.suiviDecadaire(code!, annee!), enabled: Boolean(code && annee), staleTime: LONG })
+
+/** Prix des intrants, toutes campagnes ; null si la table n'est pas construite (404). */
+export const usePrixIntrants = () => useQuery({ queryKey: ['prix-intrants'], queryFn: api.prixIntrants, staleTime: LONG })
+
+/** Cadre harmonisé, dernier cycle, tous les départements ; null si le mart n'est pas construit (404). */
+export const useCadreHarmonise = () => useQuery({ queryKey: ['cadre-harmonise'], queryFn: api.cadreHarmonise, staleTime: LONG })
+
+/** Palette officielle des phases du Cadre harmonisé (référentiel de l'API). */
+export const usePhasesCadreHarmonise = () => useQuery({ queryKey: ['phases-cadre-harmonise'], queryFn: api.phasesCadreHarmonise, staleTime: Infinity })

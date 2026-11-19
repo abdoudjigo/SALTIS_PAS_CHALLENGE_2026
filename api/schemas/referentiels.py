@@ -81,3 +81,14 @@ class Sante(BaseModel):
 class Tache(BaseModel):
     message: str
     statut: str
+
+
+class IntrantRef(BaseModel):
+    code_intrant: str = Field(examples=["NPK_6_20_10"])
+    nom_intrant: str = Field(examples=["NPK 6-20-10"])
+    colonne_besoin: str = Field(description="Colonne de besoin (t) dans /besoins et /agrodistrib", examples=["besoin_npk_6_20_10_t"])
+    colonne_libelle: str | None = Field(description="Colonne qui explique un besoin NULL ou nul", examples=["libelle_npk_6_20_10"])
+    dans_totaux: bool = Field(description="Faux pour le fumier (non chiffré, hors totaux, budget et répartition)")
+    teneur_n_pct: float | None = None
+    teneur_p2o5_pct: float | None = None
+    teneur_k2o_pct: float | None = None

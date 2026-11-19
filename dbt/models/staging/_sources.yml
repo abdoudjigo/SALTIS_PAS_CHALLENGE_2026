@@ -15,6 +15,12 @@ sources:
         description: >
           Eau présente au moins 10 mois sur 12 et terres cultivables à moins de 2 km,
           vertes ou nues en saison sèche (Earth Engine : JRC GSW, ESA WorldCover, MODIS).
+      # ---- Cadre harmonisé (CILSS / IPC), créé par snowflake/40_cadre_harmonise_raw.sql,
+      # chargé par ingestion/collecte/cadre_harmonise/. Grain : département source × cycle × type de période.
+      - name: e_cadre_harmonise_departement
+        description: >
+          Cadre harmonisé par département GADM, cycles depuis 2014 (HDX, CC BY).
+          Keur Massar (créé en 2021, hors GADM 4.1) porte le code de Pikine, en lignes séparées.
       - name: a_predicteurs_saisonniers
       - name: a_profil_agroclimatique_departement
       - name: a_repartition_pluie_departement_decade

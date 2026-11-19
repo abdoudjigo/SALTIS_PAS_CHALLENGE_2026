@@ -68,7 +68,7 @@ Sources futures citées dans la candidature, absentes de RAW aujourd'hui : ERA5-
 
 ## 3. État des modèles
 
-Résumé : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits, 7 marts), 3 seeds, **tous les tests OK** (total en section 3.6).
+Résumé (19/11/2026) : 51 modèles actifs (20 staging, 3 intermediate, 8 dimensions, 11 faits, 9 marts), 5 seeds, 348 tests, **tous OK** (total en section 3.6).
 
 ### 3.1 Préparation (étape 1, T0, corrections)
 
@@ -92,7 +92,8 @@ Résumé : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits
   - `code_region` dans `dim_region` et `dim_geographie`, déduit du code département (règle GADM `SEN.10.1_1` → `SEN.10_1`, à confirmer avec `GID_1`) ; test `tests/dim_region_code_region_coherent.sql` (14 codes ↔ 14 noms).
   - À l'origine, aucune coordonnée ni géométrie : ni dans le dépôt, ni dans `SALTIS.RAW`, ni dans `../data_fr_bis.zip` (mêmes 17 CSV que `dataset/`). `departement_statique` et `stations_pluie_mois`, cités dans `docs/README-constellation.md`, n'ont jamais été livrés. Coordonnées et contours des zones fournis ensuite par Ibrahima (voir « Nouveaux référentiels » ci-dessous).
   - **Contours GADM préparés, non actifs** (l'équipe récupère GADM 4.1 Sénégal niveau 2) :
-    - `snowflake/10_geo_departements.sql` : DDL de `RAW.GEO_DEPARTEMENTS` (`gid_2`, `gid_1`, `nom_departement`, `latitude_centroide`, `longitude_centroide`, `superficie_km2`, `geometrie GEOGRAPHY`) et exemple de chargement GeoJSON commenté ;
+    - `snowflake/40_cadre_harmonise_raw.sql` : table RAW du Cadre harmonisé, avant le chargement par `ingestion/collecte/cadre_harmonise/charger_snowflake.py --confirmer`.
+- `snowflake/10_geo_departements.sql` : DDL de `RAW.GEO_DEPARTEMENTS` (`gid_2`, `gid_1`, `nom_departement`, `latitude_centroide`, `longitude_centroide`, `superficie_km2`, `geometrie GEOGRAPHY`) et exemple de chargement GeoJSON commenté ;
     - source `raw.geo_departements`, `stg_geo_departements`, branche latitude/longitude de `dim_geographie` (`gid_2 = code_departement`) et test `tests/geo_departements_correspondance.sql` (45 départements ↔ 45 `gid_2`, `gid_1 = code_region`) ;
     - un seul interrupteur : variable `geo_departements_charge` (false) dans `dbt_project.yml`. La passer à true après chargement : GADM sert aux **contours des départements** et ajoute `latitude_centroide_gadm` / `longitude_centroide_gadm` à `dim_geographie`, sans remplacer `latitude` / `longitude` (seed `ref_departements`).
   - **Licence GADM** : usage non commercial uniquement, citation obligatoire (« GADM, version 4.1, https://gadm.org »). Le front utilisera un GeoJSON simplifié tiré du même fichier GADM (mêmes `GID_2`).
@@ -238,6 +239,7 @@ Résumé : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits
 
 - Après B2 et D : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits, 7 marts), 1 seed, **221 tests, tous OK**.
 - Après les nouveaux référentiels et la couverture en eau (11/11/2026) : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits, 7 marts), 3 seeds (`ref_intrants`, `ref_departements`, `ref_cultures`), **238 tests, tous OK** (282 nœuds au `dbt build`).
+- **19/11/2026, doses PIA, prix et Cadre harmonisé** (sections 6 et 10) : nouveaux `ref_doses_pia`, `ref_prix_intrants` (seeds), `int_reference_dose`, `dim_prix_intrant`, `stg_cadre_harmonise`, `fact_cadre_harmonise`, `mart_cadre_harmonise_departement`. Volumes : `int_reference_dose` 345 candidates (280 retenues), `fact_reference_agronomique` 175, `fact_besoin_reference` 367 (249 avec formule d'engrais), `mart_besoins` 369, `mart_territoires_agrodistrib` 345, `dim_prix_intrant` 5, `fact_cadre_harmonise` 2 127 (25 cycles, 2014-2026), `mart_cadre_harmonise_departement` 45. Build ciblé : 319 nœuds, 0 erreur. Total : 51 modèles, 5 seeds, **348 tests**.
 
 ---
 
@@ -262,11 +264,11 @@ Résumé : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits
 - **`zone_secondaire`** (`dim_geographie`, `mart_carte_agroclimat`) : information sur les départements de transition, à afficher ; jamais une clé d'agrégation (agréger par `zone_agroecologique`).
 - **`mart_besoins`** :
   - partir de `dim_geographie` (45 départements) : Guédiawaye et Pikine apparaissent avec « pas de superficie agricole de référence » ;
-  - exclure des totaux de semences les lignes `besoin_semences_applicable = false` et afficher « non applicable (riz pluvial) » ;
+  - totaliser les semences sur `besoin_semences_retenu_t` (exclut `besoin_semences_applicable = false`, « non applicable (riz pluvial) » ; aucune ligne concernée depuis la dose PIA) ;
   - afficher `annees_reference` avec un indicateur « référence antérieure à 2015 » ;
   - irrigation totale (m³) = `superficie_reference_ha` × `volume_irrigation_m3_ha` (zone, `fact_reference_agronomique`), **uniquement** quand `niveau_adequation = 'irrigation requise'` (`fact_adequation_culture`), NULL sinon ;
-  - dose inconnue → « dose à saisir » ; dose à 0 → besoin nul.
-- **Riz** : « Riz (irrigué) » inclut le riz pluvial de Casamance. La dose de semis de 40 kg/ha (repiquage irrigué, Faye et al. 2020) ne s'applique pas au riz pluvial : ne pas l'utiliser pour calculer les besoins en semences du riz pluvial (Casamance), signaler « dose à saisir ». `fact_besoin_reference.besoin_semences_t` l'applique pourtant aux 9 départements de Casamance (7 858 t sur 10 929 t au niveau national) : les marts excluent ces lignes des totaux de semences et affichent « non applicable (riz pluvial) ».
+  - culture sans formule → besoin NULL, « dose à saisir » ; produit absent d'une formule retenue → 0, « pas dans la formule » (`libelle_<produit>`) ; fumier toujours NULL, hors totaux (`libelle_fumier`).
+- **Riz** : « Riz (irrigué) » inclut le riz pluvial de Casamance. Hors Vallée, la dose de semis retenue est désormais la dose PIA du riz (60 kg/ha, nationale) ; la dose de repiquage Faye 2020 (40 kg/ha) ne vaut que dans la Vallée. L'ancienne règle « riz pluvial de Casamance non applicable (7 858 t) » est **caduque** : aucune ligne n'a `besoin_semences_applicable = false` aujourd'hui (le garde-fou reste en place).
 - **Potentiel de gain** (B2 et AgroDistrib) : quand `est_rendement_national` est vrai (`fact_facteurs_limitants`), le potentiel de gain (écart atteignable − moyen) est « non évalué au niveau de la zone » et ne doit jamais servir à comparer ni classer les zones.
 
 ---
@@ -302,27 +304,24 @@ Plan restant de la passation : **C1 à C3, plateforme Snowflake**. Le schéma `S
 
 ---
 
-## 6. Données ISRA (engrais), à intégrer à réception
+## 6. Circuit des doses et données ISRA
 
-- Usage : AgroDistrib et calcul des besoins uniquement. **Jamais dans `fact_rendement_departement`.**
-- Circuit prévu :
+- Usage : besoins et AgroDistrib uniquement. **Jamais dans `fact_rendement_departement`.**
+- Circuit en place (19/11/2026) :
 
 ```
-RAW.ISRA_DOSES_ENGRAIS
-  → stg_isra_doses_engrais
-    → int_reference_dose_engrais    (union références actuelles + ISRA, règle de priorité)
-      → fact_reference_agronomique
-        → fact_besoin_intrant
+stg_besoins_hectare (Tounkara 2022, Faye 2020, extrapolations) ─┐
+ref_doses_pia (catalogue IFDC-CORAF PIA v1.1, fiches ISRA, national) ┴→ int_reference_dose
+  → fact_reference_agronomique (doses par hectare)
+  → fact_besoin_reference (superficie × dose retenue)
 ```
 
-- Base de travail pour les doses ISRA : `data/referentiels/doses_engrais.csv` et `data/referentiels/doses_semis.csv` (fournis par Ibrahima, identiques à `c_besoins_par_hectare` : 72 zone × culture, doses et statuts). Ce sont les référentiels d'origine. **Ils ne sont pas chargés dans dbt** : on les complète avec les doses ISRA, puis le fichier complété suit le circuit ci-dessus (`RAW.ISRA_DOSES_ENGRAIS`).
-- Une ligne par dose et par source : une dose ISRA n'écrase jamais une référence existante. On conserve la source, l'unité, le statut de validation et la date de réception.
-- Priorité de la dose retenue :
-  1. ISRA validée propre à la zone ;
-  2. ISRA validée nationale ;
-  3. ISRA à confirmer ;
-  4. références actuelles (Tounkara 2022, Faye 2020).
-- Zone nullable : une dose nationale s'applique aux zones qui n'ont pas de dose propre, sans être recopiée sur chaque département.
+- Une ligne par dose et par source : une nouvelle source s'ajoute, elle n'écrase rien. Une dose nationale est candidate dans chaque zone, jamais recopiée par département.
+- **Une seule source par zone × culture × groupe** (`ENGRAIS` = formule entière avec éléments et fumier, `SEMENCES`, `EAU`) : on ne mélange jamais deux formules.
+- Priorité (`rang_priorite`) : 1. dose de recherche propre à la zone (`VALIDEE` ou `A_CONFIRMER` : Tounkara 2022 mil Casamance, Faye 2020 riz Vallée) ; 2. dose nationale `VALIDEE` ou `A_CONFIRMER` (PIA) ; 3. le reste (`NON_VERIFIEE`). À rang égal : `VALIDEE` d'abord, puis ordre alphabétique.
+- Besoins : produit engrais absent d'une formule retenue → **0** (« pas dans la formule ») ; culture sans formule (sésame, coton, manioc, oignon, tomate, pastèque) → **NULL** (« dose à saisir ») ; fumier → **NULL**, hors totaux (« non chiffré : fumure organique conseillée si possible ») ; phosphate de fond des fiches PIA (400 kg/ha tous les 3 ans) **exclu** du besoin annuel (`phosphate_fond_exclu`, `note_dap`).
+- Tests : `tests/int_reference_dose_priorite.sql` (une source par groupe, exactement une ligne retenue par intrant de la source retenue, groupes retenus = groupes ayant une dose dans les entrées, rang, contrôles métier), `tests/ref_doses_pia_valeurs_valides.sql`.
+- Doses ISRA à venir : elles entreront comme une source de plus dans `int_reference_dose` (base : `data/referentiels/doses_engrais.csv` et `doses_semis.csv`), avec source, unité, statut et date de réception.
 
 ---
 
@@ -349,6 +348,8 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 - Arachide : confirmer la dose « 150 kg/ha de 6-20-10 », citée seulement dans le texte du statut (`note_source`), sans dose chiffrée.
 - Mil : poids de semences par hectare (seule la densité est documentée : 5 graines par poquet à 80 × 80 cm, démariage à 3 plants).
 - Plus largement : doses validées par zone pour toutes les cultures « à compléter » (voir section 6).
+- Mil : dose de fumier hors Casamance (seule la référence Tounkara 2022 de Casamance en chiffre une).
+- Maïs : quelle formule retenir, hybride (300 kg NPK + 200 kg urée) ou variété à pollinisation libre (200 + 160, retenue aujourd'hui) ?
 
 ### À signaler au producteur du dataset
 
@@ -372,3 +373,33 @@ Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **ex�
 - La variété « Mil sanio (type tardif) » est rattachée à la culture « Mil (souna) », qui est en réalité le libellé générique du mil chez DAPSA.
 - Rendements : superficie récoltée jusqu'en 2015, superficie semée ensuite (`type_superficie`). Pour agréger le rendement, calculer `sum(production) / sum(superficie)`, jamais la moyenne des rendements. Les indicateurs de tendance et de variabilité s'arrêtent à 2015 pour éviter cette rupture.
 - NDVI disponible à partir de 2000 seulement.
+
+---
+
+## 10. Prix des intrants et Cadre harmonisé
+
+### Prix (`ref_prix_intrants` → `dim_prix_intrant`)
+
+- Grain : `code_intrant` × `campagne`, 5 lignes (campagne 2026). Sources : APS (30 sept. 2025, ICS) et circulaire du ministère de l'Agriculture du 30 avril 2026 (numéro non publié : à vérifier).
+- `cout_reel_sac_50kg_fcfa` = prix de cession + subvention / 20 (testé).
+- Limite : urée et DAP sans prix public trouvé → `A_SAISIR`, valeurs NULL (jamais 0).
+
+### Cadre harmonisé (`stg_cadre_harmonise` → `fact_cadre_harmonise` → `mart_cadre_harmonise_departement`)
+
+- Source : « Cadre harmonisé, CILSS et partenaires ; données via HDX (Food Security and Nutrition Working Group, Afrique de l'Ouest et du Centre) », licence CC BY (citation obligatoire).
+- Fait : département × cycle × type de période (`current` / `projected`), 2014-2026. Mart : 45 départements, dernier cycle.
+- Règles :
+  - Keur Massar (créé en 2021, absent de GADM) est fusionné dans Pikine (effectifs additionnés, phase la plus haute ; `fusion_keur_massar`, `note_fusion`) ;
+  - période retenue = celle marquée `usethisperiod`, sinon (les deux ou aucune) la projection ;
+  - jamais d'addition entre cycles ni entre types de période (mêmes personnes) ; population additive entre départements d'une même période seulement ;
+  - hors score de vulnérabilité (`mart_vulnerabilite_departement` inchangé).
+- Limites :
+  - `periode_terminee` et `mention_periode` (« période terminée, prochain cycle attendu ») sont calculés au jour du build (`date_calcul`) : le front recalcule depuis `date_fin_periode_retenue` ;
+  - le contrôle 836 787 personnes en phases 3 à 5 (`tests/fact_cadre_harmonise_valeurs_valides.sql`) est propre au cycle de mars 2026 (projection juin-août) : à revoir au cycle suivant.
+
+
+### Front et API (19/11/2026)
+
+- API : `GET /prix-intrants?campagne=`, `GET /cadre-harmonise` (et `/{code_departement}`), `GET /referentiels/intrants`, `GET /referentiels/phases-cadre-harmonise` (voir `docs/guide-api.md`).
+- Front : espace ONG en 7 étapes (`app/src/scene/modes/`), dont le budget au prix subventionné, au coût réel ou au prix « saisi par vous ».
+- Export PDF (dossier national et fiche département) généré dans le navigateur avec jsPDF 4.2.1 (`app/src/export/`), sans serveur.

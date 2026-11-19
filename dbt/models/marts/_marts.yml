@@ -82,8 +82,9 @@ models:
 
   - name: dim_intrant
     description: >
-      Référentiel des 9 intrants de référence (seed ref_intrants) : produits,
-      éléments fertilisants et eau, avec unité et teneurs N-P2O5-K2O.
+      Référentiel des 11 intrants de référence (seed ref_intrants) : produits
+      (dont NPK 15-10-10 et 6-20-10 des PIA), éléments fertilisants et eau,
+      avec unité et teneurs N-P2O5-K2O.
     columns:
       - name: id_intrant
         data_tests: [not_null, unique]
@@ -295,14 +296,53 @@ models:
       - name: niveau_adequation_source
         data_tests: [not_null]
 
+  - name: dim_prix_intrant
+    description: >
+      Prix des engrais par produit et campagne (seed ref_prix_intrants, exposé
+      tel quel). prix_cession_sac_50kg_fcfa : prix payé par le producteur
+      (subventionné) ; subvention_tonne_fcfa ; cout_reel_sac_50kg_fcfa =
+      cession + subvention / 20. Urée et DAP : A_SAISIR, valeurs NULL.
+    columns:
+      - name: code_intrant
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_intrant')
+                field: code_intrant
+      - name: campagne
+        data_tests: [not_null]
+      - name: prix_cession_sac_50kg_fcfa
+        description: Prix payé par le producteur (FCFA par sac de 50 kg, subventionné) ; NULL si A_SAISIR.
+      - name: subvention_tonne_fcfa
+        description: Subvention de l'État (FCFA par tonne) ; NULL si A_SAISIR.
+      - name: cout_reel_sac_50kg_fcfa
+        description: Prix de cession + subvention / 20 (FCFA par sac) ; NULL si A_SAISIR.
+      - name: statut_validation
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['VALIDEE', 'A_CONFIRMER', 'A_SAISIR']
+
   - name: mart_besoins
     description: >
       Écran besoins en intrants : besoins de référence historiques, pas
       prévisionnels, par département et culture. Les 45 départements
       apparaissent (Guédiawaye et Pikine : « pas de superficie agricole de
-      référence »). Totaliser les semences sur besoin_semences_retenu_t
-      (riz pluvial de Casamance exclu). Dose inconnue : besoin NULL
-      (« dose à saisir »).
+      référence »). Besoins (t) = superficie x dose retenue de la zone
+      (recherche propre à la zone, puis PIA national, puis NON_VERIFIEE).
+      ADDITIFS : superficie_reference_ha, besoin_azote_n_t,
+      besoin_phosphate_p2o5_t, besoin_potasse_k2o_t, besoin_npk_15_15_15_t,
+      besoin_npk_15_10_10_t, besoin_npk_6_20_10_t, besoin_uree_t,
+      besoin_dap_t, besoin_semences_retenu_t (à totaliser pour les
+      semences) ; ne jamais additionner éléments et produits. Non additifs :
+      doses et irrigation par hectare, statuts, sources, libellés. Culture
+      sans formule : besoin NULL (« dose à saisir »), jamais 0 ; produit
+      absent d'une formule retenue : 0 (libelle_<produit> = « pas dans la
+      formule », note_dap pour le phosphate de fond exclu). besoin_fumier_t
+      toujours NULL, hors totaux (libelle_fumier « non chiffré : fumure
+      organique conseillée si possible »).
     columns:
       - name: code_departement
         data_tests:
@@ -313,12 +353,84 @@ models:
                 field: code_departement
       - name: irrigation_requise
         data_tests: [not_null]
+      - name: message_departement
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['pas de superficie agricole de référence']
+      - name: libelle_besoin_engrais
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'calculé']
+      - name: libelle_semences
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['non applicable (riz pluvial)', 'dose à saisir', 'superficie de référence nulle', 'calculé']
+      - name: libelle_npk_15_15_15
+        description: "Libellé du besoin en NPK 15-15-15 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_15_10_10
+        description: "Libellé du besoin en NPK 15-10-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_6_20_10
+        description: "Libellé du besoin en NPK 6-20-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_uree
+        description: "Libellé du besoin en urée : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_dap
+        description: "Libellé du besoin en DAP 18-46-0 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: note_dap
+        description: Texte quand la formule retenue cite un phosphate de fond (400 kg/ha tous les 3 ans), exclu du besoin annuel ; NULL sinon.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['phosphate de fond (400 kg tous les 3 ans) volontairement exclu du besoin annuel']
+      - name: libelle_fumier
+        description: Fumier non chiffré (besoin_fumier_t toujours NULL, hors totaux).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['non chiffré : fumure organique conseillée si possible']
+      - name: besoin_fumier_t
+        description: Toujours NULL (fumier non chiffré) ; ne jamais l'additionner.
+      - name: besoin_npk_15_10_10_t
+        description: Besoin en NPK 15-10-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: besoin_npk_6_20_10_t
+        description: Besoin en NPK 6-20-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: source_reference_engrais
+        description: Source de la formule d'engrais retenue (int_reference_dose) ; NULL sans formule.
+      - name: source_reference_semis
+        description: Source de la dose de semis retenue ; NULL sans dose.
 
   - name: mart_territoires_agrodistrib
     description: >
       Critères par département et culture pour AgroDistrib, seulement là où
       la culture existe (superficie de référence > 0). Additifs : superficie
-      et besoins. Non additifs : tout le reste. Potentiel de gain : valeurs
+      et besoins (t), y compris besoin_npk_15_10_10_t et besoin_npk_6_20_10_t
+      (PIA) ; semences : besoin_semences_retenu_t ; besoin_fumier_t toujours
+      NULL, exclu des totaux et du budget (libelle_fumier). Produit absent
+      d'une formule retenue : 0 ; culture sans formule : NULL (libellés
+      libelle_<produit>, note_dap). Non additifs : tout le
+      reste (statuts et sources des doses retenues compris). Potentiel de gain : valeurs
       de zone (niveau_source_potentiel = 'ZONE'), qui ne s'additionnent
       jamais et ne distinguent pas les départements d'une même zone.
     columns:
@@ -334,7 +446,7 @@ models:
       - name: superficie_reference_ha
         data_tests: [not_null]
       - name: besoin_semences_applicable
-        description: Faux pour le riz irrigué en Casamance (riz surtout pluvial) ; besoin_semences_retenu_t est alors NULL.
+        description: Faux seulement si la dose de repiquage irrigué est appliquée hors Vallée (riz pluvial) ; aucune ligne aujourd'hui (dose PIA du riz pluvial).
         data_tests: [not_null]
       - name: niveau_source_potentiel
         data_tests:
@@ -344,6 +456,64 @@ models:
                 values: ['ZONE']
       - name: potentiel_evalue
         data_tests: [not_null]
+      - name: libelle_npk_15_15_15
+        description: "Libellé du besoin en NPK 15-15-15 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_15_10_10
+        description: "Libellé du besoin en NPK 15-10-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_npk_6_20_10
+        description: "Libellé du besoin en NPK 6-20-10 (PIA) : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_uree
+        description: "Libellé du besoin en urée : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: libelle_dap
+        description: "Libellé du besoin en DAP 18-46-0 : dose à saisir (culture sans formule, besoin NULL), superficie de référence nulle, pas dans la formule (besoin 0), calculé."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['dose à saisir', 'superficie de référence nulle', 'pas dans la formule', 'calculé']
+      - name: note_dap
+        description: Texte quand la formule retenue cite un phosphate de fond (400 kg/ha tous les 3 ans), exclu du besoin annuel ; NULL sinon.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['phosphate de fond (400 kg tous les 3 ans) volontairement exclu du besoin annuel']
+      - name: libelle_fumier
+        description: Fumier non chiffré (besoin_fumier_t toujours NULL, hors totaux).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['non chiffré : fumure organique conseillée si possible']
+      - name: besoin_fumier_t
+        description: Toujours NULL (fumier non chiffré) ; ne jamais l'additionner.
+      - name: besoin_npk_15_10_10_t
+        description: Besoin en NPK 15-10-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: besoin_npk_6_20_10_t
+        description: Besoin en NPK 6-20-10 (t, additif). 0 si absent de la formule retenue, NULL sans formule.
+      - name: source_reference_engrais
+        description: Source de la formule d'engrais retenue (int_reference_dose) ; NULL sans formule.
+      - name: source_reference_semis
+        description: Source de la dose de semis retenue ; NULL sans dose.
 
   - name: mart_carte_opportunites
     description: >
@@ -395,3 +565,69 @@ models:
                   - 'non évaluée'
       - name: conseil_agriculteur
         data_tests: [not_null]
+
+  - name: mart_cadre_harmonise_departement
+    description: >
+      Écran Cadre harmonisé, dernier cycle disponible, un département par
+      ligne (45 au plus). Période retenue : celle marquée usethisperiod,
+      projection si les deux le sont ou aucune ; libellé en français, dates,
+      periode_terminee (au jour du build, date_calcul). Phases et population
+      en phases 3 à 5 de la période retenue, de la situation courante et de
+      la projection. Additif (entre départements seulement) : population_*.
+      Non additif : phases, libellés. Jamais d'agrégation entre cycles. Pikine
+      inclut Keur Massar (note_fusion). Hors score de vulnérabilité.
+      Source : Cadre harmonisé, CILSS et partenaires, via HDX, licence CC BY.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement
+      - name: phase_retenue
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+      - name: type_periode_retenue
+        description: Période affichée (current = situation courante, projected = projection).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['current', 'projected']
+      - name: libelle_periode_retenue
+        description: Libellé français de la période retenue, ex. « mars 2026, projection juin-août 2026 ».
+      - name: date_debut_periode_retenue
+        description: Premier jour de la période retenue.
+      - name: date_fin_periode_retenue
+        description: Dernier jour de la période retenue ; le front recalcule periode_terminee depuis cette date.
+      - name: periode_terminee
+        description: Vrai si date_fin_periode_retenue < date_calcul (jour du dbt build).
+      - name: mention_periode
+        description: « période terminée, prochain cycle attendu » quand periode_terminee, NULL sinon.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['période terminée, prochain cycle attendu']
+      - name: libelle_phase_retenue
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['minimale', 'sous pression', 'crise', 'urgence', 'famine']
+      - name: population_phase3_5_retenue
+        description: Population en phases 3 à 5 (personnes) de la période retenue ; additive entre départements d'un même cycle et d'une même période seulement.
+      - name: fusion_keur_massar
+        description: Vrai pour Pikine (inclut Keur Massar, créé en 2021, absent de GADM).
+        data_tests: [not_null]
+      - name: note_fusion
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Pikine et Keur Massar réunis (Keur Massar, créé en 2021, n''existe pas dans GADM)"]
+      - name: source
+        data_tests: [not_null]
+      - name: licence
+        data_tests: [not_null]
+

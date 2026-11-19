@@ -26,3 +26,34 @@ export function besoinsParDepartement(lignes: LigneTerritoireAgrodistrib[], colo
   }
   return [...groupes.values()]
 }
+
+/** La valeur de besoin d'une ligne pour une colonne : null si la dose est inconnue ou non applicable (jamais 0). */
+const valeurBesoin = (l: LigneTerritoireAgrodistrib, colonne: ColonneBesoin) =>
+  colonne === 'besoin_semences_retenu_t' && !l.besoin_semences_applicable ? null : l[colonne]
+
+/**
+ * Part de la superficie de référence couverte par une dose connue (« pas dans la formule » compte : dose nulle connue),
+ * pour un intrant et un choix de cultures. null sans superficie.
+ */
+export function partSurfaceAvecDose(lignes: LigneTerritoireAgrodistrib[], colonne: ColonneBesoin, culture: string | null, code?: string | null) {
+  let totale = 0
+  let connue = 0
+  for (const l of lignes) {
+    if ((culture && l.culture !== culture) || (code && l.code_departement !== code)) continue
+    totale += l.superficie_reference_ha ?? 0
+    if (valeurBesoin(l, colonne) !== null) connue += l.superficie_reference_ha ?? 0
+  }
+  return totale > 0 ? (100 * connue) / totale : null
+}
+
+/** La culture de plus grande superficie de référence de chaque département, parmi celles où l'intrant a un besoin connu > 0. */
+export function culturePrincipale(lignes: LigneTerritoireAgrodistrib[], colonne: ColonneBesoin): Map<string, LigneTerritoireAgrodistrib> {
+  const r = new Map<string, LigneTerritoireAgrodistrib>()
+  for (const l of lignes) {
+    const v = valeurBesoin(l, colonne)
+    if (v === null || v <= 0) continue
+    const m = r.get(l.code_departement)
+    if (!m || l.superficie_reference_ha > m.superficie_reference_ha) r.set(l.code_departement, l)
+  }
+  return r
+}

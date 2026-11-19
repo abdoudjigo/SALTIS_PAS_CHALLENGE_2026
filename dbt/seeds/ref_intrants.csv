@@ -1,5 +1,7 @@
 code_intrant,nom_intrant,type_intrant,unite,teneur_n_pct,teneur_p2o5_pct,teneur_k2o_pct
 NPK_15_15_15,NPK 15-15-15,PRODUIT,kg/ha,15,15,15
+NPK_15_10_10,NPK 15-10-10,PRODUIT,kg/ha,15,10,10
+NPK_6_20_10,NPK 6-20-10,PRODUIT,kg/ha,6,20,10
 UREE,Urée 46-0-0,PRODUIT,kg/ha,46,0,0
 DAP_18_46_0,DAP 18-46-0,PRODUIT,kg/ha,18,46,0
 FUMIER,Fumier,PRODUIT,t/ha,,,

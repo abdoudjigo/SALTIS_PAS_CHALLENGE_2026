@@ -1,10 +1,10 @@
-// La fiche commune des 6 fonctionnalités de l'agriculteur : l'essentiel en 5 secondes.
+// La fiche commune des 6 fonctionnalités de l'agriculteur et des 7 étapes de l'ONG : l'essentiel en 5 secondes.
 // De haut en bas : la question et les choix (puces), la réponse en gros, 1 à 3 lignes à cocher, le détail replié,
 // puis un pied collé en bas : écouter (français, wolof) et passer à la question suivante.
 import clsx from 'clsx'
 import { ArrowRight, Check, ChevronDown, Loader2, Square, TriangleAlert, X } from 'lucide-react'
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { PARCOURS_AGRICULTEUR, type Cadre, type ModeAgriculteur } from './cadre'
+import { parcoursDe, type Cadre, type IdEtape } from './cadre'
 import type { EtatLigne, LigneCheck, Puce } from './fiche'
 import { arreter, lectureDisponible, lire, lireWolof, pourLOreille, useQuiParle, type Parleur } from './lecture'
 import { Fille, Garcon } from './Mascottes'
@@ -66,7 +66,7 @@ function Ecoute({ fr, wo }: { fr?: string[]; wo?: string[] }) {
       {message && (
         <p role="status" className="absolute bottom-full left-0 z-10 mb-2 w-60 rounded-lg bg-encre-nuit px-3 py-2 text-xs text-white/80 shadow-lg">
           {message}
-          <button type="button" onClick={() => setMessage(null)} className="ml-2 min-h-6 text-white underline">OK</button>
+          <button type="button" onClick={() => setMessage(null)} className="ml-2 min-h-11 min-w-11 text-white underline">OK</button>
         </p>
       )}
     </div>
@@ -75,7 +75,7 @@ function Ecoute({ fr, wo }: { fr?: string[]; wo?: string[] }) {
 
 interface PropsFiche {
   cadre: Cadre
-  mode: ModeAgriculteur
+  mode: IdEtape
   puces?: Puce[]
   titre: string
   /** la couleur du verdict ; blanc par défaut */
@@ -96,9 +96,12 @@ interface PropsFiche {
 }
 
 export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, avant, etat, detail, cle, aEcouter, aEcouterWo, culture }: PropsFiche) {
-  const i = PARCOURS_AGRICULTEUR.findIndex((p) => p.id === mode)
-  const question = PARCOURS_AGRICULTEUR[i].question
-  const suivant = PARCOURS_AGRICULTEUR[i + 1]
+  // Le parcours du profil : 6 questions de l'agriculteur, ou 7 étapes de l'ONG
+  const parcours = parcoursDe(cadre)
+  const i = parcours.findIndex((p) => p.id === mode)
+  const question = parcours[i].question
+  const suivant = parcours[i + 1]
+  const agriculteur = cadre.user.role === 'PRODUCTEUR'
   // Ouvert pour une clé donnée : changer de département, d'année ou de culture le referme
   const [detailPour, setDetailPour] = useState<string | null>(null)
   const ouvert = detailPour === cle
@@ -133,6 +136,13 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
     }
   }, [menuOuvert, idMenu])
   const puceOuverte = puces.find((p) => p.id === menuOuvert)
+  // À l'ouverture d'un menu, le focus va sur son champ de saisie, sinon sur l'option cochée ; il revient à la puce à la fermeture
+  useEffect(() => {
+    if (!menuOuvert) return
+    const menu = document.getElementById(idMenu)
+    const cible = menu?.querySelector<HTMLElement>('input') ?? menu?.querySelector<HTMLElement>('[aria-checked="true"]') ?? menu?.querySelector<HTMLElement>('select, button')
+    cible?.focus()
+  }, [menuOuvert, idMenu])
   // Une autre réponse (département, année, culture) se lit depuis le haut
   useEffect(() => {
     entete.current?.closest('.overflow-y-auto')?.scrollTo({ top: 0 })
@@ -145,7 +155,7 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
         <div className={clsx('flex flex-wrap items-center gap-x-2 gap-y-1', puces.length > 0 && 'min-h-11')}>
           <p className="max-w-full text-xs font-medium text-white/60">{question}</p>
           {puces.length > 0 && <div className="ml-auto flex flex-wrap justify-end gap-1.5">{puces.map((p) => (
-            <button key={p.id} type="button" id={`${idMenu}-${p.id}`} data-puce={p.id} onClick={() => setMenu(menuOuvert === p.id ? null : p.id)}
+            <button key={p.id} type="button" id={`${idMenu}-${p.id}`} data-puce={p.id} aria-haspopup="dialog" onClick={() => setMenu(menuOuvert === p.id ? null : p.id)}
               aria-expanded={menuOuvert === p.id} aria-controls={menuOuvert === p.id ? idMenu : undefined} aria-label={`${p.nom} : ${p.libelle}. Changer`}
               className={clsx('inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-medium whitespace-nowrap transition',
                 menuOuvert === p.id ? 'border-soleil-500 text-soleil-500' : 'border-white/15 text-white hover:border-white/40 hover:bg-white/5')}>
@@ -163,8 +173,8 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
 
       {avant}
 
-      <div aria-live="polite" className="mt-2">
-        <h2 key={titre} className="maj font-titre text-titre-fiche font-semibold text-white" style={teinte ? { color: teinte } : undefined}>{titre}</h2>
+      <div aria-live="polite" aria-atomic="true" className="mt-2">
+        <h2 className="maj font-titre text-titre-fiche font-semibold text-white" style={teinte ? { color: teinte } : undefined}>{titre}</h2>
       </div>
       {etat}
 
@@ -196,9 +206,9 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
 
       <div className="sticky -bottom-4 z-10 -mx-4 mt-4 flex items-center gap-2 border-t border-white/[0.09] bg-encre-nuit px-4 py-2.5">
         <Ecoute fr={aEcouter} wo={aEcouterWo} />
-        <button type="button" onClick={() => { if (culture && !cadre.culture) cadre.choisirCulture(culture); cadre.aller(suivant?.id ?? 'parcelle') }}
+        <button type="button" onClick={() => { if (culture && !cadre.culture) cadre.choisirCulture(culture); cadre.aller(suivant?.id ?? parcours[0].id) }}
           className="ml-auto inline-flex min-h-11 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-lg bg-soleil-500 px-3 py-1 text-left text-xs leading-tight font-semibold text-encre-nuit transition hover:bg-soleil-100 active:scale-[0.98]">
-          <span className="min-w-0">{suivant ? <>Suivant : {suivant.question}</> : 'Revenir à mon champ'}</span>
+          <span className="min-w-0">{suivant ? <>Suivant : {suivant.question}</> : agriculteur ? 'Revenir à mon champ' : <>Revenir au début : {parcours[0].question}</>}</span>
           <ArrowRight className="size-4 shrink-0" aria-hidden />
         </button>
       </div>

@@ -1,5 +1,5 @@
 // Échelles de couleur de la scène, toutes tirées de la palette « Ciel & Terre » (src/index.css).
-import type { NiveauAdequation, RisqueSaison } from '../types/marts'
+import type { CarteOpportunite, NiveauAdequation, RisqueSaison } from '../types/marts'
 import type { Classe3, Probabilites3 } from '../types/previsions'
 
 export type Rvb = [number, number, number]
@@ -90,3 +90,17 @@ export function tendance(p: Probabilites3) {
   const proba = { 'sèche': p.proba_seche_pct, 'normale': p.proba_normale_pct, 'humide': p.proba_humide_pct }[p.classe_prevue]
   return { classe: p.classe_prevue, proba, texte: `plutôt ${p.classe_prevue}`, couleur: CLASSES3[p.classe_prevue].couleur }
 }
+
+// --- Carte des opportunités (contre-saison de l'agriculteur, étape 6 de l'ONG) ----------------------
+/** Bleu : eau mobilisable (couleur « irrigation requise ») ; sinon jaune ou vert selon la saison des pluies. */
+export const COULEURS_OPPORTUNITE: Record<NonNullable<CarteOpportunite['couleur_carte']>, string> = {
+  bleu: NIVEAUX['irrigation requise'].couleur,
+  jaune: SOLEIL_500,
+  vert: VERT_500,
+}
+export const LEGENDE_OPPORTUNITES = [
+  { couleur: COULEURS_OPPORTUNITE.bleu, libelle: 'Eau pour la contre-saison' },
+  { couleur: COULEURS_OPPORTUNITE.jaune, libelle: 'Saison des pluies courte' },
+  { couleur: COULEURS_OPPORTUNITE.vert, libelle: 'Saison des pluies longue' },
+  { couleur: NON_DISPONIBLE, libelle: 'Non évaluée' },
+]

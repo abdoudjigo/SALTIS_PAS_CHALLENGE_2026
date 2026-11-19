@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { Utilisateur } from '../types/auth'
+import { viderExport } from '../scene/registreExport'
 import { sessionStore } from './session'
 
 interface ValeurAuth {
@@ -32,7 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // (seulement quand une session se termine : à l'ouverture, un visiteur a déjà des données publiques en cours de chargement)
   const etaitConnecte = useRef(Boolean(session))
   useEffect(() => {
-    if (etaitConnecte.current && !session) queryClient.clear()
+    if (etaitConnecte.current && !session) {
+      queryClient.clear()
+      // Dossier de l'ONG (stock, prix saisis) et étapes gardées pour l'export : propres à la session qui se termine
+      viderExport()
+    }
     etaitConnecte.current = Boolean(session)
   }, [session, queryClient])
 

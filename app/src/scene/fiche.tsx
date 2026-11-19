@@ -1,12 +1,10 @@
 // Ce que les modes de l'agriculteur donnent à la fiche commune (FicheReponse) : les lignes, les puces, le texte lu.
-import clsx from 'clsx'
-import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { libelle } from '../lib/format'
 import type { PrevisionSaison } from '../types/previsions'
-import type { Cadre, ModeAgriculteur, useAnnee } from './cadre'
+import type { Cadre, IdEtape, useAnnee } from './cadre'
 import { ChampAnnee } from './previsions'
-import { Champ } from './ui'
+import { Champ, Options } from './ui'
 
 /** ok, attention, non : un verdict tiré d'un champ de l'API ou d'une règle du projet ; info : un fait, sans règle validée. */
 export type EtatLigne = 'ok' | 'attention' | 'non' | 'info'
@@ -15,7 +13,7 @@ export interface LigneCheck {
   etat: EtatLigne
   texte: string
   /** un renvoi vers une autre question du parcours (ex. « Contre-saison ») */
-  lien?: { libelle: string; mode: ModeAgriculteur }
+  lien?: { libelle: string; mode: IdEtape }
 }
 /** Un choix du mode (année, culture, surface) : une puce qui ouvre le sélecteur existant. */
 export interface Puce {
@@ -47,21 +45,23 @@ export function puceAnnee(cadre: Cadre, a: ReturnType<typeof useAnnee>, saison?:
   }
 }
 
-/** La culture du cadre partagé, parmi celles que le mode connaît. */
-export function puceCulture(cadre: Cadre, cultures: string[], culture: string | null): Puce {
+/**
+ * La culture du cadre partagé, parmi celles que le mode connaît.
+ * `toutes` (ONG) : une première option « Toutes » qui remet la culture partagée à null.
+ */
+export function puceCulture(cadre: Cadre, cultures: string[], culture: string | null, toutes?: string): Puce {
+  const options: { id: string | null; libelle: string }[] = [...(toutes ? [{ id: null, libelle: toutes }] : []), ...cultures.map((c) => ({ id: c, libelle: libelle(c) }))]
   return {
-    id: 'culture', nom: 'Culture', libelle: culture ? libelle(culture) : 'Culture',
-    contenu: (fermer) => (
-      <div role="radiogroup" aria-label="Culture" className="-m-1 max-h-64 overflow-y-auto overscroll-contain">
-        {cultures.map((c) => (
-          <button key={c} type="button" role="radio" aria-checked={c === culture} onClick={() => { cadre.choisirCulture(c); fermer() }}
-            className={clsx('flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition hover:bg-white/[0.07]', c === culture ? 'font-semibold text-soleil-500' : 'text-white')}>
-            <span className="flex-1">{libelle(c)}</span>
-            {c === culture && <Check className="size-4 shrink-0" aria-hidden />}
-          </button>
-        ))}
-      </div>
-    ),
+    id: 'culture', nom: 'Culture', libelle: culture ? libelle(culture) : toutes ?? 'Culture',
+    contenu: (fermer) => <Options nom="Culture" options={options} valeur={culture} choisir={cadre.choisirCulture} fermer={fermer} />,
+  }
+}
+
+/** Un choix parmi quelques options (intrant, scénario, vue de la carte) : même menu que la culture. */
+export function puceChoix<T extends string>(id: string, nom: string, options: { id: T; libelle: string }[], valeur: T, choisir: (id: T) => void): Puce {
+  return {
+    id, nom, libelle: options.find((o) => o.id === valeur)?.libelle ?? nom,
+    contenu: (fermer) => <Options nom={nom} options={options} valeur={valeur} choisir={choisir} fermer={fermer} />,
   }
 }
 
@@ -72,7 +72,7 @@ export function puceSurface(saisie: string, onChange: (texte: string) => void, l
     contenu: (fermer) => (
       <Champ libelle="Surface (ha)">
         <input className="champ-scene tabular-nums" inputMode="decimal" value={saisie} autoFocus onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && fermer()} />
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fermer() } }} />
       </Champ>
     ),
   }

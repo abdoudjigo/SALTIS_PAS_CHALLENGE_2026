@@ -47,3 +47,29 @@ models:
     columns:
       - name: code_departement
         data_tests: [not_null, unique]
+
+  - name: stg_cadre_harmonise
+    description: >
+      Cadre harmonisé (CILSS / IPC) par département source × cycle × type de
+      période, valeurs de RAW inchangées. Keur Massar porte le code de Pikine
+      (lignes séparées, fusion dans fact_cadre_harmonise). Ajoute les dates de
+      la période de référence et l'ordre chronologique des cycles.
+    columns:
+      - name: code_departement
+        data_tests: [not_null]
+      - name: nom_departement_source
+        data_tests: [not_null]
+      - name: type_periode
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['current', 'projected']
+      - name: date_debut_periode
+        data_tests: [not_null]
+      - name: date_fin_periode
+        data_tests: [not_null]
+      - name: ordre_cycle
+        data_tests: [not_null]
+      - name: periode_a_utiliser
+        data_tests: [not_null]

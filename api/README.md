@@ -54,6 +54,8 @@ Ces routes ne contiennent aucune donnée agricole. Elles disent quelles valeurs 
 | `/referentiels/zones` | Les 6 zones agroécologiques |
 | `/referentiels/cultures` | Les 12 cultures, avec leur nom exact (`MIL (SOUNA)`, `MAÏS`…) |
 | `/referentiels/periodes` | Les années disponibles (campagnes 1981-2025, suivi décadaire) |
+| `/referentiels/intrants` | Les produits (NPK 15-15-15, 15-10-10, 6-20-10, urée, DAP, fumier, semences) : `colonne_besoin` à lire dans `/besoins` et `/agrodistrib`, `colonne_libelle`, `dans_totaux` (faux pour le fumier) |
+| `/referentiels/phases-cadre-harmonise` | Les 5 phases du Cadre harmonisé, leur libellé et leur couleur officielle |
 
 Zone et région sont deux découpages **parallèles** : une région peut s'étendre sur deux zones (Louga, Matam, Tambacounda).
 
@@ -143,12 +145,15 @@ Le calcul est simple : **superficie cultivée × dose par hectare**. La dose vie
 
 | Route | On donne | On obtient |
 |---|---|---|
-| `/besoins/departements/{code}?culture=` | un département (culture facultative) | une ligne par culture : superficie, besoins en tonnes (N, P2O5, K2O, NPK, urée, DAP, fumier, semences), irrigation |
+| `/besoins/departements/{code}?culture=` | un département (culture facultative) | une ligne par culture : superficie, besoins en tonnes (N, P2O5, K2O, NPK 15-15-15, 15-10-10 et 6-20-10, urée, DAP, semences), libellé par produit, source et statut de la dose retenue, irrigation |
 | `/besoins/totaux?niveau=NATIONAL&culture=` | un niveau : `NATIONAL`, `REGION` ou `ZONE` | les mêmes besoins, additionnés |
+| `/prix-intrants?campagne=` | une campagne (facultative) | prix de cession, subvention et coût réel par sac de 50 kg, statut et source ; prix `null` = « à saisir » (`A_SAISIR`) |
 
 Ce qu'il faut savoir pour lire les chiffres :
-- **NULL n'est pas 0**. Quand la dose n'est pas connue, le besoin vaut `null` et le libellé indique « dose à saisir ». Un besoin à 0 signifie au contraire un vrai besoin nul (produit absent de la formule).
-- **Semences du riz en Casamance** : la dose disponible correspond au riz irrigué repiqué, pas au riz pluvial. Le besoin retenu (`besoin_semences_retenu_t`) est donc exclu et la ligne affiche « non applicable (riz pluvial) ».
+- **NULL n'est pas 0**. Quand la dose n'est pas connue, le besoin vaut `null` et le libellé indique « dose à saisir ». Un besoin à 0 signifie au contraire un vrai besoin nul : produit absent de la formule retenue, `libelle_<produit>` = « pas dans la formule ».
+- **Dose retenue** : recherche propre à la zone, sinon catalogue PIA national ; `source_reference_*` et `statut_validation_*` disent laquelle.
+- **Fumier** : non chiffré (`besoin_fumier_t` toujours `null`, `libelle_fumier` « fumure organique conseillée si possible ») ; hors totaux, budget et répartition.
+- **Semences du riz pluvial (Casamance)** : la dose PIA de 60 kg/ha s'applique désormais ; `besoin_semences_applicable` est vrai partout.
 - **Irrigation** : un volume n'est donné que si la culture est en « irrigation requise ».
 - **Ancienneté** : `reference_anterieure_2015` signale une superficie de référence ancienne.
 - **Guédiawaye et Pikine** : une seule ligne, « pas de superficie agricole de référence ».
@@ -172,7 +177,7 @@ Les critères d'une ligne de `/territoires` :
 - **le sol du département** : pH, texture, réserve en eau, carbone ;
 - **la vulnérabilité** du département (voir plus bas).
 
-`besoin_semences_applicable` vaut `false` pour le riz pluvial de Casamance : le besoin en semences de ces lignes n'entre pas dans les totaux.
+Les colonnes de besoin sont les mêmes que dans `/besoins` (dont les deux nouveaux NPK et les libellés par produit) ; le fumier n'est pas chiffré et reste hors totaux. `besoin_semences_applicable` est vrai partout (dose PIA du riz pluvial) ; une ligne à `false` serait exclue des totaux de semences.
 
 `/agregats` sert quand le décideur veut répartir par région ou par zone plutôt que par département : le besoin d'une région est la **somme de ses départements**.
 
@@ -202,6 +207,17 @@ Une carte, trois couleurs (`MART_CARTE_OPPORTUNITES`) : **jaune** saison des plu
 
 Le jaune et le vert reprennent les probabilités de `/choix-cultures` (un cycle « passe » s'il est couvert au moins 4 années sur 5). La couche bleue n'existe qu'une fois les sources eau chargées : avant, `categorie_eau` vaut `non évaluée` et `meta.avertissements` le dit. Le mart est **facultatif** : tant que dbt ne l'a pas construit, ces routes répondent `404` (`opportunites_indisponible`) et le reste de l'API est servi normalement. `conseil_agriculteur` et `conseil_investisseur` sont prêts à afficher ou à lire par l'assistant vocal.
 
+
+### F · Cadre harmonisé : où l'insécurité alimentaire est-elle forte ?
+
+Phase d'insécurité alimentaire du dernier cycle du Cadre harmonisé (CILSS, données via HDX, licence CC BY), par département (`MART_CADRE_HARMONISE_DEPARTEMENT`). Hors score de vulnérabilité.
+
+| Route | On obtient |
+|---|---|
+| `/cadre-harmonise` | les 45 départements : phases courante, projetée et retenue, populations (phases 3 à 5), libellés de période |
+| `/cadre-harmonise/{code}` | le détail d'un département |
+
+La période retenue est celle que le Cadre harmonisé marque à utiliser (sinon la projection). `periode_terminee` et `mention_periode` sont **recalculées à chaque requête** depuis `date_fin_periode_retenue`. Pikine inclut Keur Massar (`fusion_keur_massar`, `note_fusion`). Les populations s'additionnent entre départements, les phases jamais. Couleurs : `/referentiels/phases-cadre-harmonise`. Mart **facultatif** : `404` `cadre_harmonise_indisponible` tant que dbt ne l'a pas construit (de même `prix_indisponible` pour `/prix-intrants`).
 
 ### IA · Prévisions : les 4 modèles d'IA
 

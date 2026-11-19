@@ -16,8 +16,10 @@ Plateforme d'aide à la décision agricole au Sénégal — **équipe AKAI**, SA
 |---|---|---|
 | **A** · Agroclimat | Quelle pluie, quelle saison ? | `/agroclimat`, `/suivi-decadaire` |
 | **B** · Cultures | Que semer, avec quel cycle ? | `/choix-cultures` |
-| **C** · Besoins | Combien d'intrants ? | `/besoins` |
+| **C** · Besoins | Combien d'intrants, à quel prix ? | `/besoins`, `/prix-intrants` |
 | **D** · AgroDistrib | Comment répartir les intrants ? | `/agrodistrib`, `/vulnerabilite` |
+| **E** · Opportunités | Où semer long, où irriguer ? | `/opportunites` |
+| **F** · Cadre harmonisé | Où l'insécurité alimentaire est-elle forte ? | `/cadre-harmonise` |
 
 ### Comment les données sont servies
 
@@ -53,11 +55,15 @@ TAGS = [
     {"name": "A · Carte agroclimatique", "description": "Bilan de chaque saison (`MART_CARTE_AGROCLIMAT`), département × campagne."},
     {"name": "A · Suivi décadaire", "description": "Suivi en cours de campagne (`MART_SUIVI_DECADAIRE`), décade par décade."},
     {"name": "B · Choix des cultures", "description": "Adéquation des cycles et des variétés (`MART_CHOIX_CULTURES`)."},
-    {"name": "C · Besoins en intrants", "description": "Besoins de référence (`MART_BESOINS`) et totaux additifs."},
+    {"name": "C · Besoins en intrants", "description": "Besoins de référence (`MART_BESOINS`), totaux additifs et prix des "
+     "intrants (`DIM_PRIX_INTRANT`, facultatif : 404 `prix_indisponible` tant qu'il n'est pas construit)."},
     {"name": "D · AgroDistrib", "description": "Critères de répartition des intrants (`MART_TERRITOIRES_AGRODISTRIB`)."},
     {"name": "D · Vulnérabilité", "description": "Score relatif et indicatif (`MART_VULNERABILITE_DEPARTEMENT`, méthode v1)."},
     {"name": "E · Opportunités", "description": "Carte à trois couleurs (`MART_CARTE_OPPORTUNITES`) : jaune saison courte, "
      "vert saison longue, bleu eau mobilisable en saison sèche. Voir `docs/carte-opportunites.md`."},
+    {"name": "F · Cadre harmonisé", "description": "Phase d'insécurité alimentaire (CILSS) par département, dernier cycle "
+     "(`MART_CADRE_HARMONISE_DEPARTEMENT`, facultatif : 404 `cadre_harmonise_indisponible`). Licence CC BY. "
+     "Couleurs : `/referentiels/phases-cadre-harmonise`."},
     {"name": "IA · Prévisions", "description": "Résultats des 4 modèles d'IA (`SALTIS.ML`) : saison qui vient, années semblables, "
      "rendement et alerte récolte, date de semis, et leur fiabilité. Voir `ml/MODELES.md`."},
     {"name": "IA · Voix", "description": "Question parlée (wolof) ou écrite (français) → réponse courte tirée des données, "

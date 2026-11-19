@@ -16,6 +16,7 @@ ClasseVulnerabilite = Literal[
 ]
 NiveauAdequation = Literal["adaptée", "à risque", "déconseillée", "irrigation requise", "non évaluée (culture pluriannuelle)"]
 StatutValidation = Literal["VALIDEE", "A_CONFIRMER", "NON_VERIFIEE", "A_COMPLETER"]
+LibelleProduit = Literal["calculé", "pas dans la formule", "dose à saisir", "superficie de référence nulle"]
 Coherence = Literal["COHERENT", "ECART", "A_VERIFIER"]
 Confiance = Literal["normale", "faible"]
 NiveauAgregat = Literal["NATIONAL", "REGION", "ZONE"]

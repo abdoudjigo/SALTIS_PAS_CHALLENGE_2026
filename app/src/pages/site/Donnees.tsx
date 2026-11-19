@@ -16,6 +16,9 @@ export default function Donnees() {
             ['Rendements et superficies par département', 'DAPSA, Ministère de l\'Agriculture, via HarvestStat et FEWS NET', '1981-2021'],
             ['Rendements nationaux', 'FAOSTAT (FAO)', '—'],
             ['Températures des océans (El Niño, Atlantique)', 'NOAA', '1981-2026'],
+            ['Doses d\'engrais et de semences (à confirmer)', 'IFDC-CORAF, catalogue des Paquets d\'Intrants Agricoles ; fiches variétales ISRA', '—'],
+            ['Insécurité alimentaire par département', 'Cadre harmonisé, CILSS et partenaires ; données via HDX (Food Security and Nutrition Working Group, Afrique de l\'Ouest et du Centre)', '2014-2026'],
+            ['Prix des intrants subventionnés', 'APS (septembre 2025) ; circulaire du ministère de l\'Agriculture du 30 avril 2026', '2026'],
             ['Contours des départements', 'GADM, version 4.1, https://gadm.org', '—'],
             ['Fond de carte', 'Mapbox, OpenStreetMap', '—'],
           ]}
@@ -37,7 +40,7 @@ export default function Donnees() {
       </Partie>
 
       <Partie titre="Licences">
-        <p>Chaque source garde sa licence. Les contours GADM sont réservés à un usage non commercial et doivent être cités : « GADM, version 4.1, https://gadm.org ».</p>
+        <p>Chaque source garde sa licence. Les contours GADM sont réservés à un usage non commercial et doivent être cités : « GADM, version 4.1, https://gadm.org ». Les données du Cadre harmonisé sont sous licence CC BY : « Cadre harmonisé, CILSS et partenaires ; données via HDX (Food Security and Nutrition Working Group, Afrique de l'Ouest et du Centre) ».</p>
       </Partie>
     </PageSite>
   )

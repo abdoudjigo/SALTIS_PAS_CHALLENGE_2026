@@ -13,9 +13,9 @@ import { Fragment, useMemo } from 'react'
 import { useBesoins, useChoixCultures, useOpportunite, useOpportunites } from '../../hooks/donnees'
 import { useActuelles } from '../../hooks/previsions'
 import { libelle, nombre, pct } from '../../lib/format'
-import type { CarteOpportunite, CategorieEau } from '../../types/marts'
+import type { CategorieEau } from '../../types/marts'
 import { cadrer, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { NIVEAUX, NON_DISPONIBLE, SOLEIL_500, VERT_500 } from '../couleurs'
+import { COULEURS_OPPORTUNITE, LEGENDE_OPPORTUNITES, NON_DISPONIBLE } from '../couleurs'
 import { culture as cult } from '../lecture'
 import { FIN_WO } from '../wolof'
 import { heuresPompage, laCulture, NON_DISPONIBLE_TXT } from '../conseil'
@@ -23,17 +23,8 @@ import { aLire, CHOISIR, type LigneCheck } from '../fiche'
 import { FicheReponse } from '../FicheReponse'
 import { AFaire, Categories, Cle, Cles, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Methode, Squelette, type Action } from '../ui'
 
-const COULEURS: Record<NonNullable<CarteOpportunite['couleur_carte']>, string> = {
-  bleu: NIVEAUX['irrigation requise'].couleur,
-  jaune: SOLEIL_500,
-  vert: VERT_500,
-}
-const LEGENDE = [
-  { couleur: COULEURS.bleu, libelle: 'Eau pour la contre-saison' },
-  { couleur: COULEURS.jaune, libelle: 'Saison des pluies courte' },
-  { couleur: COULEURS.vert, libelle: 'Saison des pluies longue' },
-  { couleur: NON_DISPONIBLE, libelle: 'Non évaluée' },
-]
+const COULEURS = COULEURS_OPPORTUNITE
+const LEGENDE = LEGENDE_OPPORTUNITES
 
 const TITRES: Record<CategorieEau, string> = {
   'eau de surface peu exploitée': 'Oui : de l’eau reste disponible près de vos terres en saison sèche',

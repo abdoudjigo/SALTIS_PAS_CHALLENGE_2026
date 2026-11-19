@@ -10,6 +10,7 @@ import {
   CAMPAGNES, adequationVarietes, besoins, carteAgroclimat, choixCultures, historiqueDepartement, suiviDecadaire,
   territoiresAgrodistrib, vulnerabilite,
 } from './generateurs'
+import { cadreHarmonise, PHASES_CH, prixIntrants } from './cadrePrix'
 import { routesSynthetiques } from './previsions'
 import { CULTURES, DEPARTEMENTS, INTRANTS, VARIETES, ZONES } from './referentiel'
 
@@ -204,6 +205,15 @@ const routes: Route[] = [
   ['GET', /^\/vulnerabilite$/, () => vulnerabilite()],
   // Prévisions des modèles et carte des opportunités : données synthétiques (mode démonstration seulement)
   ...(routesSynthetiques as Route[]),
+  // Prix des intrants et Cadre harmonisé : données de démonstration synthétiques
+  ['GET', /^\/prix-intrants$/, ({ params }) => prixIntrants(params.campagne ? Number(params.campagne) : undefined)],
+  ['GET', /^\/cadre-harmonise$/, () => cadreHarmonise()],
+  ['GET', /^\/cadre-harmonise\/([^/]+)$/, ({ m }) => {
+    const l = cadreHarmonise().find((x) => x.code_departement === decodeURIComponent(m[1]))
+    if (!l) throw new ApiError('Département inconnu', { status: 404 })
+    return l
+  }],
+  ['GET', /^\/referentiels\/phases-cadre-harmonise$/, () => PHASES_CH],
   ['GET', /^\/agrodistrib\/territoires$/, ({ params }) => territoiresAgrodistrib().filter((t) => !params.culture || t.culture === params.culture)],
 
   ['GET', /^\/organisations\/moi\/stocks$/, ({ user }) => etat.stocks[exigerOrganisation(user).id] ?? []],

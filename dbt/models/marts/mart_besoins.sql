@@ -8,9 +8,14 @@
 -- référence ». 367 + 2 = 369 lignes.
 --
 -- Règles validées (A5) :
+--   - besoins = superficie x dose RETENUE de la zone (fact_besoin_reference, int_reference_dose :
+--     recherche propre à la zone, puis PIA national, puis NON_VERIFIEE) ;
 --   - dose inconnue -> besoin NULL (« dose à saisir »), jamais 0 ; dose à 0 -> besoin 0 ;
---   - semences du riz irrigué en Casamance (riz surtout pluvial) : non applicables ;
---     besoin_semences_retenu_t = NULL pour ces lignes, c'est la colonne à totaliser ;
+--     produit engrais absent d'une formule retenue -> 0 (« pas dans la formule ») ; culture
+--     sans formule -> NULL (« dose à saisir ») ; fumier toujours NULL (non chiffré, hors totaux) ;
+--   - semences non applicables (dose de repiquage irrigué appliquée au riz pluvial) :
+--     besoin_semences_retenu_t = NULL, c'est la colonne à totaliser. Avec la dose PIA du riz
+--     pluvial, aucune ligne n'est concernée aujourd'hui ;
 --   - reference_anterieure_2015 : dernière année de annees_reference < 2015 ;
 --   - irrigation_totale_m3 = superficie x volume par hectare de la zone, uniquement quand la
 --     culture est en « irrigation requise » dans le département, NULL sinon.
@@ -64,9 +69,27 @@ select
     b.besoin_phosphate_p2o5_t,
     b.besoin_potasse_k2o_t,
     b.besoin_npk_15_15_15_t,
+    b.besoin_npk_15_10_10_t,
+    b.besoin_npk_6_20_10_t,
     b.besoin_uree_t,
     b.besoin_dap_t,
     b.besoin_fumier_t,
+
+    -- Libellés par produit engrais (règle du 19/11/2026)
+    {% for col, nom in [('besoin_npk_15_15_15_t', 'npk_15_15_15'), ('besoin_npk_15_10_10_t', 'npk_15_10_10'),
+                        ('besoin_npk_6_20_10_t', 'npk_6_20_10'), ('besoin_uree_t', 'uree'), ('besoin_dap_t', 'dap')] %}
+    case
+        when b.id_besoin_reference is null       then null
+        when not b.a_formule_engrais_retenue     then 'dose à saisir'
+        when b.superficie_reference_ha = 0       then 'superficie de référence nulle'
+        when b.{{ col }} = 0                     then 'pas dans la formule'
+        else 'calculé'
+    end as libelle_{{ nom }},
+    {% endfor %}
+    iff(b.phosphate_fond_exclu,
+        'phosphate de fond (400 kg tous les 3 ans) volontairement exclu du besoin annuel', null) as note_dap,
+    iff(b.id_besoin_reference is not null,
+        'non chiffré : fumure organique conseillée si possible', null) as libelle_fumier,
     case
         when b.id_besoin_reference is null             then null
         when b.statut_validation_engrais = 'A_COMPLETER' then 'dose à saisir'

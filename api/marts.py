@@ -12,16 +12,18 @@ from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import BaseModel
-from .schemas.opportunites import CarteOpportunite
 
 from .schemas import (
     AnneeSemblable,
     Besoin,
+    CadreHarmonise,
     CarteAgroclimat,
+    CarteOpportunite,
     ChoixCulture,
     EvaluationModele,
     PrevisionRendement,
     PrevisionSaison,
+    PrixIntrant,
     RisqueSemis,
     SuiviDecadaire,
     TerritoireAgrodistrib,
@@ -55,6 +57,9 @@ MARTS: dict[str, DefinitionMart] = {
         # ---- modèles d'IA (ml/), facultatifs
         # ---- carte des opportunités (pluie et eau), facultative
         DefinitionMart("opportunites", "MART_CARTE_OPPORTUNITES", CarteOpportunite, "code_departement", "marts", False),
+        # ---- prix des intrants et Cadre harmonisé, facultatifs (routes 404 tant que dbt ne les a pas construits)
+        DefinitionMart("prix", "DIM_PRIX_INTRANT", PrixIntrant, "campagne, code_intrant", "marts", False),
+        DefinitionMart("cadre_harmonise", "MART_CADRE_HARMONISE_DEPARTEMENT", CadreHarmonise, "code_departement", "marts", False),
         DefinitionMart("prev_saison", "PREVISION_SAISONNIERE", PrevisionSaison, "annee, code_departement", "ml", False),
         DefinitionMart("semblables", "ANNEES_SEMBLABLES", AnneeSemblable, "code_departement, annee, moment_prevision, rang", "ml", False),
         DefinitionMart("prev_rendement", "PREVISION_RENDEMENT", PrevisionRendement,

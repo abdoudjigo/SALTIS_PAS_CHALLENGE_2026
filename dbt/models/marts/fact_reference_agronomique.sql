@@ -3,11 +3,17 @@
 }}
 
 -- Grain : zone agroécologique (nullable = dose nationale) x culture x intrant x source_reference.
+-- Lignes construites dans int_reference_dose (union des doses actuelles et des doses PIA,
+-- règle de priorité) ; ce fait garde une ligne par dose et par source, sans rien écraser.
+-- dose_retenue : la ligne est la dose retenue dans au moins une zone (nb_zones_retenue) ;
+-- une dose nationale peut être retenue dans certaines zones et pas dans d'autres (ex. PIA
+-- mil : 5 zones, Casamance garde Tounkara 2022). Détail par zone : int_reference_dose.
 -- Une ligne par dose et par source : une future dose ISRA s'ajoute à côté des références
 -- actuelles sans les écraser (voir CLAUDE.md, circuit ISRA).
 --
 -- Intrants et types (on n'additionne JAMAIS des doses de types ou d'unités différents) :
---   - PRODUIT : NPK_15_15_15, UREE, DAP_18_46_0 (kg/ha), FUMIER (t/ha), SEMENCES (kg/ha) ;
+--   - PRODUIT : NPK_15_15_15, NPK_15_10_10, NPK_6_20_10 (PIA), UREE, DAP_18_46_0 (kg/ha),
+--               FUMIER (t/ha), SEMENCES (kg/ha) ;
 --   - ELEMENT : N, P2O5, K2O (kg/ha), éléments fertilisants apportés par les produits ;
 --               les produits et les éléments décrivent la même fertilisation : les sommer
 --               compterait deux fois l'engrais ;
@@ -30,129 +36,48 @@
 --   - « à compléter » : aucune dose chiffrée, donc aucune ligne.
 -- Un nouveau texte de statut non prévu donne statut_validation nul et fait échouer le test not_null.
 -- Cette correspondance vit dans macros/statuts_doses.sql (partagée avec fact_besoin_reference).
+-- Doses PIA (IFDC-CORAF, fiches ISRA) : nationales, A_CONFIRMER (statut fourni par le seed),
+-- avec dose_min, dose_max et regle (choix de la dose dans la fourchette des fiches).
 
-{% set intrants_fertilisation = [
-    {'code': 'NPK_15_15_15', 'type': 'PRODUIT', 'colonne': 'npk_15_15_15_kg_ha',          'unite': 'kg/ha'},
-    {'code': 'UREE',         'type': 'PRODUIT', 'colonne': 'uree_kg_ha',                  'unite': 'kg/ha'},
-    {'code': 'DAP_18_46_0',  'type': 'PRODUIT', 'colonne': 'dap_kg_ha',                   'unite': 'kg/ha'},
-    {'code': 'FUMIER',       'type': 'PRODUIT', 'colonne': 'fumier_t_ha',                 'unite': 't/ha'},
-    {'code': 'N',            'type': 'ELEMENT', 'colonne': 'dose_n_recommandee_kg_ha',    'unite': 'kg/ha'},
-    {'code': 'P2O5',         'type': 'ELEMENT', 'colonne': 'dose_p2o5_recommandee_kg_ha', 'unite': 'kg/ha'},
-    {'code': 'K2O',          'type': 'ELEMENT', 'colonne': 'dose_k2o_recommandee_kg_ha',  'unite': 'kg/ha'},
-] %}
-
-with source as (
+with candidats as (
 
     select *
-    from {{ ref('stg_besoins_hectare') }}
-    where zone_agroecologique is not null
-      and culture is not null
+    from {{ ref('int_reference_dose') }}
 
 ),
 
-fertilisation as (
+lignes as (
 
     select
-        *,
-
-        -- Correspondance partagée avec fact_besoin_reference (macros/statuts_doses.sql)
-        {{ statut_validation_engrais('statut_dose') }} as statut_validation,
-        {{ source_reference_engrais('statut_dose', 'origine_dose') }} as source_reference,
-
-        array_to_string(array_construct_compact(
-            'statut : ' || trim(statut_dose),
-            'origine : ' || trim(origine_dose),
-            'formule : ' || trim(formule_engrais_recommandee)
-        ), ' | ') as note_source
-
-    from source
-
-),
-
-{% for i in intrants_fertilisation %}
-dose_{{ i.code | lower }} as (
-
-    select
-        zone_agroecologique,
-        culture,
-        '{{ i.code }}' as code_intrant,
-        '{{ i.type }}' as type_intrant,
-        {{ i.colonne }} as dose,
-        '{{ i.unite }}' as unite,
-        cast(null as float) as besoin_eau_mm,
-        statut_validation,
-        source_reference,
-        note_source
-    from fertilisation
-    where {{ i.colonne }} is not null
-
-),
-{% endfor %}
-
-semences as (
-
-    select
-        zone_agroecologique,
-        culture,
-        'SEMENCES' as code_intrant,
-        'PRODUIT' as type_intrant,
-        dose_semis_kg_ha as dose,
-        'kg/ha' as unite,
-        cast(null as float) as besoin_eau_mm,
-
-        -- Faye et al. (2020) : casier de Matam, Vallée du fleuve Sénégal (macros/statuts_doses.sql)
-        {{ statut_validation_semis('statut_dose_semis', 'zone_agroecologique') }} as statut_validation,
-        {{ source_reference_semis('origine_dose_semis', 'zone_agroecologique') }} as source_reference,
-
-        array_to_string(array_construct_compact(
-            'statut : ' || trim(statut_dose_semis),
-            'origine : ' || trim(origine_dose_semis)
-        ), ' | ') as note_source
-
-    from source
-    where dose_semis_kg_ha is not null
-
-),
-
-irrigation as (
-
-    select
-        zone_agroecologique,
-        culture,
-        'EAU_IRRIGATION' as code_intrant,
-        'EAU' as type_intrant,
-        volume_irrigation_m3_ha as dose,
-        'm3/ha' as unite,
-        besoin_irrigation_normal_mm as besoin_eau_mm,
-        'A_CONFIRMER' as statut_validation,
-        'Estimation FAO-56 (dataset SALTIS)' as source_reference,
-        'estimation calculée (FAO-56, efficience 60 %), non mesurée' as note_source
-    from source
-    where volume_irrigation_m3_ha is not null
-
-),
-
-unioned as (
-
-    {% for i in intrants_fertilisation %}
-    select * from dose_{{ i.code | lower }}
-    union all
-    {% endfor %}
-    select * from semences
-    union all
-    select * from irrigation
+        id_reference_agronomique,
+        any_value(zone_agroecologique) as zone_agroecologique,
+        any_value(portee_geographique) as portee_geographique,
+        any_value(culture) as culture,
+        any_value(code_intrant) as code_intrant,
+        any_value(type_intrant) as type_intrant,
+        any_value(dose) as dose,
+        any_value(unite) as unite,
+        any_value(besoin_eau_mm) as besoin_eau_mm,
+        any_value(dose_min) as dose_min,
+        any_value(dose_max) as dose_max,
+        any_value(regle) as regle,
+        any_value(statut_validation) as statut_validation,
+        any_value(source_reference) as source_reference,
+        any_value(note_source) as note_source,
+        any_value(rang_priorite) as rang_priorite,
+        boolor_agg(est_retenue) as dose_retenue,
+        count_if(est_retenue) as nb_zones_retenue
+    from candidats
+    group by id_reference_agronomique
 
 )
 
 select
-    md5(
-        coalesce(upper(trim(zone_agroecologique)), 'NATIONAL') || '|' || upper(trim(culture))
-        || '|' || code_intrant || '|' || coalesce(source_reference, '')
-    ) as id_reference_agronomique,
+    id_reference_agronomique,
 
-    -- Clés : zone nulle = dose nationale (futures données ISRA)
+    -- Clés : zone nulle = dose nationale
     {{ cle_zone('zone_agroecologique') }} as id_zone_agroecologique,
-    iff(zone_agroecologique is null, 'NATIONAL', 'ZONE') as portee_geographique,
+    portee_geographique,
     {{ cle_culture('culture') }} as id_culture,
 
     -- Intrant
@@ -163,6 +88,14 @@ select
     dose,
     unite,
     besoin_eau_mm,
+    dose_min,
+    dose_max,
+    regle,
+
+    -- Priorité (int_reference_dose)
+    rang_priorite,
+    dose_retenue,
+    nb_zones_retenue,
 
     -- Traçabilité
     statut_validation,
@@ -170,4 +103,4 @@ select
     note_source,
     cast(null as date) as date_reception
 
-from unioned
+from lignes
