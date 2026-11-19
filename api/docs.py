@@ -68,6 +68,8 @@ TAGS = [
      "rendement et alerte récolte, date de semis, et leur fiabilité. Voir `ml/MODELES.md`."},
     {"name": "IA · Voix", "description": "Question parlée (wolof) ou écrite (français) → réponse courte tirée des données, "
      "en français et en wolof, avec la vue de la carte à afficher. Voir `voix/README.md`."},
+    {"name": "Avis", "description": "`POST /avis` : avis des ONG envoyé à l'équipe par e-mail (SMTP), sans stockage. "
+     "Tout est facultatif ; 5 envois par adresse et par 10 minutes ; 503 si l'envoi n'est pas configuré, 502 s'il échoue."},
     {"name": "Système et cache", "description": "Santé, état du cache Redis, rafraîchissement et retour arrière (jeton d'administration)."},
 ]
 

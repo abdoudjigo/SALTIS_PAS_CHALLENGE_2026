@@ -157,6 +157,10 @@ export const api = {
   // Voix wolof de la mascotte « WLF » : texte wolof → audio (Space Hugging Face, voir voix/README.md)
   voixParler: (texte: string) =>
     requete<{ audio_wo_base64: string }>('/api/v1/voix/parler', { method: 'POST', body: { texte }, sansJeton: true, timeout: 900000 }),
+
+  // Avis des ONG : envoyé à l'équipe par e-mail par l'API (rien n'est stocké)
+  envoyerAvis: (avis: Record<string, string | number>) =>
+    requete<{ envoye: boolean }>('/api/v1/avis', { method: 'POST', body: avis, sansJeton: true, timeout: 30000 }),
 }
 
 export { ApiError }

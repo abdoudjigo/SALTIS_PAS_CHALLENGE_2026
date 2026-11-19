@@ -40,6 +40,7 @@ def reponses_erreurs(*statuts: int) -> dict[int | str, dict]:
         413: "Audio trop long (30 secondes au plus)",
         429: "Trop de requêtes depuis cette adresse (voir l'en-tête Retry-After)",
         422: "Audio vide ou rien d'entendu",
-        503: "Cache pas encore prêt (préchargement en cours) ou indisponible ; voix wolof non configurée",
+        502: "Envoi de l'avis par e-mail échoué",
+        503: "Cache pas encore prêt (préchargement en cours) ou indisponible ; voix wolof non configurée ; envoi des avis non configuré",
     }
     return {s: {"model": ReponseErreur, "description": descriptions[s]} for s in statuts}

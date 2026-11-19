@@ -23,8 +23,6 @@ export const config = {
     { nom: 'X', url: env.VITE_LIEN_X || '' },
     { nom: 'YouTube', url: env.VITE_LIEN_YOUTUBE || '' },
   ],
-  /** Envoi du formulaire « Donner votre avis » (espace ONG), par FormSubmit */
-  urlAvisOng: 'https://formsubmit.co/ajax/akai.tech.data@gmail.com',
   /** Campagne proposée par défaut dans AgroDistrib : dernière campagne avec des données */
   campagneParDefaut: 2026,
 } as const

@@ -50,6 +50,13 @@ class Parametres(BaseSettings):
     limite_voix_synthese_par_minute: int = Field(20, ge=0, description="Reconnaissance et synthèse vocales (coûteuses)")
     limite_admin_par_minute: int = Field(10, ge=0)
     taille_max_json_octets: int = Field(64 * 1024, ge=1024)
+
+    # Avis ONG envoyés par e-mail (POST /avis). Une variable vide = envoi indisponible (503), l'API continue.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    avis_destinataire: str = ""
     voix_cache_max_fichiers: int = Field(400, ge=0, description="Voix gardées sur disque (au-delà, la voix n'est plus enregistrée)")
 
 

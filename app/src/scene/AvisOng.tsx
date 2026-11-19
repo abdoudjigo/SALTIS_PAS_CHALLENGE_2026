@@ -1,15 +1,15 @@
-// « Donner votre avis » (espace ONG) : un formulaire court, envoyé à l'équipe AKAI par FormSubmit.
+// « Donner votre avis » (espace ONG) : un formulaire court, envoyé à l'équipe AKAI par notre API (e-mail, rien n'est stocké).
 // Aucun champ obligatoire. Modale accessible : Échap ferme, focus piégé, focus rendu au bouton.
 import { MessageSquare, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { config } from '../config'
+import { api, ApiError } from '../api'
 import { PARCOURS_ONG } from './cadre'
 
 const TYPES = ['ONG nationale', 'ONG internationale', "Agence de l'ONU", "Service de l'État", 'Organisation de producteurs', 'Autre']
 const USAGE = ['Oui', 'Peut-être', 'Non']
 const ETIQUETTE = 'block text-xs font-medium text-white/80'
-type Etat = 'saisie' | 'envoi' | 'envoye' | 'echec'
+type Etat = 'saisie' | 'envoi' | 'envoye' | 'echec' | 'trop'
 
 export function AvisOng({ annee, etape }: { annee: number | null; etape: string }) {
   const [ouvert, setOuvert] = useState(false)
@@ -57,21 +57,10 @@ export function AvisOng({ annee, etape }: { annee: number | null; etape: string 
     const champs = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>
     setEtat('envoi')
     try {
-      const r = await fetch(config.urlAvisOng, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          ...champs,
-          'Année ouverte': annee ?? 'non disponible',
-          'Étape ouverte': etape,
-          _subject: 'Avis ONG – Assaman & Suuf',
-          _template: 'table',
-          _captcha: 'false',
-        }),
-      })
-      setEtat(r.ok ? 'envoye' : 'echec')
-    } catch {
-      setEtat('echec')
+      await api.envoyerAvis({ ...champs, annee: annee ?? '', etape })
+      setEtat('envoye')
+    } catch (err) {
+      setEtat(err instanceof ApiError && err.status === 429 ? 'trop' : 'echec')
     }
   }
 
@@ -141,7 +130,8 @@ export function AvisOng({ annee, etape }: { annee: number | null; etape: string 
                   {etat === 'envoi' ? 'Envoi…' : 'Envoyer'}
                 </button>
                 {etat === 'echec' && <p role="alert" className="text-sm text-soleil-500">L'envoi n'a pas marché. Écrivez-nous à akai.tech.data@gmail.com</p>}
-                <p className="text-xs leading-relaxed text-white/60">Vos réponses sont envoyées à l'équipe AKAI via le service FormSubmit et servent uniquement à améliorer la plateforme.</p>
+                {etat === 'trop' && <p role="alert" className="text-sm text-soleil-500">Trop d'envois, réessayez dans quelques minutes</p>}
+                <p className="text-xs leading-relaxed text-white/60">Vos réponses sont envoyées à l'équipe AKAI et servent uniquement à améliorer la plateforme.</p>
               </form>
             )}
           </div>
