@@ -2,7 +2,8 @@
 
 Présentation orale pour le jury du SALTIS PAS Challenge 2026 : la problématique, la solution et le modèle économique.
 
-- Slides : [`presentation-pitch.pptx`](presentation-pitch.pptx) (5 slides, le script de chaque slide est aussi dans les notes de l'orateur).
+- Slides : [`presentation-pitch.pptx`](presentation-pitch.pptx) (5 slides et une annexe, le script de chaque slide est aussi dans les notes de l'orateur).
+- Annexe (slide 6, hors des 2 minutes) : Business Model Canvas, à montrer si le jury pose des questions ; version texte dans [`business-model-canvas.md`](business-model-canvas.md).
 - Durée : environ 2 minutes (environ 300 mots, débit posé).
 
 | Slide | Contenu | Temps |
