@@ -39,6 +39,7 @@ Zone et région sont deux regroupements **parallèles** des départements (Louga
 | C | `fact_facteurs_limitants` | zone × culture | 72 |
 | C | `fact_reference_agronomique` | zone × culture × intrant × source (doses de référence) | 141 |
 | C | `fact_besoin_reference` | département × culture (besoins de référence historiques) | 367 |
+| E | `fact_eau_departement` | département (eau de surface, nappes, irrigation ; actif si `eau_chargee`) | 45 |
 
 ## Marts
 
@@ -51,6 +52,7 @@ Zone et région sont deux regroupements **parallèles** des départements (Louga
 | D | `mart_territoires_agrodistrib` | département × culture cultivée | 345 |
 | D | `mart_vulnerabilite_departement` | département (score relatif) | 45 |
 | ML | `mart_ml_prevision_pluie` | département × année | 2 025 |
+| E | `mart_carte_opportunites` | département : jaune / vert (saison), bleu (eau mobilisable) | 45 |
 
 Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_adequation_varietes`, `mart_rendements`, `mart_facteurs_limitants` et `mart_agrodistrib` (copies du staging) ont été supprimés ; `mart_besoins` a été reconstruit sur les faits. Les marts ne fabriquent pas de prévisions : l'adéquation est celle calculée dans les données d'entrée, et la vulnérabilité est un score relatif et indicatif.
 
@@ -61,6 +63,7 @@ Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_a
 - Les besoins sont des besoins de référence historiques, pas prévisionnels. Les stocks, scénarios et allocations d'AgroDistrib attendent les tables de l'application ; les anciennes simulations (`D_SCENARIOS_REPARTITION`) ne sont pas de vrais scénarios.
 - Les rendements historiques ont leurs propres limites de couverture : campagnes observées de 1981 à 2021, superficie récoltée jusqu'en 2015 puis semée.
 - Les contours des départements (GADM 4.1) ne sont pas encore chargés ; tout est prêt derrière la variable `geo_departements_charge`.
+- La couche bleue de `mart_carte_opportunites` attend les sources eau (`SALTIS.RAW.E_*`) ; tout est prêt derrière la variable `eau_chargee`. Voir [`docs/carte-opportunites.md`](../docs/carte-opportunites.md).
 - Pour fonctionner, chaque table de `SALTIS.RAW` doit avoir des colonnes portant les noms des en-têtes du CSV correspondant. Si Snowflake crée des colonnes comme `C1`, `C2`, le chargement du fichier doit être corrigé avant d'exécuter le modèle `stg_` associé.
 
 ## Exécuter les modèles

@@ -220,6 +220,7 @@ Phase d'insécurité alimentaire du dernier cycle du Cadre harmonisé (CILSS, do
 La période retenue est celle que le Cadre harmonisé marque à utiliser (sinon la projection). `periode_terminee` et `mention_periode` sont **recalculées à chaque requête** depuis `date_fin_periode_retenue`. Pikine inclut Keur Massar (`fusion_keur_massar`, `note_fusion`). Les populations s'additionnent entre départements, les phases jamais. Couleurs : `/referentiels/phases-cadre-harmonise`. Mart **facultatif** : `404` `cadre_harmonise_indisponible` tant que dbt ne l'a pas construit (de même `prix_indisponible` pour `/prix-intrants`).
 
 ### IA · Prévisions : les 4 modèles d'IA
+### IA · Prévisions : les 3 modèles d'IA
 
 Les résultats des modèles de `ml/` (voir [`ml/MODELES.md`](../ml/MODELES.md)) sont lus dans **`SALTIS.ML`**. **Tant que `SALTIS.ML` n'est pas chargé, l'API les lit directement dans `ml/sorties/*.csv`** (`source_locale.py`) : `python -m api` suffit pour tout servir. S'il n'y a ni table ni fichier, ces routes répondent `404` (`prevision_indisponible`) et les marts restent servis.
 

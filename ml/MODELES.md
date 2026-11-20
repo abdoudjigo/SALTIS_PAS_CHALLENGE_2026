@@ -18,6 +18,8 @@ Les numéros 1, 3 et 4 sont conservés. Le modèle 2 (années semblables), absen
 | 3 | [Rendement prévu et alerte récolte](m3_rendement/README.md) | Combien vais-je récolter ? Où la récolte risque-t-elle de chuter ? | Faible : prouvée seulement pour l'alerte arachide à partir de fin juillet | ✅ fait |
 | 4 | [Date de semis](m4_date_semis/README.md) | À quelle décade semer pour courir le moins de risque ? | Meilleure que la fréquence passée (faux départ : AUC 0,83 contre 0,76) | ✅ fait |
 
+S'y ajoute le **moteur AgroDistrib** ([`agrodistrib/README.md`](agrodistrib/README.md), 18/11/2026). Ce n'est pas un modèle de prévision : il propose des répartitions d'un stock (prorata multicritère, scénarios Équité, Équilibré et Rendement). ✅ fait, pas encore servi par l'API.
+
 ## Correspondance avec `README.md` (16/11/2026)
 
 [`README.md`](README.md) décrit **trois** modèles : la pluie, le rendement et AgroDistrib. Ce dossier contient les deux premiers, plus un complément (la date de semis).
@@ -26,7 +28,7 @@ Les numéros 1, 3 et 4 sont conservés. Le modèle 2 (années semblables), absen
 |---|---|---|
 | 1. Prévision de la pluie de saison | Modèle 1 (`m1_prevision_saison`) | Aucun : mêmes données (`MART_ML_PREVISION_PLUIE`), mêmes cibles, même découpage |
 | 2. Anomalie de rendement | Modèle 3 (`m3_rendement`) | La cible n'est pas `anomalie_rendement_pct` mais le rapport rendement / moyenne des 10 campagnes précédentes : la tendance de la source est ajustée sur toute la série, années futures comprises. 5 cultures pluviales, jusqu'en 2015 (rupture de 2016) |
-| 3. AgroDistrib | Absent jusqu'ici. Méthodes de répartition comparées dans [`comparaison/agrodistrib.py`](comparaison/agrodistrib.py) | Pas encore de moteur servi par l'API : `SALTIS.APP` (stocks, scénarios) n'existe pas |
+| 3. AgroDistrib | Moteur [`agrodistrib/`](agrodistrib/README.md) (18/11/2026), méthode choisie par [`comparaison/agrodistrib.py`](comparaison/agrodistrib.py) | Pas encore servi par l'API, et rien n'est enregistré : `SALTIS.APP` (stocks, scénarios) n'existe pas |
 | — | Modèle 4 (`m4_date_semis`) | **Complément hors `README.md`**, gardé (décision du 16/11/2026) : il sert « Quand semer », « Ma parcelle », « Surface » et l'assistant vocal. Non comparé |
 
 ## Quel algorithme pour chaque partie (16/11/2026)
@@ -60,7 +62,7 @@ Six familles de modèles ont été comparées à des prévisions de référence,
 |---|---|---|
 | Ma parcelle (agriculteur) | 1 + 3 + 4 | Pour le point GPS : la saison attendue, la culture, la décade de semis |
 | Préparer la campagne (ONG) | 1 + 3 + vulnérabilité | Les départements où une mauvaise saison est probable et où la récolte risque de chuter |
-| Répartir un stock (ONG, phase 2) | 3 + optimisation | Le stock envoyé en priorité là où le risque est le plus fort |
+| Répartir un stock (ONG) | AgroDistrib (prorata multicritère) + vulnérabilité | Plusieurs propositions de répartition (équité, équilibré, rendement), jamais au-delà du besoin, à comparer puis valider |
 
 Dans un bouton qui combine, **chaque morceau de réponse dit de quel modèle il vient et quelle est sa fiabilité**. On ne mélange jamais une prévision fiable et une prévision faible sous un seul chiffre.
 
@@ -99,6 +101,8 @@ ml/
   m1_prevision_saison/   un dossier par modèle : entrainer.py + README.md
   m3_rendement/
   m4_date_semis/
+  agrodistrib/           moteur de répartition d'un stock (moteur.py, repartir.py, README.md)
+  tests/                 tests pytest (venv/bin/python -m pytest ml/tests)
   comparaison/           6 familles de modèles comparées aux références, par partie (README.md)
   sorties/               résultats (CSV)
   donnees/               copies locales des tables (ignoré par git)

@@ -112,6 +112,7 @@ def lire_texte(fichier: Path, extensions: tuple[str, ...]) -> str:
         grilles = [n for n in noms if "xyzascii" in n.lower()]
         nom = grilles[0] if grilles else max(noms, key=lambda n: z.getinfo(n).file_size)
         return z.read(nom).decode("latin-1")
+        return z.read(noms[0]).decode("latin-1")
 
 
 # ------------------------------------------------------------------ géométrie

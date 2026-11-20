@@ -1,7 +1,7 @@
 """Charge les résultats des modèles (ml/sorties/*.csv) dans SALTIS.ML.
 
 Étapes :
-    1. une fois : exécuter à la main snowflake/20_ml_resultats.sql (crée les 5 tables) ;
+    1. une fois : exécuter à la main snowflake/20_ml_resultats.sql (crée les 4 tables) ;
     2. relancer les modèles si besoin (voir ml/MODELES.md) ;
     3. vérifier sans rien écrire :   venv/bin/python -m ml.charger_snowflake
     4. charger :                      venv/bin/python -m ml.charger_snowflake --confirmer

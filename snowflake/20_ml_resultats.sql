@@ -2,7 +2,7 @@
 -- À exécuter à la main dans Snowflake, une seule fois, AVANT le chargement :
 --     venv/bin/python -m ml.charger_snowflake --confirmer
 --
--- Les 5 tables sont remplies par ce script de chargement à partir de ml/sorties/*.csv.
+-- Les 4 tables sont remplies par ce script de chargement à partir de ml/sorties/*.csv.
 -- Chaque chargement vide la table puis la remplit : une table = la dernière version des modèles.
 -- L'API les lit au préchargement de son cache (lecture seule), comme les marts.
 --
@@ -121,9 +121,10 @@ comment = 'Fiabilité des modèles comparée à une prévision simple (ml/sortie
 -- ---------------------------------------------------------------------------
 -- Vérifications, après le chargement
 -- ---------------------------------------------------------------------------
--- select 'PREVISION_SAISONNIERE' t, count(*) from SALTIS.ML.PREVISION_SAISONNIERE   -- 2 025
--- union all select 'PREVISION_RENDEMENT', count(*) from SALTIS.ML.PREVISION_RENDEMENT -- 12 136
--- union all select 'RISQUE_SEMIS', count(*) from SALTIS.ML.RISQUE_SEMIS             -- 30 976
--- union all select 'EVALUATION_MODELES', count(*) from SALTIS.ML.EVALUATION_MODELES;
+-- Volumes du chargement du 20/11/2026 :
+-- select 'PREVISION_SAISONNIERE' t, count(*) from SALTIS.ML.PREVISION_SAISONNIERE   -- 2 475
+-- union all select 'PREVISION_RENDEMENT', count(*) from SALTIS.ML.PREVISION_RENDEMENT -- 14 036
+-- union all select 'RISQUE_SEMIS', count(*) from SALTIS.ML.RISQUE_SEMIS             -- 59 136
+-- union all select 'EVALUATION_MODELES', count(*) from SALTIS.ML.EVALUATION_MODELES; -- 893
 -- Aucune valeur NaN (une valeur absente doit être NULL) :
 -- select count(*) from SALTIS.ML.PREVISION_SAISONNIERE where proba_seche_pct = 'NaN'::float;  -- 0

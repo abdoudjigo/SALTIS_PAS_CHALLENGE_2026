@@ -44,3 +44,14 @@ sources:
           snowflake/10_geo_departements.sql. Licence non commerciale,
           citation obligatoire. Utilisée seulement si la variable
           geo_departements_charge vaut true.
+      # ---- Carte des opportunités : sources « eau », une ligne par département.
+      # Créées par snowflake/30_eau_raw.sql, chargées par ingestion/collecte/eau/charger_snowflake.py.
+      # Utilisées seulement si la variable eau_chargee vaut true.
+      - name: e_eau_souterraine_departement
+        description: Nappes souterraines (BGS, grille 5 km) ramenées au département.
+      - name: e_irrigation_departement
+        description: Irrigation équipée vers 2005 (FAO GMIA v5) ramenée au département.
+      - name: e_eau_surface_departement
+        description: >
+          Eau présente au moins 10 mois sur 12 et terres cultivables à moins de 2 km,
+          vertes ou nues en saison sèche (Earth Engine : JRC GSW, ESA WorldCover, MODIS).

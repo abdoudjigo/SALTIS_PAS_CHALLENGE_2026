@@ -20,6 +20,7 @@ Plateforme d'aide à la décision agricole au Sénégal — **équipe AKAI**, SA
 | **D** · AgroDistrib | Comment répartir les intrants ? | `/agrodistrib`, `/vulnerabilite` |
 | **E** · Opportunités | Où semer long, où irriguer ? | `/opportunites` |
 | **F** · Cadre harmonisé | Où l'insécurité alimentaire est-elle forte ? | `/cadre-harmonise` |
+| **E** · Opportunités | Où semer court ou long, où produire toute l'année, où investir ? | `/opportunites` |
 
 ### Comment les données sont servies
 
@@ -65,6 +66,7 @@ TAGS = [
      "(`MART_CADRE_HARMONISE_DEPARTEMENT`, facultatif : 404 `cadre_harmonise_indisponible`). Licence CC BY. "
      "Couleurs : `/referentiels/phases-cadre-harmonise`."},
     {"name": "IA · Prévisions", "description": "Résultats des 4 modèles d'IA (`SALTIS.ML`) : saison qui vient, années semblables, "
+     "vert saison longue, bleu eau mobilisable en saison sèche. Conseils agriculteur et investisseur. Voir `docs/carte-opportunites.md`."},
     {"name": "IA · Prévisions", "description": "Résultats des 3 modèles d'IA (`SALTIS.ML`) : saison qui vient, "
      "rendement et alerte récolte, date de semis, et leur fiabilité. Voir `ml/MODELES.md`."},
     {"name": "IA · Voix", "description": "Question parlée (wolof) ou écrite (français) → réponse courte tirée des données, "

@@ -67,6 +67,14 @@ def vulnerabilite_departement(code: str) -> str:
     return f"vulnerabilite:departement:{code}"
 
 
+def opportunites(couleur: str | None) -> str:
+    return f"opportunites:carte:{couleur or TOUTES}"
+
+
+def opportunites_departement(code: str) -> str:
+    return f"opportunites:departement:{code}"
+
+
 # ---- modèles d'IA (SALTIS.ML)
 ANNEE_TYPE = "type"
 

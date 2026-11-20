@@ -49,7 +49,7 @@ Avec toutes les variables, le modèle collait aux années d'entraînement et fai
 **Piège évité** : avec la validation « une année de côté », la climatologie de référence doit elle aussi être recalculée sans l'année laissée de côté. Sinon, la comparaison est faussée et le modèle paraît pire qu'il n'est.
 
 ## Ce qu'il produit
-`ml/sorties/prevision_saison.csv`, une ligne par département × année (2 025 lignes) :
+`ml/sorties/prevision_saison.csv`, une ligne par département × année, 1981-2035 (2 475 lignes : 1 575 en validation, 450 en test, 45 en 2026, 405 de 2027 à 2035) :
 
 | Colonne | Contenu |
 |---|---|
@@ -63,7 +63,7 @@ Avec toutes les variables, le modèle collait aux années d'entraînement et fai
 
 Plus `ml/sorties/evaluation_m1.csv` : le tableau de fiabilité ci-dessus.
 
-**Prévision 2026 (vraie prévision)** : les indices ONI et TSA de mars-mai 2026 (NOAA) sont dans `ml/entrees/indices_ocean.csv`. Le modèle, réentraîné sur 1981-2025, en tire la prévision 2026 (`type_prevision = PREVISION`, pluie observée vide) : **22 % sèche, 37 % normale, 41 % humide**. Type `PREVISION_OCEAN`.
+**Prévision 2026 (vraie prévision)** : les indices ONI et TSA de mars-mai 2026 (NOAA) sont dans `ml/entrees/indices_ocean.csv`. Le modèle, réentraîné sur 1981-2025, en tire la prévision 2026 (`type_prevision = PREVISION_OCEAN`, pluie observée vide) : **22 % sèche, 37 % normale, 41 % humide**.
 
 **Années 2027-2035 (prévision de tendance)** : sans océan connu, la pluie attendue est la moyenne des 15 dernières saisons du département, avec une fourchette tirée des écarts mesurés (−17 % / +31 %) et des probabilités égales à la fréquence des classes sur ces 15 saisons. Mesurée en prévoyant 2016-2025 : RMSE 115 mm (normale : 122 mm), RPSS +0,10. Type `PREVISION_TENDANCE`. Elle est remplacée par la prévision océan dès la publication des indices de mai de l'année (voir `ml/entrees/README.md`).
 

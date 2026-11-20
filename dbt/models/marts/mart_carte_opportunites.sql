@@ -34,6 +34,9 @@ with geo as (
         {% if 'zone_secondaire' in colonnes_geo %}zone_secondaire{% else %}cast(null as varchar) as zone_secondaire{% endif %},
         {% if 'latitude' in colonnes_geo %}latitude{% else %}cast(null as float) as latitude{% endif %},
         {% if 'longitude' in colonnes_geo %}longitude{% else %}cast(null as float) as longitude{% endif %}
+with geo as (
+
+    select code_departement, departement, code_region, region, zone_agroecologique, zone_secondaire, latitude, longitude
     from {{ ref('dim_geographie') }}
 
 ),

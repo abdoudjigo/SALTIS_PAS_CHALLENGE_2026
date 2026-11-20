@@ -13,6 +13,7 @@ from . import donnees_test
 from .donnees_test import GUEDIAWAYE, KOLDA, SAINT_LOUIS, ligne, marts_synthetiques
 
 COORDONNEES = getattr(donnees_test, "COORDONNEES", {})
+from .donnees_test import COORDONNEES, GUEDIAWAYE, KOLDA, SAINT_LOUIS, ligne, marts_synthetiques
 
 V1 = "/api/v1/opportunites"
 
@@ -20,6 +21,7 @@ V1 = "/api/v1/opportunites"
 def carte_opportunites(eau_chargee: bool = True) -> list[dict]:
     kolda = ligne(
         "opportunites", **KOLDA, **COORDONNEES.get(KOLDA["code_departement"], {}), couleur_carte="bleu", couleur_fond="vert", couche_eau=True,
+        "opportunites", **KOLDA, **COORDONNEES[KOLDA["code_departement"]], couleur_carte="bleu", couleur_fond="vert", couche_eau=True,
         classe_saison_pluie="longue", cycle_max_conseille_j=120.0, cultures_cycle_long="ARACHIDE, MAÏS",
         varietes_conseillees="MIL (SOUNA) : Sanio (120 j)", nb_varietes_conseillees=1, categorie_eau="eau de surface peu exploitée",
         potentiel_contre_saison_ha="6000.0", rang_opportunite_eau=1, surface_proche_eau_cultivable_ha=9000.0,
@@ -59,6 +61,7 @@ def test_carte_complete_et_par_couleur():
         assert kolda["potentiel_contre_saison_ha"] == 6000.0
         if COORDONNEES:
             assert kolda["latitude"] == pytest.approx(12.8939)
+        assert kolda["potentiel_contre_saison_ha"] == 6000.0 and kolda["latitude"] == pytest.approx(12.8939)
 
         bleu = c.get(V1, params={"couleur": "bleu"}).json()
         assert [d["rang_opportunite_eau"] for d in bleu["donnees"]] == [1, 2]

@@ -31,6 +31,7 @@ Référence pour l'API et le front : ce que chaque mart contient, à quel grain,
 | `MART_CARTE_OPPORTUNITES` | Carte des opportunités | département | 45 |
 | `MART_CADRE_HARMONISE_DEPARTEMENT` | Cadre harmonisé, dernier cycle | département | 45 |
 | `DIM_PRIX_INTRANT` | Prix des engrais | intrant × campagne | 5 |
+| `MART_CARTE_OPPORTUNITES` | Carte des opportunités, pluie et eau (module E) | département | 45 |
 
 ---
 

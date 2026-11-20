@@ -158,6 +158,8 @@ Cas du README : **20 000 t de NPK 15-15-15 pour le mil**, 41 départements, beso
 - **Le prorata multicritère est retenu** : c'est la seule méthode à ne faire moins bien que le prorata ni sur le ciblage ni sur la valeur indicative, avec tous les départements servis et une répartition stable. Son paramètre α est exactement l'arbitrage rendement / équité prévu pour le décideur : α = 0 donne le prorata pondéré par la vulnérabilité, α = 1 le prorata pondéré par la valeur indicative.
 - Son gain à α = 0,5 est faible (+1 % et +0,6 %) : au milieu, les deux critères se compensent. **L'intérêt de la méthode est de laisser le décideur déplacer α en voyant ce qu'il gagne et ce qu'il perd**, pas de proposer un optimum.
 
+> **Note (18/11/2026)** : le moteur `agrodistrib-v1` ([`ml/agrodistrib/`](../ml/agrodistrib/README.md)) reproduit ces répartitions département par département (testé à 0,05 t près), avec les mêmes moyennes et le même Gini. Il calcule les gains sans arrondi intermédiaire et trouve, pour le prorata multicritère, **+0,9 %** de ciblage et **+0,8 %** de valeur indicative. Les +1,0 % et +0,6 % du tableau venaient de moyennes déjà arrondies à 3 décimales. Les écarts sont de 0,1 à 0,2 point et ne changent aucune conclusion.
+
 Limites : un seul cas testé (seul le mil a une dose dans toutes les zones) ; la « valeur indicative » repose sur un potentiel de gain de zone, non additif, qui ne distingue pas les départements d'une même zone ; la répartition est calculée par département, les niveaux zone et région s'obtenant par somme.
 
 ## 6. Ce qu'il faut retenir pour l'application
@@ -180,7 +182,7 @@ Les sorties servies par l'API (`ml/sorties/prevision_*.csv`, `risque_semis.csv`,
 
 ## 8. Points à trancher
 
-1. **Modèles 2 et 4**, hors `ml/README.md` : **tranché le 16/11/2026**. Le modèle 2 (années semblables) est retiré de `ml/`, du chargement Snowflake et de l'API. Le modèle 4 (date de semis) est gardé comme complément : il sert « Quand semer », « Ma parcelle », « Surface » et l'assistant vocal. Reste à l'ajouter à `ml/README.md`.
+1. **Modèles 2 et 4**, hors `ml/README.md` : **tranché le 16/11/2026**. Le modèle 2 (années semblables) est retiré de `ml/`, du chargement Snowflake et de l'API. Le modèle 4 (date de semis) est gardé comme complément : il sert « Quand semer », « Ma parcelle », « Surface » et l'assistant vocal. Ajouté à `ml/README.md` le 18/11/2026.
 2. **Modèle 1** : garder ONI + TSA (`m1-v1`), ou passer à ONI + TNA + TSA ? Recommandation : garder `m1-v1`, l'écart est dans le bruit et le TNA 2026 n'est pas dans `ml/entrees/`.
 3. **AgroDistrib** : valider le prorata multicritère comme moteur par défaut, la valeur de α proposée au départ (0,5) et la définition de la « valeur indicative ». Faut-il aussi proposer l'optimisation linéaire comme scénario « rendement d'abord », avec ses bornes affichées ?
-4. **Cible du rendement** : `ml/README.md` nomme `anomalie_rendement_pct` ; le modèle 3 et cette comparaison utilisent le rapport à la moyenne des 10 campagnes précédentes, parce que la tendance de la source utilise les années futures. À écrire dans le README si l'équipe confirme.
+4. **Cible du rendement** : `ml/README.md` nomme `anomalie_rendement_pct` ; le modèle 3 et cette comparaison utilisent le rapport à la moyenne des 10 campagnes précédentes, parce que la tendance de la source utilise les années futures. **Tranché le 18/11/2026** : l'équipe valide le rapport à la moyenne des 10 campagnes précédentes, écrit dans `ml/README.md` (section 4).
