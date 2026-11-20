@@ -61,6 +61,8 @@ export function Dock({ fonctionnalites, actif, onChoisir, reponse }: { fonctionn
                 <span className="block text-sm font-medium text-white">{intitule(f)}</span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-white/65">{f.phrase}</span>
                 {reponseDe(f) && <span className="mt-1.5 block border-t border-white/[0.09] pt-1.5 text-xs font-medium text-soleil-500">{reponseDe(f)}</span>}
+                <span className="block text-sm font-medium text-white">{f.titre}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-white/75">{f.phrase}</span>
               </span>
             </li>
           ))}

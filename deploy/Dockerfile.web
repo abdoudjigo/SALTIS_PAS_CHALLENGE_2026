@@ -6,9 +6,13 @@ RUN npm ci
 COPY app ./
 # Variables publiques du front (VITE_*), fournies par docker-compose depuis .env
 ARG VITE_MAPBOX_TOKEN
-ARG VITE_EMAIL_CONTACT=""
+# Adresse de contact : sans préfixe VITE_, pour ne pas finir en clair dans le JavaScript (app/vite.config.ts)
+ARG EMAIL_CONTACT=""
+ARG VITE_URL_SITE=""
+# Identifiant du site dans Umami (public) ; vide = aucune mesure d'audience, et pas de bandeau cookies
+ARG VITE_UMAMI_ID=""
 ENV VITE_API_URL="" VITE_AUTH_DEMO=true VITE_DONNEES_DEMO=false VITE_USE_MOCK=false \
-    VITE_MAPBOX_TOKEN=$VITE_MAPBOX_TOKEN VITE_EMAIL_CONTACT=$VITE_EMAIL_CONTACT
+    VITE_MAPBOX_TOKEN=$VITE_MAPBOX_TOKEN EMAIL_CONTACT=$EMAIL_CONTACT VITE_URL_SITE=$VITE_URL_SITE VITE_UMAMI_ID=$VITE_UMAMI_ID
 RUN npm run build
 
 FROM caddy:2-alpine

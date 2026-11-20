@@ -38,7 +38,7 @@ function Frise({ decades, de, a, choisie, onChoisir }: { decades: RisqueSemis[];
   const zones = ([['tot', de], ['bon', a - de + 1], ['tard', decades.length - a - 1]] as [Temps, number][]).filter(([, n]) => n > 0)
   return (
     <div>
-      <div className="grid grid-cols-8 gap-0.5 text-2xs font-medium text-white/80" aria-hidden>
+      <div className="grid grid-cols-8 gap-0.5 text-2xs font-medium text-white/90" aria-hidden>
         {zones.map(([t, n]) => <span key={t} className="truncate pb-1.5" style={{ gridColumn: `span ${n}` }}>{n > 1 || t === 'bon' ? TEMPS[t].nom : ''}</span>)}
       </div>
       <div className="grid grid-cols-8 gap-0.5" role="radiogroup" aria-label="Période de semis">
@@ -50,7 +50,7 @@ function Frise({ decades, de, a, choisie, onChoisir }: { decades: RisqueSemis[];
           </button>
         ))}
       </div>
-      <div className="mt-1.5 grid grid-cols-8 gap-0.5 text-2xs text-white/55 tabular-nums" aria-hidden>
+      <div className="mt-1.5 grid grid-cols-8 gap-0.5 text-2xs text-white/60 tabular-nums" aria-hidden>
         <span className="col-span-3">1er juin</span><span className="col-span-3">1er juil.</span><span className="col-span-2">1er août</span>
       </div>
     </div>
@@ -168,6 +168,28 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
               <Cle valeur={nombre(f.meilleure.risque_total_pct)} unite="%" libelle="de risque" />
             </Cles>
           )}
+    <div>
+      {f ? (
+        <Reponse cle={`${code}-${annee}-${culture}`} titre={sur ? `Semez ${article}${nomCulture} ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis)}` : `Le moins risqué : ${periodeDecades(f.meilleure.decade_semis)}`}
+          phrase={`${departement.departement} · ${annee}.${sur ? '' : ' Aucune période n’est vraiment sûre ici pour cette culture.'}`}>
+          <Cle large valeur={periodeDecades(f.meilleure.decade_semis, f.meilleure.decade_semis, true).replace('du ', '')} libelle="le meilleur moment" teinte="var(--color-vert-100)" />
+          <Cle valeur={nombre(f.meilleure.risque_total_pct)} unite="%" libelle="de risque" />
+        </Reponse>
+      ) : (
+        <Reponse cle={`${code}-${annee}-${culture}`} titre={departement.departement} phrase={`Quand semer ${article}${nomCulture}.`} />
+      )}
+      <Attente etat={etat} objet={`${departement.departement} en ${annee}`} />
+      {etat === 'ok' && !f && <p className="mt-4 text-sm text-white/70">Pas de période de semis calculée pour {article}{nomCulture} dans ce département.</p>}
+
+      {f && detail && (
+        <div className="mt-5">
+          <Frise decades={decades} de={f.de} a={f.a} choisie={detail.decade_semis} onChoisir={setDecade} />
+          <p className="mt-3 text-sm text-white/90" aria-live="polite">
+            <span className="font-medium text-white">{libelle(periodeDecades(detail.decade_semis))}</span> : {pct(detail.risque_total_pct)} de risque
+            {detail.decade_conseillee ? ', le plus bas.' : (detail.risque_faux_depart_pct ?? 0) >= (detail.risque_fin_trop_tot_pct ?? 0) ? ' (un sec après le semis).' : ' (pluies finies avant la récolte).'}
+          </p>
+        </div>
+      )}
 
           {f && detail && (
             <div className="mt-5">

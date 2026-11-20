@@ -134,6 +134,9 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
   // Zones éteintes (chapitres suivants) : elles ne réagissent ni au survol ni au clic
   const zonesActives = useRef(Boolean(vue.zones))
   const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, onCarte })
+  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation })
+  const [indisponible, setIndisponible] = useState(false)
+  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onManipulation })
   const vueRef = useRef(vue)
   const departRef = useRef(depart)
   useEffect(() => {
@@ -175,9 +178,45 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
           showRoadLabels: !clair,
           // La landing reprend la palette : terre claire, eau « pluie », frontières « terre »
           ...(clair ? { colorLand: '#fbfaf6', colorWater: '#cfe5f6', colorGreenspace: '#dcecdf', colorAdminBoundaries: '#c9a57d' } : {}),
+    // Sans WebGL (appareil ancien, accélération graphique coupée, trop de cartes ouvertes), Mapbox lève une
+    // exception : sans ce garde-fou, toute la page restait blanche. On affiche un message à la place de la carte.
+    let carte: mapboxgl.Map
+    try {
+      carte = new mapboxgl.Map({
+        container: el,
+        accessToken: config.mapboxToken,
+        style: 'mapbox://styles/mapbox/standard',
+        projection: 'globe',
+        center: departRef.current?.centre ?? v.camera.centre ?? SENEGAL.centre,
+        zoom: departRef.current?.zoom ?? v.camera.zoom ?? 5,
+        pitch: v.camera.inclinaison ?? 0,
+        bearing: v.camera.cap ?? 0,
+        interactive,
+        attributionControl: false,
+        maxPitch: 75,
+        // Étiquettes : fondu court, pour que les noms suivent la caméra sans traîner
+        fadeDuration: 150,
+        performanceMetricsCollection: false,
+        config: {
+          basemap: {
+            lightPreset: PRESETS[v.ambiance],
+            theme: clair ? 'faded' : 'default',
+            showPointOfInterestLabels: false,
+            showTransitLabels: false,
+            showPlaceLabels: !clair,
+            showRoadLabels: !clair,
+            // La landing reprend la palette : terre claire, eau « pluie », frontières « terre »
+            ...(clair ? { colorLand: '#fbfaf6', colorWater: '#cfe5f6', colorGreenspace: '#dcecdf', colorAdminBoundaries: '#c9a57d' } : {}),
+          },
         },
-      },
-    })
+      })
+    } catch {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- échec de création, signalé une seule fois
+      setIndisponible(true)
+      return
+    }
+    // Texte alternatif de la carte : Mapbox l'appelle « Map » par défaut
+    carte.getCanvas().setAttribute('aria-label', interactive ? 'Carte interactive des 45 départements du Sénégal' : 'Carte du Sénégal et de ses zones agroécologiques')
     carteRef.current = carte
     carte.once('load', () => rappels.current.onCarte?.(carte))
     if (!interactive)
@@ -645,6 +684,17 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
       carte.removeSource('vent')
     }
   }, [prete, vue.vent])
+
+  if (indisponible) {
+    return (
+      // key : un nouvel élément, sans les restes laissés par Mapbox dans le conteneur de la carte
+      <div key="indisponible" role="status" className={`${className ?? 'size-full'} grid content-start justify-items-center bg-encre-nuit px-6 pt-36 text-center`}>
+        <p className="max-w-xs text-sm leading-relaxed text-white/75">
+          La carte ne peut pas s'afficher sur cet appareil (affichage graphique WebGL indisponible). Les fiches restent consultables.
+        </p>
+      </div>
+    )
+  }
 
   return <div ref={conteneur} className={className ?? 'size-full'} />
 }

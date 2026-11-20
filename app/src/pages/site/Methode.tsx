@@ -1,9 +1,11 @@
+import { PAGES } from '../../lib/pages'
 import { PageSite, Partie, Tableau } from './PageSite'
 
 export default function Methode() {
   return (
     <PageSite
-      titre="Méthode et fiabilité"
+      titre={PAGES.methode.titre}
+      description={PAGES.methode.description}
       chapeau="Trois modèles d'intelligence artificielle, entraînés sur 45 ans de pluie et 25 ans de rendements, testés sur des années qu'ils n'ont jamais vues."
     >
       <Partie titre="La pluie de la saison qu'on prépare">

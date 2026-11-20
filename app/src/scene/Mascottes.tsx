@@ -78,11 +78,13 @@ export function Mascottes({ fr, wo, className }: { fr?: string[]; wo?: string[];
 
   if (!lectureDisponible && !wo?.length) return null
   return (
-    <div className={clsx('relative flex items-center gap-2', className)}>
+    // Positionné par l'appelant (ex. « absolute top-2 right-12 ») ; sinon relatif, pour placer le message.
+    // Les deux classes ensemble se contredisaient : « relative » l'emportait et décalait le bloc hors de l'écran.
+    <div className={clsx('flex items-center gap-2', className ?? 'relative')}>
       {bouton('fr', Garcon, 'FR', 'Voix française', Boolean(fr?.length) && lectureDisponible, () => lire((fr ?? []).map(pourLOreille)))}
       {bouton('wo', Fille, 'WLF', 'Voix wolof', Boolean(wo?.length) && !attente, () => void parlerWolof())}
       {message && (
-        <p role="status" className="absolute top-full right-0 z-10 mt-2 w-64 rounded-lg bg-encre-nuit px-3 py-2 text-xs text-white/80 shadow-lg">
+        <p role="status" className="absolute top-full right-0 z-10 mt-2 w-64 rounded-lg bg-encre-nuit px-3 py-2 text-xs text-white/90 shadow-lg">
           {message}
           <button type="button" onClick={() => setMessage(null)} className="ml-2 text-white underline">OK</button>
         </p>

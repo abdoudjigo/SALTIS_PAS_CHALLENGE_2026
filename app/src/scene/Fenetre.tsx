@@ -96,7 +96,7 @@ export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo
   // La réponse en une ligne ne s'affiche que fenêtre fermée : ouverte, le contenu la donne déjà
   const intitule = (avecResume: boolean) => (
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-2xs font-medium tracking-etiquette text-white/55 uppercase">{titre}</span>
+      <span className="block truncate text-2xs font-medium tracking-etiquette text-white/60 uppercase">{titre}</span>
       {avecResume && resume && <span className="block truncate text-sm font-medium text-white">{resume}</span>}
     </span>
   )
@@ -111,7 +111,7 @@ export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo
           <span className="mt-2.5 flex w-full items-center gap-3 text-left">
             <Icone className="size-5 shrink-0 text-soleil-500" aria-hidden />
             {intitule(cran === 0 && tirage === null)}
-            {cran === 2 ? <ChevronDown className="size-5 shrink-0 text-white/50" aria-hidden /> : <ChevronUp className="size-5 shrink-0 text-white/50" aria-hidden />}
+            {cran === 2 ? <ChevronDown className="size-5 shrink-0 text-white/60" aria-hidden /> : <ChevronUp className="size-5 shrink-0 text-white/60" aria-hidden />}
           </span>
         </button>
         {/* Posées sur la barre du tiroir, à gauche du chevron : elles ne recouvrent jamais le contenu */}
@@ -129,7 +129,7 @@ export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo
         className="panneau fenetre absolute top-4 right-4 z-20 flex min-h-12 max-w-80 items-center gap-3 rounded-xl py-2 pr-3 pl-3.5 text-left transition hover:bg-encre-nuit">
         <Icone className="size-4 shrink-0 text-soleil-500" aria-hidden />
         {intitule(true)}
-        <ChevronDown className="size-4 shrink-0 text-white/50" aria-hidden />
+        <ChevronDown className="size-4 shrink-0 text-white/60" aria-hidden />
       </button>
     )
 
@@ -143,6 +143,10 @@ export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo
         {ecouteEnTete && <Mascottes fr={aEcouter} wo={aEcouterWo} />}
         <GripHorizontal className="size-4 text-white/25" aria-hidden />
         <button type="button" onClick={() => setReduitePour(cle)} aria-label="Réduire la fenêtre (Échap)" title="Réduire (Échap)" className="grid size-11 place-items-center rounded-lg text-white/60 transition hover:text-white">
+        <span className="flex-1 truncate text-2xs font-medium tracking-etiquette text-white/80 uppercase">{titre}</span>
+        <Mascottes fr={aEcouter} wo={aEcouterWo} />
+        <GripHorizontal className="size-4 text-white/40" aria-hidden />
+        <button type="button" onClick={() => setReduitePour(cle)} aria-label="Réduire la fenêtre (Échap)" title="Réduire (Échap)" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
           <Minus className="size-4" />
         </button>
       </div>

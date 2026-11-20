@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { config } from '../config'
 import { useReferentiels } from '../hooks/donnees'
 import { usePrechargerDepartement } from '../hooks/precharger'
+import { ACCUEIL, useMeta } from '../lib/meta'
 import type { Survol, VueCarte } from '../scene/Carte'
 import { cadrer, questionDe, questionOng, type AccesExport, type Cadre, type Fonctionnalite, type Infobulle, type ModeOng, type PropsMode, type Sortie } from '../scene/cadre'
 import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../scene/dossier'
@@ -105,12 +106,13 @@ function Bulle({ ref, infobulle }: { ref: Ref<PoigneeBulle>; infobulle: Sortie['
   return (
     <div className="verre-scene pointer-events-none absolute z-30 max-w-64 rounded-lg px-3 py-2" style={{ left: Math.max(8, Math.min(survol.x + 16, window.innerWidth - (window.innerWidth >= 768 ? LARGEUR_FENETRE_PX + 32 : 0) - 264)), top: Math.max(8, survol.y + 16) }} role="status">
       <p className="text-sm font-medium text-white">{contenu.titre}</p>
-      {contenu.lignes.map((l) => <p key={l} className="text-xs leading-relaxed text-white/70">{l}</p>)}
+      {contenu.lignes.map((l) => <p key={l} className="text-xs leading-relaxed text-white/80">{l}</p>)}
     </div>
   )
 }
 
 export default function Scene() {
+  useMeta({ titrePage: 'Carte', description: ACCUEIL.description })
   const { user, logout } = useAuth()
   const ecran = useEcran()
   const { data: ref, error } = useReferentiels()
@@ -229,7 +231,7 @@ export default function Scene() {
         </GardeCarte>
       ) : (
         <div className="grid h-full place-items-center px-6 text-center">
-          <p className={error ? 'text-soleil-500' : 'animate-pulse text-white/60'}>
+          <p className={error ? 'text-soleil-500' : 'animate-pulse text-white/70'}>
             {error ? `Les données ne répondent pas : ${error.message}` : 'La carte se prépare…'}
           </p>
         </div>
@@ -245,8 +247,9 @@ export default function Scene() {
             <p className="text-2xs text-white/60">{profil}
               {config.donneesDemo && <span className="ml-1.5 rounded-full border border-white/20 px-1.5 whitespace-nowrap text-white/70" title="Données de démonstration synthétiques : elles illustrent la plateforme et ne servent pas à décider.">Démo · données synthétiques</span>}
             </p>
+            <p className="text-2xs text-white/60">{profil}</p>
           </div>
-          <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/60 transition hover:text-white">
+          <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
             <LogOut className="size-4" />
           </button>
         </div>

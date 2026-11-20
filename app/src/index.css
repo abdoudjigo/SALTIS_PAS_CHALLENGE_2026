@@ -84,9 +84,16 @@
 
 @layer components {
   .carte { @apply rounded-2xl border border-trait bg-carte shadow-[0_1px_2px_rgba(29,42,34,0.04)]; }
+  /* Champs : 16 px sur téléphone (en dessous, iOS agrandit la page à chaque saisie), 14 px au-delà */
   .champ {
-    @apply w-full rounded-xl border border-trait bg-white px-3 py-2.5 text-sm text-encre
-      transition placeholder:text-encre-douce/60 focus:border-vert-500 focus:ring-2 focus:ring-vert-100 focus:outline-none;
+    @apply w-full rounded-xl border border-trait bg-white px-3 py-2.5 text-base text-encre sm:text-sm
+      transition placeholder:text-encre-douce focus:border-vert-500 focus:ring-2 focus:ring-vert-100 focus:outline-none;
+  }
+  /* L'appel à l'action du site, un seul : « Entrer dans la carte ». Même couleur partout (soleil sur vert profond),
+     sur fond clair comme sur fond sombre. Les autres actions sont des liens ou des boutons discrets. */
+  .bouton-action {
+    @apply inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-soleil-500 font-semibold whitespace-nowrap text-vert-900
+      shadow-[0_10px_24px_-14px_rgb(18_57_31/0.7)] transition hover:bg-soleil-100 active:scale-[0.98];
   }
   .etiquette { @apply mb-1.5 block text-xs font-medium tracking-wide text-encre-douce uppercase; }
 }
@@ -150,12 +157,6 @@
   background: radial-gradient(46% 38% at 74% 46%, color-mix(in oklab, var(--color-ciel-lueur) 34%, transparent), transparent 72%);
   mix-blend-mode: multiply;
 }
-/* Bouton principal : un reflet en haut, une ombre courte dessous */
-.bouton-ciel {
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 10px 22px -14px rgb(18 57 31 / 0.7);
-  transition: box-shadow var(--duree-1), background var(--duree-1), scale var(--duree-1);
-}
-.bouton-ciel:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 14px 26px -14px rgb(18 57 31 / 0.8); }
 /* Section « Deux portes » : un reste de ciel en haut, puis le blanc */
 .fond-ciel {
   background: linear-gradient(to bottom, color-mix(in oklab, var(--color-ciel-lueur) 26%, white), white 24rem);
@@ -203,10 +204,12 @@
 .scene-manip .tiroir { opacity: 0.5; }
 .tiroir:not(.tiroir-pose) { transition: opacity 0.35s ease; }
 .champ-scene {
-  @apply min-h-11 w-full rounded-lg border border-white/12 bg-white/[0.05] px-3 text-sm text-white transition
-    placeholder:text-white/35 focus:border-soleil-500 focus:ring-2 focus:ring-soleil-500/25 focus:outline-none;
+  @apply min-h-11 w-full rounded-lg border border-white/12 bg-white/[0.05] px-3 text-base text-white transition sm:text-sm
+    placeholder:text-white/60 focus:border-soleil-500 focus:ring-2 focus:ring-soleil-500/25 focus:outline-none;
 }
 .champ-scene option { color: var(--color-encre); }
+.champ-scene[aria-invalid='true'] { border-color: var(--color-soleil-500); }
+.champ[aria-invalid='true'] { border-color: var(--color-alerte-500); }
 
 /* Dock : toujours là. Il glisse depuis le bord à l'arrivée, ses icônes entrent une à une */
 .dock { animation: dock-entree var(--duree-3) var(--courbe) both; box-shadow: var(--reflet), var(--ombre-nuit); }

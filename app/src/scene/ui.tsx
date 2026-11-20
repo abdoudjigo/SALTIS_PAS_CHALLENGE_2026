@@ -13,7 +13,7 @@ export function Reponse({ cle, titre, phrase, children, vivant = false }: { cle?
   const contenu = (
     <header key={cle ?? titre} className="maj">
       <h2 className="font-titre text-titre-fiche font-semibold text-white">{titre}</h2>
-      {phrase && <p className="mt-1.5 text-sm leading-relaxed text-white/70">{phrase}</p>}
+      {phrase && <p className="mt-1.5 text-sm leading-relaxed text-white/80">{phrase}</p>}
       {children && <div className="mt-4 grid grid-cols-3 gap-x-4 gap-y-3">{children}</div>}
     </header>
   )
@@ -98,6 +98,7 @@ export function Groupe({ titre, children, replie, complement, id }: { titre: str
         </h3>
       ) : (
         <h3 id={id} className={ETIQUETTE}>{titre}{complement && <span className="ml-2 tracking-normal text-white/60 normal-case">{complement}</span>}</h3>
+        <h3 className={ETIQUETTE}>{titre}{complement && <span className="ml-2 tracking-normal text-white/60 normal-case">{complement}</span>}</h3>
       )}
       {ouvert && <div className="mt-3">{children}</div>}
     </section>
@@ -108,10 +109,11 @@ export function Groupe({ titre, children, replie, complement, id }: { titre: str
 export function Ligne({ libelle, valeur, detail, teinte }: { libelle: string; valeur: ReactNode; detail?: string; teinte?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1.5">
-      <dt className="text-sm text-white/60">{libelle}</dt>
+      <dt className="text-sm text-white/70">{libelle}</dt>
       <dd className="text-right">
         {/* Une valeur absente se dit « non disponible », jamais 0 ni un tiret seul */}
         <span className="text-sm font-medium text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>{valeur === VIDE ? 'non disponible' : valeur}</span>
+        <span className="text-sm font-medium text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>{valeur}</span>
         {detail && <span className="block text-2xs text-white/60">{detail}</span>}
       </dd>
     </div>
@@ -155,11 +157,11 @@ export function Parts({ parts }: { parts: { libelle: string; part: number | null
         const fort = p.part !== null && p.part === max
         return (
           <div key={p.libelle} className="grid grid-cols-[4.25rem_1fr_3.5rem] items-center gap-2.5">
-            <dt className={clsx('text-sm', fort ? 'font-semibold text-white' : 'text-white/60')}>{p.libelle}</dt>
+            <dt className={clsx('text-sm', fort ? 'font-semibold text-white' : 'text-white/70')}>{p.libelle}</dt>
             <span className={clsx('block overflow-hidden rounded-full bg-white/10', fort ? 'h-2.5' : 'h-1.5')}>
               {p.part !== null && <span className={clsx('block h-full rounded-full transition-[width] duration-700', !fort && 'opacity-60')} style={{ width: `${Math.max(0, Math.min(p.part, 100))}%`, background: p.couleur }} />}
             </span>
-            <dd className={clsx('text-right tabular-nums', fort ? 'text-md font-semibold text-white' : 'text-sm text-white/70')}>{p.part === null ? '—' : `${Math.round(p.part)} %`}</dd>
+            <dd className={clsx('text-right tabular-nums', fort ? 'text-md font-semibold text-white' : 'text-sm text-white/80')}>{p.part === null ? '—' : `${Math.round(p.part)} %`}</dd>
           </div>
         )
       })}
@@ -203,7 +205,7 @@ export function Fourchette({ bas, haut, valeur, repere, couleur, description }: 
 
 /** Étiquette d'état d'une prévision. `ferme` : prévision de l'année ; `neutre` : valeur habituelle ou réserve. */
 export function Marque({ ton = 'neutre', children }: { ton?: 'ferme' | 'neutre'; children: ReactNode }) {
-  return <span className={clsx('inline-flex items-center rounded-full border px-2 py-0.5 text-2xs leading-4 whitespace-nowrap', ton === 'ferme' ? 'border-soleil-500/60 text-soleil-500' : 'border-white/20 text-white/65')}>{children}</span>
+  return <span className={clsx('inline-flex items-center rounded-full border px-2 py-0.5 text-2xs leading-4 whitespace-nowrap', ton === 'ferme' ? 'border-soleil-500/60 text-soleil-500' : 'border-white/20 text-white/75')}>{children}</span>
 }
 
 // --- Niveau 3 : la méthode -----------------------------------------------------------------------
@@ -217,7 +219,7 @@ export function Methode({ children }: { children: ReactNode }) {
         <span className="flex-1">Méthode et limites</span>
         <ChevronDown className={clsx('size-4 shrink-0 transition-transform duration-300', ouvert && 'rotate-180')} aria-hidden />
       </button>
-      {ouvert && <div className="maj space-y-2 pb-2 text-xs leading-relaxed text-white/60">{children}</div>}
+      {ouvert && <div className="maj space-y-2 pb-2 text-xs leading-relaxed text-white/70">{children}</div>}
     </section>
   )
 }
@@ -227,6 +229,11 @@ export function Champ({ libelle, children, className }: { libelle: string; child
   return <label className={clsx('block text-2xs text-white/60', className)}>{libelle}<span className="mt-1 block">{children}</span></label>
 }
 
+/** Message d'erreur sous un champ : relié au champ par aria-describedby (même id), annoncé par les lecteurs d'écran. */
+export function ErreurChamp({ id, children, className }: { id: string; children: ReactNode; className?: string }) {
+  return <p id={id} role="alert" className={clsx('mt-1.5 text-xs leading-snug text-soleil-500', className)}>{children}</p>
+}
+
 /** Choix exclusif entre quelques options courtes (moment de la saison, critère de classement). */
 export function Segments<T extends string>({ libelle, options, valeur, onChange }: { libelle: string; options: { id: T; libelle: string }[]; valeur: T; onChange: (id: T) => void }) {
   return (
@@ -234,6 +241,7 @@ export function Segments<T extends string>({ libelle, options, valeur, onChange 
       {options.map((o) => (
         <button key={o.id} type="button" role="radio" aria-checked={o.id === valeur} onClick={() => onChange(o.id)}
           className={clsx('min-h-11 flex-1 rounded-md px-1 text-xs font-medium transition', o.id === valeur ? 'bg-soleil-500 text-encre-nuit' : 'text-white/70 hover:bg-white/[0.07] hover:text-white')}>
+          className={clsx('min-h-10 flex-1 rounded-md px-1 text-xs font-medium transition', o.id === valeur ? 'bg-soleil-500 text-encre-nuit' : 'text-white/80 hover:bg-white/[0.07] hover:text-white')}>
           {o.libelle}
         </button>
       ))}
@@ -279,6 +287,8 @@ export function SaisieAnnee({ annee, onChange, passees, min, max, nature, classN
       {horsPlage
         ? <p id={idNature} role="alert" className="mt-2 text-xs leading-relaxed text-soleil-500">Les prévisions vont de {min} à {max}. Tapez une année dans cette plage.</p>
         : <p id={idNature} className="mt-2 text-xs leading-relaxed text-white/65">{nature}</p>}
+        ? <p role="alert" className="mt-2 text-xs leading-relaxed text-soleil-500">Les prévisions vont de {min} à {max}. Tapez une année dans cette plage.</p>
+        : <p id="annee-nature" className="mt-2 text-xs leading-relaxed text-white/75">{nature}</p>}
     </div>
   )
 }
@@ -301,7 +311,7 @@ export function Bouton({ children, onClick, plein = false, disabled, className, 
 
 export function Pastille({ couleur, children }: { couleur: string; children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-white/75">
+    <span className="inline-flex items-center gap-1.5 text-xs text-white/85">
       <span className="size-1.5 rounded-full" style={{ background: couleur }} aria-hidden />
       {children}
     </span>
@@ -309,7 +319,7 @@ export function Pastille({ couleur, children }: { couleur: string; children: Rea
 }
 
 /** Message d'état (hors Sénégal, localisation refusée, rien à répartir). */
-export const Avis = ({ children }: { children: ReactNode }) => <p role="alert" className="mt-3 border-l-2 border-soleil-500 pl-3 text-sm leading-relaxed text-white/80">{children}</p>
+export const Avis = ({ children }: { children: ReactNode }) => <p role="alert" className="mt-3 border-l-2 border-soleil-500 pl-3 text-sm leading-relaxed text-white/90">{children}</p>
 
 /** Chargement : des lignes fantômes à la place du contenu. */
 export function Squelette({ lignes = 3 }: { lignes?: number }) {
@@ -329,6 +339,7 @@ export function Degrade({ titre, gauche, droite, degrade, note }: { titre: strin
       <p className={ETIQUETTE}>{titre}</p>
       <div className="mt-2 h-1.5 rounded-full" style={{ background: degrade }} />
       <div className="mt-1.5 flex justify-between text-2xs text-white/60 tabular-nums"><span>{gauche}</span><span>{droite}</span></div>
+      <div className="mt-1.5 flex justify-between text-2xs text-white/70 tabular-nums"><span>{gauche}</span><span>{droite}</span></div>
       {note && <p className="mt-1.5 text-2xs leading-snug text-white/60">{note}</p>}
     </div>
   )
@@ -340,7 +351,7 @@ export function Categories({ titre, entrees }: { titre: string; entrees: { coule
       <p className={ETIQUETTE}>{titre}</p>
       <ul className="mt-2 space-y-1">
         {entrees.map((e) => (
-          <li key={e.libelle} className="flex items-center gap-2 text-xs text-white/75">
+          <li key={e.libelle} className="flex items-center gap-2 text-xs text-white/85">
             <span className="size-2 rounded-[2px]" style={{ background: e.couleur }} aria-hidden />{e.libelle}
           </li>
         ))}

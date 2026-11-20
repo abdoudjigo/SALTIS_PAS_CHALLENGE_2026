@@ -37,8 +37,11 @@ On entre dans la scène par une des deux portes de la landing : **Agriculteur**,
 | `VITE_AUTH_DEMO`, `VITE_DONNEES_DEMO` | Réglages séparés, facultatifs (chacun vaut `VITE_USE_MOCK` par défaut). Site déployé sans back d'authentification : `VITE_AUTH_DEMO=true` (comptes de démonstration) et `VITE_DONNEES_DEMO=false` (données de l'API) | `true`, `false` |
 | `VITE_MAPBOX_TOKEN` | Token **public** Mapbox (`pk.…`). Vide = carte simplifiée sans fond | `pk.eyJ…` |
 | `VITE_MAPBOX_STYLE` | Style Mapbox (facultatif) | `mapbox://styles/mapbox/light-v11` |
-| `VITE_EMAIL_CONTACT` | Adresse de contact des pages publiques (Contact, Confidentialité). Vide = « bientôt » | `contact@exemple.sn` |
+| `VITE_UMAMI_ID` | Mesure d'audience : identifiant du site dans Umami (public). Vide = aucune mesure et pas de bandeau cookies ; voir `deploy/README.md`, section 7 | — |
+| `EMAIL_CONTACT` | Adresse de contact des pages publiques (Contact, Confidentialité). Sans préfixe `VITE_` : codée au build et affichée seulement au clic (anti-spam). Vide = « bientôt » | `contact@exemple.sn` |
 | `VITE_LIEN_LINKEDIN`, `VITE_LIEN_FACEBOOK`, `VITE_LIEN_X`, `VITE_LIEN_YOUTUBE` | Réseaux sociaux du pied de page. Vide = affiché « bientôt » | `https://…` |
+
+`VITE_URL_SITE` (adresse publique, ex. `https://assaman-suuf.com`) sert aux aperçus de partage et au plan du site (`sitemap.xml` et `robots.txt`, écrits au build ; liste des pages : `src/lib/pages.ts`) ; en production elle est déduite de `DOMAINE`. Toute nouvelle page passe par `PageSite` (ou `useMeta` de `src/lib/meta.ts`) avec une `description` de 120 à 160 caractères.
 
 Les variables `VITE_*` sont **lisibles dans le navigateur** : n'y mettre aucun secret (ni mot de passe Snowflake, ni clé privée). Le `MAPBOX_TOKEN` du `.env` racine n'est pas lu par Vite : le recopier dans `app/.env.local` sous le nom `VITE_MAPBOX_TOKEN`.
 
@@ -52,6 +55,7 @@ Les variables `VITE_*` sont **lisibles dans le navigateur** : n'y mettre aucun s
 | `npm run build` | Vérification des types puis build de production dans `dist/` (service worker PWA compris) |
 | `npm run preview` | Sert `dist/` sur `http://localhost:4173` (pour tester la PWA et le hors ligne) |
 | `npm run icons` | Régénère les icônes PNG depuis le dessin de `public/favicon.svg` (Python + Pillow) |
+| `npm run images` | Compresse les PNG de `public/` (palette de 256 couleurs, sans bande visible) ; à relancer après tout nouveau PNG |
 
 Le job `front` du CI (`.github/workflows/ci.yml`) lance `lint` et `build` (donc la vérification des types) à chaque push.
 
@@ -66,7 +70,8 @@ app/
 │   ├── pages/
 │   │   ├── Landing.tsx     la landing : globe, récit (zones, ciel, terre, décision), deux portes, sources
 │   │   ├── Scene.tsx       la scène : carte plein écran + dock + fenêtre de résultats
-│   │   └── site/           pages du site : À propos, Méthode, Données, Contact, Mentions légales, page introuvable
+│   │   └── site/           pages du site : À propos, Méthode, Données, Contact, Mentions légales, Politique de confidentialité, Conditions générales, page introuvable
+│   ├── consentement/       bandeau cookies et choix du visiteur (mesure d'audience facultative)
 │   ├── landing/            en-tête « île », pied de page, portes, bandeau des sources de données
 │   ├── scene/              moteur de carte (Carte.tsx), dock, fenêtre, briques d'interface (ui.tsx), couleurs
 │   │   └── modes/          une fonctionnalité du dock par fichier
@@ -88,8 +93,10 @@ app/
 | `/a-propos` | Le défi, ce que fait la plateforme, nos principes, l'équipe |
 | `/methode` | Les modèles d'IA et leur fiabilité mesurée |
 | `/donnees` | Les sources, leur préparation, les limites, les licences |
-| `/contact` | Adresse (`VITE_EMAIL_CONTACT`) et réseaux (`config.reseaux`) |
-| `/mentions-legales` | Éditeur, données personnelles, crédits |
+| `/contact` | Adresse (`EMAIL_CONTACT`, affichée au clic) et réseaux (`config.reseaux`) |
+| `/mentions-legales` | Éditeur, portée des estimations, crédits |
+| `/conditions-generales` | Conditions générales d'utilisation : accès, estimations indicatives, usage, contenus, responsabilité |
+| `/confidentialite` | Politique de confidentialité : données traitées, stockage local, services tiers, droits |
 
 ### Entrer dans la scène
 Pas de compte ni de mot de passe : chaque porte ouvre un **profil** (`src/api/mock/comptes.ts`), sans nom de personne. La session reste dans le navigateur ; l'API n'a pas de comptes.

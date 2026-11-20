@@ -1,13 +1,15 @@
 import { config } from '../../config'
+import { PAGES } from '../../lib/pages'
+import { AdresseContact } from './AdresseContact'
 import { PageSite, Partie } from './PageSite'
 
 export default function Contact() {
   return (
-    <PageSite titre="Contact" chapeau="Une question sur la plateforme, une donnée à partager, une collaboration à proposer : écrivez-nous.">
+    <PageSite titre={PAGES.contact.titre} description={PAGES.contact.description} chapeau="Une question sur la plateforme, une donnée à partager, une collaboration à proposer : écrivez-nous.">
       <Partie titre="Écrire à l'équipe">
-        {config.emailContact ? (
+        {config.aUnContact ? (
           <p>
-            <a href={`mailto:${config.emailContact}`} className="font-medium text-vert-700 underline underline-offset-4">{config.emailContact}</a>
+            <AdresseContact />
           </p>
         ) : (
           <p>L'adresse de contact sera publiée prochainement.</p>

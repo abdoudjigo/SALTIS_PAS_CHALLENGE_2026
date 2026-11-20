@@ -209,6 +209,11 @@ export default function Campagne({ cadre, publier }: PropsMode) {
       </thead>
       <tbody>{dossiers.map(ligne)}</tbody>
     </table>
+  const entete = (
+    <div className="flex items-end gap-1 border-b border-white/[0.09] pb-1.5 text-2xs leading-tight text-white/60">
+      <span className="flex-1">Département</span>
+      <span className="w-[4.25rem] text-right">Pluie attendue (mm)</span><span className="w-[4.25rem] text-right">Risque récolte</span><span className="w-[4.25rem] text-right">Vulnérabilité (/100)</span>
+    </div>
   )
   // Les départements du Cadre harmonisé, dans l'ordre du scénario Urgence (même fonction : phase, personnes, vulnérabilité)
   const ordreCH = useMemo(() => {
@@ -236,6 +241,49 @@ export default function Campagne({ cadre, publier }: PropsMode) {
                 <div className="flex items-baseline justify-between gap-4">
                   <dt className="text-sm text-white/60">Cadre harmonisé</dt>
                   <dd className="text-right text-sm font-medium text-white tabular-nums">{nomPhase(fiche.ch)}</dd>
+    <div>
+      {fiche ? (
+        <Reponse cle={`${code}-${annee}`} titre={fiche.nom} phrase={`Campagne ${annee} · ${fiche.rouges ? `${fiche.rouges} ${fiche.rouges > 1 ? 'signaux' : 'signal'} au rouge` : fiche.oranges ? 'à l’orange' : 'rien à signaler'}.`}>
+          <Cle valeur={fiche.pluie?.pluie_prevue_mm == null ? '—' : nombre(fiche.pluie.pluie_prevue_mm)} unite="mm" libelle="pluie attendue" />
+          <Cle valeur={fiche.recolte ? nombre(fiche.recolte.proba_chute_pct) : '—'} unite={fiche.recolte ? '%' : undefined} libelle="risque pour la récolte" teinte={fiche.niveaux.recolte === 'rouge' ? TEINTES.rouge : undefined} />
+          <Cle valeur={fiche.vulnerabilite === null ? '—' : nombre(fiche.vulnerabilite)} unite={fiche.vulnerabilite === null ? undefined : '/ 100'} libelle="vulnérabilité" teinte={fiche.niveaux.vulnerabilite === 'rouge' ? TEINTES.rouge : undefined} />
+        </Reponse>
+      ) : (
+        <Reponse cle={annee} titre={etat === 'ok' ? `${aSurveiller.length} départements à surveiller en ${annee}` : `Campagne ${annee}`}
+          phrase={t ? `Saison ${t.texte} (${nombre(t.proba)} % de chances, tout le pays). Priorité : récolte en alerte, vulnérabilité très élevée ou pluie nettement sous la normale.` : undefined} />
+      )}
+      <Attente etat={etat} objet={`la campagne ${annee}`} lignes={6} />
+
+      {etat === 'ok' && !fiche && (
+        <div className="mt-4">
+          {entete}
+          <ol>{aSurveiller.map(ligne)}</ol>
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-white/60">
+            <span className="inline-flex items-center gap-1.5"><Point niveau="rouge" />au rouge</span><span className="inline-flex items-center gap-1.5"><Point niveau="orange" />à l'orange</span><span className="inline-flex items-center gap-1.5"><Point niveau="calme" />rien à signaler</span>
+          </p>
+        </div>
+      )}
+
+      <ChampAnnee cadre={cadre} a={a} saison={fiche?.pluie} />
+      {etat === 'ok' && etatPrevision(alerte) === 'absente' && <p className="mt-2 text-xs leading-relaxed text-white/60">Risque de récolte non disponible pour {annee} : le tableau repose sur la pluie attendue et la vulnérabilité.</p>}
+
+      {etat === 'ok' && (
+        <Detail libelle={fiche ? 'Voir le détail' : `Voir les ${dossiers.length} départements`}>
+          {fiche && (
+            <Groupe titre="Les trois signaux">
+              <dl className="-my-2 divide-y divide-white/[0.07]">
+                <Morceau modele="M1" libelle="Pluie attendue" valeur={fiche.pluie?.pluie_prevue_mm == null ? 'non disponible' : `${mm(fiche.pluie.pluie_prevue_mm)}${fiche.ecart === null ? '' : ` (${nombre(Math.round(fiche.ecart) + 0, { unite: '%', signe: true })})`}`}>
+                  {fiche.pluie && fiche.pluie.pluie_basse_mm !== null && fiche.pluie.pluie_haute_mm !== null && <>Entre {nombre(fiche.pluie.pluie_basse_mm)} et {mm(fiche.pluie.pluie_haute_mm)}, 8 chances sur 10. Normale : {mm(fiche.pluie.pluie_normale_mm)}.</>}
+                </Morceau>
+                <Morceau modele="M3" libelle="Risque pour la récolte" reserve={fiche.recolte?.alerte_fiable ? "prévision de l'année" : 'fiabilité faible : risque habituel, vu fin mai'} valeur={fiche.recolte ? pct(fiche.recolte.proba_chute_pct) : 'non disponible'}>
+                  {fiche.recolte && <>{libelle(fiche.recolte.culture)}, la culture la plus exposée. Habituel : {pct(fiche.recolte.proba_chute_reference_pct)}.<span className="mt-1.5 block"><MarquesRendement ligne={fiche.recolte} quoi="alerte" /></span></>}
+                </Morceau>
+                <div className="py-2">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-sm text-white/70">Vulnérabilité</dt>
+                    <dd className="text-right text-sm font-medium text-white tabular-nums">{fiche.vulnerabilite === null ? 'non notée' : `${nombre(fiche.vulnerabilite)} / 100`}</dd>
+                  </div>
+                  <p className="mt-1 text-2xs leading-snug text-white/60">Indicateur calculé sur le passé (1991-2020), pas un modèle · relatif et indicatif</p>
                 </div>
                 {fiche.ch && <p className="mt-1 text-2xs leading-snug text-white/60">{fiche.ch.libelle_periode_courante ?? 'situation courante'} : phase {fiche.ch.phase_courante ?? 'non disponible'} · {fiche.ch.libelle_periode_projetee ?? 'projection'} : phase {fiche.ch.phase_projetee ?? 'non disponible'}{fiche.ch.note_fusion ? ` · ${fiche.ch.note_fusion}` : ''}</p>}
               </div>
