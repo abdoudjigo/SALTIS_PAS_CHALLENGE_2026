@@ -1,6 +1,14 @@
-# DOMAINE : le nom de domaine (ex. assaman-suuf.com) → HTTPS automatique (Let's Encrypt).
-# Sans domaine : DOMAINE=:80 → le site en http://<IP du VPS> (micro et géolocalisation indisponibles sans HTTPS).
-{$DOMAINE::80} {
+# DOMAINE : le nom de domaine (ex. assaman-suuf.com), obligatoire → HTTPS automatique (Let's Encrypt).
+# Le site n'est jamais servi en HTTP : docker-compose refuse de démarrer sans DOMAINE, et DOMAINE=:80
+# est refusé par Caddy (l'adresse du site impose le schéma https://).
+
+# Tout ce qui arrive en HTTP (le domaine, l'adresse IP du VPS, un autre nom) est renvoyé vers le site en HTTPS.
+# Les défis ACME de Let's Encrypt sont traités par Caddy avant cette règle.
+http:// {
+	redir https://{$DOMAINE}{uri} permanent
+}
+
+https://{$DOMAINE} {
 	encode zstd gzip
 
 	# L'API, jamais exposée directement. Seul /api/* est transmis : /docs, /redoc et /openapi.json ne le sont pas.
@@ -12,11 +20,36 @@
 		reverse_proxy api:8080
 	}
 
+	# Mesure d'audience (Umami) : seuls le script de suivi et la route d'envoi sont publics, sur la même origine
+	# que le site (rien à ajouter à la CSP). Le reste de /stats/* tombe sur la page introuvable.
+	@audience path /stats/script.js /stats/api/send
+	handle @audience {
+		uri strip_prefix /stats
+		reverse_proxy umami:3000
+	}
+
 	# Le site (application d'une seule page)
 	handle {
 		root * /srv
-		try_files {path} /index.html
-		file_server
+		# Un fichier qui existe (scripts, images, contours, robots.txt, sitemap.xml) est servi tel quel
+		@fichier file
+		# Les pages de l'application : même liste que les routes de app/src/App.tsx et que app/src/lib/pages.ts.
+		# Chacune a son HTML pré-rendu (a-propos.html…), avec ses propres balises pour les aperçus de partage.
+		@page path / /a-propos /methode /donnees /contact /mentions-legales /confidentialite /conditions-generales
+		handle @fichier {
+			file_server
+		}
+		handle @page {
+			try_files {path}.html /index.html
+			file_server
+		}
+		# Toute autre adresse : la page introuvable (pré-rendue, noindex), avec le vrai statut 404
+		handle {
+			try_files /404.html /index.html
+			file_server {
+				status 404
+			}
+		}
 		@ressources path /assets/*
 		header @ressources Cache-Control "public, max-age=31536000, immutable"
 		@fonds path /geo/* /logos/*
@@ -27,7 +60,8 @@
 
 	# En-têtes de sécurité, posés sur toutes les réponses (site et API) et prioritaires sur ceux de l'API
 	header {
-		Strict-Transport-Security "max-age=31536000"
+		# HSTS : le navigateur ne revient plus en HTTP pendant un an, sous-domaines compris
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
@@ -39,7 +73,8 @@
 		#   - 'wasm-unsafe-eval' : décodeurs WebAssembly de Mapbox GL v3 (modèles 3D) ; pas de 'unsafe-eval' ni de script en ligne
 		#   - style-src 'unsafe-inline' : styles posés par Mapbox GL et React (attribut style)
 		#   - media-src data: : la voix wolof est jouée depuis une URL data:audio/wav
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.mapbox.com; font-src 'self' data:; connect-src 'self' data: blob: https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com; worker-src 'self' blob:; child-src 'self' blob:; media-src 'self' data: blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		#   - upgrade-insecure-requests : une ressource demandée en http:// est chargée en https://
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.mapbox.com; font-src 'self' data:; connect-src 'self' data: blob: https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com; worker-src 'self' blob:; child-src 'self' blob:; media-src 'self' data: blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
 		-Server
 		-Via
 	}

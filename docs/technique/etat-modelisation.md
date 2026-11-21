@@ -1,0 +1,462 @@
+# État de la modélisation — Projet SALTIS / Assaman & Suuf (équipe AKAI)
+
+Référence partagée de l'équipe pour le volet données : périmètre, décisions validées, règles, état des modèles dbt, points ouverts. Mis à jour à la fin de chaque tâche.
+
+- Dépôt `abdoudjigo/assaman-suuf`, branche `develop` ; le travail de modélisation se fait sur `dev/aby`.
+- Données pour les modèles (accès, tables, variables) : [`ml/README.md`](../../ml/README.md).
+- Modèles d'IA : [`ml/MODELES.md`](../../ml/MODELES.md) ; comparaison des algorithmes : [`docs/technique/rapport-comparaison-modeles.md`](rapport-comparaison-modeles.md).
+- Contrat de données des marts pour l'API et le front (grain, colonnes, unités, limites, exemples) : [`docs/technique/contrat-donnees.md`](contrat-donnees.md).
+- Détail des colonnes des fichiers sources : [`dataset/README.md`](../../dataset/README.md).
+
+État au 11/11/2026 pour les modèles dbt, au 16/11/2026 pour les modèles d'IA (section 3.7).
+
+---
+
+## 1. Le projet
+
+Plateforme d'aide à la décision agricole au Sénégal (SALTIS PAS Challenge 2026), à l'échelle du département (45 départements, 6 zones agroécologiques).
+
+Modules :
+- DataFlow360 (socle données et analyse) ;
+- A. suivi agroclimatique ;
+- B. choix des cultures et des variétés ;
+- C. besoins et rendements ;
+- D. AgroDistrib (stocks, scénarios et allocations d'intrants par organisation).
+
+Chaîne de données : sources → Snowflake `SALTIS.RAW` → dbt (`STAGING` → `INTERMEDIATE` → `MARTS`) → application / BI.
+PostgreSQL gère les données opérationnelles de l'application : utilisateurs, rôles, organisations, déclarations de stocks, scénarios. Aucune donnée d'authentification ne va dans Snowflake.
+
+### Cibles et fonctionnalités (dossier de candidature, référence)
+
+Le dossier de candidature P.A.S Challenge complète la passation pour les fonctionnalités.
+
+**Décision de l'équipe, postérieure à la candidature : les coopératives sont retirées du périmètre.** Pas de type d'organisation « coopérative », pas de rattachement producteur → coopérative, pas de consolidation au niveau coopérative. Les fournisseurs d'intrants restent aussi hors périmètre.
+
+| Cible | Ce qu'elle doit pouvoir faire |
+|---|---|
+| Producteurs (bénéficiaires finaux) | Préparer la campagne, choisir culture et variété, estimer leurs propres besoins |
+| Associations de producteurs de semences (**à trancher** : option B, déclarer leur offre de variétés sans scénario, ou retrait des cibles) | Caractériser leurs variétés, déclarer les semences disponibles, voir l'adéquation variétés × zones |
+| Conseillers agricoles (ANCAR, services techniques) (**à trancher** : maintien recommandé, aucune fonctionnalité propre) | Relayer les recommandations aux producteurs, valider les seuils et les recommandations |
+| Services de l'État et institutions | Anticiper les besoins, planifier, répartir leurs propres intrants |
+| ONG | Cibler les territoires vulnérables, allouer leurs propres ressources |
+| Administrateurs | Utilisateurs, droits, référentiels |
+
+Fonctionnalités en plus du socle déjà prévu :
+- **Avant la campagne** : prévision saisonnière (modèle ML à venir), distincte de l'historique.
+- **Pendant la campagne** : suivi décade par décade, cumul observé comparé à la normale.
+- **Vulnérabilité** : indicateur par département (alertes sécheresse, pluie de l'année sèche, variabilité des pluies et des rendements ; la probabilité de saison sèche est affichée hors score, voir `mart_vulnerabilite_departement`), utilisable comme règle de priorité dans les scénarios.
+- **Besoins à deux niveaux** : producteur et département, distincts (pas de niveau coopérative).
+- **Offre de semences** (si les associations de semenciers sont confirmées) : variétés disponibles déclarées, rapprochées des besoins et de l'adéquation.
+- **Validation par des spécialistes** : statut de validation porté par chaque référence agronomique et chaque recommandation.
+
+Sources futures citées dans la candidature, absentes de RAW aujourd'hui : ERA5-Land, ESA WorldCover, MODIS, stations météo locales. Ne pas créer de modèles avant leur ingestion.
+
+---
+
+## 2. Règles validées
+
+1. Ne jamais inventer de source RAW ou de modèle STAGING inexistant.
+2. Un modèle qui dépend d'une source à venir est désactivé avec `config(enabled=false)`, pas supprimé. On désactive le staging et la dimension ensemble.
+3. Les stocks sont gérés par **organisation** (pas par département) et ne sont jamais mutualisés entre organisations. Une organisation est une ONG ou un service de l'État (association de producteurs de semences : à confirmer). Les coopératives et les fournisseurs d'intrants sont hors périmètre, tout comme la logistique physique (entrepôts, transport).
+4. Les scénarios sont **générés par la solution** (algorithme de répartition), pas construits à la main par l'organisation. L'organisation fournit son stock et ses priorités, compare les propositions, peut les ajuster, puis valide. Un scénario est toujours rattaché à l'organisation dont il répartit le stock. Les quantités proposées par l'algorithme et les quantités validées restent distinctes. Chaque scénario conserve la méthode, la version de l'algorithme et les paramètres utilisés.
+5. Les besoins doivent pouvoir être calculés au niveau départemental et au niveau du producteur, sans être confondus.
+6. Les anciennes simulations (`D_SCENARIOS_REPARTITION`) ne sont pas de vrais scénarios. `D_STOCKS_DISPONIBLES` est vide et suit un ancien modèle par département : ne pas l'utiliser pour les stocks.
+7. Besoins historiques ou de référence ≠ besoins prévisionnels.
+8. Les doses agronomiques incomplètes ne sont jamais présentées comme validées.
+9. Chaque fait garde son grain d'origine : on ne mélange pas département, zone et national, et on ne remplace jamais une valeur manquante par zéro. Précision validée : il est interdit de recopier une valeur de zone sur les départements **puis de l'additionner** (double comptage) ; la porter comme attribut non additif servant à classer est autorisé (ex. potentiel de gain dans `mart_territoires_agrodistrib`, avec `niveau_source_potentiel = 'ZONE'`).
+
+---
+
+## 3. État des modèles
+
+Résumé (19/11/2026) : 51 modèles actifs (20 staging, 3 intermediate, 8 dimensions, 11 faits, 9 marts), 5 seeds, 348 tests, **tous OK** (total en section 3.6).
+
+### 3.1 Préparation (étape 1, T0, corrections)
+
+- **Étape 1** :
+  - modèles sans source désactivés : `stg_organisations`, `stg_intrants`, `dim_organisation`, `dim_intrant` (réactivée en A4 sur le seed `ref_intrants`), `dim_scenario_allocation` ;
+  - `dim_variete` corrigé (`tolerance_secheresse`, `disponibilite_semences`) ;
+  - `int_reference_besoins_departement_culture` déplacé dans `SALTIS.INTERMEDIATE` (ancienne vue de `PUBLIC` supprimée).
+- **Corrections** : commentaire de `dim_geographie` (zone et région parallèles) ; `fact_rendement_valeurs_valides.sql` déplacé de `models/marts/` vers `tests/` (aucun objet n'avait été construit dans `SALTIS.MARTS`).
+- **T0, nettoyage des anciens marts** : les 8 `mart_*.sql` (copies du staging : `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_adequation_varietes`, `mart_besoins`, `mart_rendements`, `mart_facteurs_limitants`, `mart_agrodistrib`) sont supprimés, ainsi que leurs blocs dans `_marts.yml` et `tests/mart_grains_uniques.sql`. Le script `snowflake/00_drop_anciens_marts.sql` est à exécuter à la main (voir section 6). Après T0 : 26 modèles actifs, 74 tests OK.
+  - Références restantes, non modifiées : `api/main.py` (voir section 7), `README.md`, `dbt/README.md`, `docs/technique/README-constellation.md` (`mart_besoins_intrants`), commentaire de `fact_saison_departement.sql` (`mart_profil_agro`). À traiter en D1.
+
+### 3.2 Dimensions
+
+- **Étape 2** :
+  - `dim_temps` : décades limitées à 3 par mois (le 31 tombe en décade 3), dates générées par `row_number()`, ajout de `libelle_decade` et `est_decade_saison` ;
+  - `dim_geographie` basée sur `stg_profil_agroclimatique` ;
+  - 29 tests sur les dimensions passent (à l'étape 2).
+- Volumes : `dim_temps` 20 454 (1980–2035), `dim_geographie` 45, `dim_region` 14, `dim_zone_agroecologique` 6, `dim_culture` 12, `dim_variete` 3, `dim_intrant` 9.
+- **A1, géographie** :
+  - `dim_region` (14 régions, `nb_departements`, `superficie_km2`) depuis `stg_profil_agroclimatique`, macro `cle_region` ; `id_region` ajouté à `dim_geographie` (qui utilise désormais les macros pour ses trois clés, mêmes valeurs). Aucun lien région → zone.
+  - `code_region` dans `dim_region` et `dim_geographie`, déduit du code département (règle GADM `SEN.10.1_1` → `SEN.10_1`, à confirmer avec `GID_1`) ; test `tests/dim_region_code_region_coherent.sql` (14 codes ↔ 14 noms).
+  - À l'origine, aucune coordonnée ni géométrie : ni dans le dépôt, ni dans `SALTIS.RAW`, ni dans `../data_fr_bis.zip` (mêmes 17 CSV que `dataset/`). `departement_statique` et `stations_pluie_mois`, cités dans `docs/technique/README-constellation.md`, n'ont jamais été livrés. Coordonnées et contours des zones fournis ensuite par Ibrahima (voir « Nouveaux référentiels » ci-dessous).
+  - **Contours GADM préparés, non actifs** (l'équipe récupère GADM 4.1 Sénégal niveau 2) :
+    - `snowflake/40_cadre_harmonise_raw.sql` : table RAW du Cadre harmonisé, avant le chargement par `ingestion/collecte/cadre_harmonise/charger_snowflake.py --confirmer`.
+- `snowflake/10_geo_departements.sql` : DDL de `RAW.GEO_DEPARTEMENTS` (`gid_2`, `gid_1`, `nom_departement`, `latitude_centroide`, `longitude_centroide`, `superficie_km2`, `geometrie GEOGRAPHY`) et exemple de chargement GeoJSON commenté ;
+    - source `raw.geo_departements`, `stg_geo_departements`, branche latitude/longitude de `dim_geographie` (`gid_2 = code_departement`) et test `tests/geo_departements_correspondance.sql` (45 départements ↔ 45 `gid_2`, `gid_1 = code_region`) ;
+    - un seul interrupteur : variable `geo_departements_charge` (false) dans `dbt_project.yml`. La passer à true après chargement : GADM sert aux **contours des départements** et ajoute `latitude_centroide_gadm` / `longitude_centroide_gadm` à `dim_geographie`, sans remplacer `latitude` / `longitude` (seed `ref_departements`).
+  - **Licence GADM** : usage non commercial uniquement, citation obligatoire (« GADM, version 4.1, https://gadm.org »). Le front utilisera un GeoJSON simplifié tiré du même fichier GADM (mêmes `GID_2`).
+- **Zone et région ne sont pas emboîtées** : un département appartient à une seule zone et à une seule région, mais Louga, Matam et Tambacounda s'étendent chacune sur deux zones. Zone et région sont deux regroupements parallèles des départements. Ne pas coder une hiérarchie zone → région.
+- **Nouveaux référentiels (Ibrahima, 11/11/2026)**, rangés dans `data/referentiels/` (dossier non ignoré par git) :
+  - `departements_zones_agroecologiques.csv` : codes, noms, régions et zones identiques à `dim_geographie` ; nouveaux : `lat`, `lon`, `zone_secondaire`. → seed `dbt/seeds/ref_departements.csv` (code, nom, zone, zone secondaire, latitude, longitude). `dim_geographie` gagne `latitude`, `longitude` (45/45) et `zone_secondaire` (8 départements de transition : Koungheul, Kébémer, Linguère, Louga, Saint-Louis, Bakel, Koupentoum, Tivaouane). **`zone_secondaire` est une information, jamais une clé d'agrégation.** `latitude`, `longitude` et `zone_secondaire` reportées dans `mart_carte_agroclimat`. Test `tests/ref_departements_correspondance.sql` (45 départements avec coordonnées, zone du fichier = zone de `dim_geographie`, emprise du Sénégal, zone secondaire ≠ zone principale).
+  - `besoins_cultures.csv` : 12 cultures et durées de cycle identiques ; nouveaux : `nom_fao`, `t_base_c`, `kc_ini`, `kc_mid`, `kc_end`. → seed `dbt/seeds/ref_cultures.csv` (fichier repris tel quel). `dim_culture` gagne `nom_fao`, `t_base_c`, `kc_ini`, `kc_mid`, `kc_end`, `cycle_min_jours` et `cycle_max_jours` (découpés de « 85-95 »). Test `tests/ref_cultures_correspondance.sql` (12 cultures, min et max = cycles court et long de `fact_adequation_culture` dans tous les départements, bornes des Kc et de la température de base).
+  - `zones_agroecologiques.geojson` : contours des 6 zones (pas des départements), hors dbt, copié dans `app/public/geo/zones_agroecologiques.geojson` ; jointure par `zone_agroecologique` en majuscules (section « Fonds de carte » de `contrat-donnees.md`).
+  - `doses_engrais.csv` et `doses_semis.csv` : identiques à `c_besoins_par_hectare` (72 zone × culture, doses et statuts) ; ce sont les référentiels d'origine. **Non chargés dans dbt** : base pour compléter les doses ISRA (section 6).
+- `dim_intrant` : réactivée sur le seed `seeds/ref_intrants.csv` (9 codes, teneurs NPK 15-15-15, urée 46-0-0, DAP 18-46-0 ; fumier, semences, éléments et eau sans teneur) ; `stg_intrants` reste désactivé. Seed construit dans `SALTIS.STAGING`. **Note pour C3** : `SALTIS.APP.intrants` reprendra ces 9 `code_intrant`.
+
+### 3.3 Faits du module A (agroclimat)
+
+- **Étape 3** : `fact_rendement_departement`
+  - grain : département × campagne × culture ;
+  - 22 905 lignes, dont 8 244 avec `est_observe = true` (au moins une valeur publiée), campagnes 1981 à 2021 observées ;
+  - 8 040 lignes avec un rendement renseigné : `est_observe` inclut 204 lignes sans rendement (58 superficie seule, 14 production seule, 132 superficie et production sans rendement publié). Pour un calcul sur le rendement, filtrer sur `rendement_kg_ha is not null` ;
+  - variables climatiques départementales et données nationales (`engrais_total_kg_ha`, `rendement_national_kg_ha`) exclues ;
+  - tests OK (génériques et `tests/fact_rendement_valeurs_valides.sql`).
+- **Étape 4** : `fact_saison_departement`
+  - grain : département × campagne, 2 025 lignes, 1981–2025 ;
+  - Guédiawaye passe par NASA POWER (45 lignes) ;
+  - c'est la source de référence des variables climatiques départementales ;
+  - tests OK : 10 génériques et `tests/fact_saison_valeurs_valides.sql` ;
+  - **contrôle de cohérence de la pluie avec la source des rendements validé** (0 écart dans Snowflake, contrôle fait par l'équipe le 10/11/2026).
+- **Étape 5** : `fact_pluviometrie_decadaire`
+  - grain : département × année × décade (`numero_decade_annee` 1 à 36), 71 280 lignes, 44 départements (Guédiawaye absent), 1981–2025 ;
+  - `campagne_agricole` calculée comme dans `dim_temps` ; cumul et part de saison renseignés pour les décades 16 à 30 uniquement, nuls ailleurs ;
+  - colonnes dérivées : `est_decade_saison`, `cumul_normale_depuis_juin_mm`, `ecart_cumul_normale_mm` ;
+  - anomalie nulle quand la normale de la décade est < 1 mm ; `decade_seche` n'a de sens qu'avec `est_decade_saison` ;
+  - tests OK : 13 génériques et `tests/fact_pluviometrie_valeurs_valides.sql`.
+- **Étape 6** : `fact_climatologie_decadaire`
+  - union de `stg_repartition_pluie_departement` et `stg_repartition_pluie_zone`, normales 1991-2020 (`periode_reference`) ;
+  - grain : `niveau_geographique` (`DEPARTEMENT` / `ZONE`) × territoire × `numero_decade_annee` ; 1 584 lignes département (44, Guédiawaye absent) + 216 lignes zone = 1 800 ;
+  - une seule clé renseignée par ligne (`id_departement` ou `id_zone_agroecologique`) ; zone jamais recalculée depuis les départements ;
+  - mesures non additives ; `pluie_1_annee_sur_5_mm` = quantile bas, `pluie_4_annees_sur_5_mm` = quantile haut (vérifié) ; totaux de saison constants exclus ;
+  - tests OK : 11 génériques et `tests/fact_climatologie_valeurs_valides.sql` (grain, clé selon le niveau, probabilités, ordre des quantiles, part cumulée croissante).
+
+### 3.4 Faits des modules B et C
+
+- **A2, étape 7** : `fact_adequation_culture` et `fact_adequation_variete` (module B)
+  - `fact_adequation_culture` : département × culture × `classe_cycle`, 1 620 lignes (45 × 12 × 3). Exclus car constants sur les 3 cycles (vérifié) : `rendement_moyen_kg_ha`, `variabilite_rendement_cv_pct`, `classe_texture`, `ph_eau`, `reserve_utile_mm`.
+  - Calcul du score par la source, vérifié sur les 1 080 lignes notées, non corrigé : `score = round(0,6 × proba_cycle_couvert_pct du cycle + 0,4 × proba_besoin_eau_couvert_pct du cycle moyen)`. Les cycles court et long reprennent la probabilité « eau » du cycle moyen, d'où `proba_besoin_eau_couvert_pct` renseignée seulement pour le cycle moyen.
+  - **Règle de seuils retenue (celle de la source)**, sur le score arrondi : `adaptée` si score > 80, `à risque` si score > 50 (et ≤ 80), `déconseillée` sinon (14 lignes pile à 80 ou 50). `dataset/README.md` corrigé (il annonçait ≥ 80). Variétés : seuil différent, `adaptée` dès `proba_cycle_couvert_pct` ≥ 80 (une ligne à 80,0 classée adaptée), conforme au README. Score nul seulement pour `irrigation requise` (riz irrigué, oignon, tomate : 405) et `non évaluée (culture pluriannuelle)` (manioc : 135).
+  - `fact_adequation_variete` : département × variété, 90 lignes (45 × 2), `id_culture` conservé et testé égal à celui de `dim_variete`. Mil souna (type hâtif) absent (cycle inconnu) ; Sahel 177 sans `proba_cycle_couvert_pct` (irrigué). `cycle_jours` et `zones_recommandees` laissés à `dim_variete`.
+  - tests OK : 21 génériques et `tests/fact_adequation_valeurs_valides.sql`. Après A2 : 107 tests OK, 29 modèles actifs.
+- **Couverture en eau des 3 cycles (11/11/2026)** : la source ne calcule `proba_besoin_eau_couvert_pct` que pour le cycle moyen et la reprend dans le score des cycles court et long. On la calcule nous-mêmes, **sans modifier les colonnes de la source**.
+  - `int_couverture_eau_cycle` (vue `INTERMEDIATE`), grain département × culture × `classe_cycle`, méthode `FAO décadaire v1` :
+    - années 1991-2020 ; décade de début = décade de l'année contenant `debut_saison_jour` (`decade_mois = least(ceil(jour / 10), 3)`) ;
+    - `ceil(cycle_jours / 10)` décades à partir de la décade de début. Le cycle peut dépasser la décade 30. **Au-delà de la décade 36, il se poursuit sur janvier de l'année suivante** : sans cela, le coton (15 à 18 décades) perdait les années à démarrage tardif, jusqu'à ne garder que 2 années dans le nord ;
+    - pluie efficace par décade : `0,8 × P − 25/3` si P > 25 mm, sinon `max(0,6 × P − 10/3, 0)` ;
+    - année couverte si la somme des pluies efficaces ≥ 0,8 × `besoin_eau_estime_mm` du cycle ;
+    - probabilité = 100 × années couvertes / années avec un début de saison et toutes les décades du cycle (`nb_annees_calc`, 28 à 30) ;
+    - NULL pour Guédiawaye (pas de données décadaires), `irrigation requise` et `non évaluée (culture pluriannuelle)`. 1 056 lignes calculées sur 1 620.
+  - Les sources sont lues en staging (`stg_saisons`, `stg_suivi_pluie`, `stg_adequation`). Ce sont les mêmes valeurs que les faits, mais `fact_adequation_culture` peut ainsi s'appuyer sur ce modèle sans créer de boucle.
+  - **Contrôle sur le cycle moyen** (test `tests/int_couverture_eau_cycle_controle_moyen.sql`, échec si écart moyen > 7 points ou corrélation < 0,95) : 352 couples, écart absolu moyen **4,95 points**, corrélation **0,984**, biais −3,5 points (calcul un peu plus sévère), écart maximal 30 points. Hors comparaison : manioc (la source met 0) et Guédiawaye.
+  - **Ancrage sur le cycle moyen de la source (version retenue)**. Le calcul brut du cycle moyen s'écarte de la source (biais de −3,5 points) et changeait 22 niveaux du cycle moyen sans raison agronomique. On ne garde donc du calcul décadaire que **l'écart entre cycles** :
+    - cycle moyen : `proba_besoin_eau_couvert_final_pct` = valeur de la source ;
+    - cycles court et long : proba finale = proba du cycle moyen (source) + (proba calculée du cycle − proba calculée du cycle moyen), bornée entre 0 et 100 (23 lignes atteignent une borne) ;
+    - `methode_eau` = `FAO décadaire v1, ancrage sur le cycle moyen de la source`.
+  - `fact_adequation_culture` gagne :
+    - `proba_besoin_eau_couvert_calc_pct` et `nb_annees_calc` : calcul brut, gardé pour la traçabilité et pour le contrôle B2 ;
+    - `proba_besoin_eau_couvert_final_pct` ;
+    - `score_adequation_final` (`round(0,6 × proba_cycle + 0,4 × proba finale)`) ;
+    - `niveau_adequation_final` (mêmes seuils que la source : > 80, > 50 ; niveau de la source pour `irrigation requise` et `non évaluée` ; NULL pour les cycles court et long de Guédiawaye) ;
+    - `methode_eau`.
+    1 064 lignes ont une valeur finale (1 056 + les 8 lignes du cycle moyen de Guédiawaye, reprises de la source).
+  - Effet : **25 lignes changent de niveau** sur 1 064 : 15 en cycle court, 0 en cycle moyen, 10 en cycle long. 15 vers mieux (9 déconseillée → à risque, 6 à risque → adaptée), 10 vers moins bien (3 adaptée → à risque, 7 à risque → déconseillée). Les cycles courts s'améliorent (14 hausses sur 15) ; les cycles longs se dégradent (9 baisses sur 10, dont 4 pour le sésame).
+  - Tests :
+    - probabilités et score finaux entre 0 et 100 ;
+    - score final recalculé depuis ses composantes ;
+    - cohérence score / niveau, valeurs acceptées du niveau ;
+    - **cycle moyen : proba finale = proba de la source** ;
+    - cycles court et long : proba finale = ancrage recalculé (à 0,01 près).
+    Le contrôle B2 (`int_couverture_eau_cycle_controle_moyen`) porte toujours sur le calcul brut.
+- **A3, étape 8** : `fact_facteurs_limitants` (module C)
+  - grain : zone × culture, 72 lignes (6 × 12) ; clés `cle_zone`, `cle_culture` ;
+  - colonnes : `nb_observations`, rendements moyen et atteignable, écart, `source_rendement`, `est_rendement_national`, facteur limitant principal, 4 corrélations, 3 recommandations de sol (booléens, depuis `oui`/`non`) ;
+  - `données insuffisantes` (33 lignes) et `aucun facteur climatique net` (4) sont des valeurs légitimes ;
+  - **16 lignes à rendement national FAOSTAT recopié sur la zone** (`est_rendement_national = true`, ex. oignon 30 555,71 kg/ha dans 6 zones), toutes en `données insuffisantes` ; conservées telles quelles (décision validée ; règle d'usage en section 4) ;
+  - écart négatif pour Vallée du fleuve × Sésame (−26,12) ; `correlation_chaleur` nulle pour 5 cultures des Niayes ; `apport_organique_recommande` toujours faux ;
+  - exclus : `adequation_cycle` (voir `fact_adequation_culture`), `besoin_irrigation_normal_mm` (repris en A4 comme intrant `EAU_IRRIGATION` de `fact_reference_agronomique` : volume m³/ha et besoin mm, statut « estimation FAO-56, efficience 60 % ») ;
+  - tests OK : 17 génériques et `tests/fact_facteurs_limitants_valeurs_valides.sql`. Après A3 : 125 tests OK.
+- **A4, étape 9** : `fact_reference_agronomique` (depuis `stg_besoins_hectare`)
+  - grain : zone (nullable = dose nationale) × culture × `code_intrant` × `source_reference`, pour que les doses ISRA s'ajoutent sans écraser les références actuelles ; `portee_geographique` (`ZONE` / `NATIONAL`), `unite`, `date_reception` (nulle aujourd'hui), `note_source` (texte d'origine) ;
+  - intrants : `PRODUIT` (NPK_15_15_15, UREE, DAP_18_46_0 en kg/ha, FUMIER en t/ha, SEMENCES en kg/ha), `ELEMENT` (N, P2O5, K2O en kg/ha), `EAU` (EAU_IRRIGATION en m³/ha, avec `besoin_eau_mm`) ;
+  - **on n'additionne jamais des types ou des unités différents** (produits et éléments décrivent la même fertilisation) ; test garde-fou : un `code_intrant` = un seul type et une seule unité ;
+  - **dose à 0 conservée** (produit absent de la formule, irrigation inutile en année normale : 0 = besoin nul) ; dose inconnue = aucune ligne (= dose à saisir, visible dans `mart_besoins` en B2) ;
+  - correspondance des statuts validée (macros partagées `macros/statuts_doses.sql`) : Tounkara 2022 (Casamance × mil) et Faye 2020 (Vallée × riz, engrais et semis) → `A_CONFIRMER` ; mil extrapolé aux 5 autres zones, formule N120 P60 K60 (source web), semis riz hors Vallée → `NON_VERIFIEE` ; irrigation → `A_CONFIRMER` (« estimation calculée (FAO-56, efficience 60 %), non mesurée ») ; `VALIDEE` réservé aux doses validées par un spécialiste (aucune aujourd'hui, et toujours avec `date_reception`) ; « à compléter » → pas de ligne ;
+  - volumes : 141 lignes = EAU 72 (A_CONFIRMER, dont 22 à 0) + ELEMENT 27 (6 A_CONFIRMER, 21 NON_VERIFIEE) + PRODUIT 42 (9 A_CONFIRMER, 33 NON_VERIFIEE) ; 35 doses à 0 ;
+  - `besoin_irrigation_normal_mm` identique dans `stg_besoins_hectare` et `stg_facteurs_limitants` (72/72) ;
+  - tests OK : génériques (dont `code_intrant` → `dim_intrant`), `tests/fact_reference_agronomique_valeurs_valides.sql` et `tests/fact_reference_agronomique_bilan_elements.sql` (pour chaque zone × culture × source : N = Σ produit × teneur N, idem P2O5 et K2O, à 0,1 kg près).
+- **A5, étape 10** : `fact_besoin_reference` (depuis `int_reference_besoins_departement_culture`)
+  - **besoins de référence historiques, pas prévisionnels** ; grain : département × culture, 367 lignes, 43 départements (**Guédiawaye et Pikine absents** : aucune superficie de référence) ;
+  - colonnes : `superficie_reference_ha`, `annees_reference`, `type_superficie` (semée 350, récoltée 17), 8 besoins en t (N, P2O5, K2O, NPK, urée, DAP, fumier, semences), `besoin_semences_applicable`, `statut_validation_engrais` / `_semis` et `source_reference_engrais` / `_semis`, `coherence_dose_n`, `coherence_dose_semis` ;
+  - statuts calculés par les macros `macros/statuts_doses.sql`, partagées avec `fact_reference_agronomique` (refonte sans changement de résultat) ; « densité documentée » (semis mil) → `A_COMPLETER` ;
+  - besoin = superficie × dose de la zone / 1000, vérifié par rapport à `fact_reference_agronomique` (à 0,05 t) pour les 8 besoins ;
+  - **règle NULL / 0, vérifiée et testée sur les 8 besoins** : dose inconnue (statut `A_COMPLETER`) → besoin **NULL**, jamais 0 ; dose à 0 → besoin à 0 ; superficie de référence à 0 → besoin à 0 (22 lignes) ;
+  - `besoin_semences_applicable` (booléen) : faux pour « Riz (irrigué) » en Casamance (9 départements, 7 858 t), vrai ailleurs ; la valeur de `besoin_semences_t` n'est pas modifiée ; testé ;
+  - `coherence_dose_*` : uniquement `COHERENT` ou `A_VERIFIER`, aucun `ECART` ;
+  - `annees_reference` très hétérogène : 2019-2021 pour 279 lignes, mais jusqu'à 2003-2004 ;
+  - exclus : doses et irrigation par hectare (références de zone recopiées sur chaque département ; jointure par zone vers `fact_reference_agronomique`) ;
+  - riz : 38 départements avec besoin en semences, dont Casamance 7 858 t sur 10 929 t (dose de repiquage irrigué appliquée au riz surtout pluvial, voir section 4) ;
+  - tests OK : 16 génériques et `tests/fact_besoin_reference_valeurs_valides.sql`. Après A5 : 174 tests OK.
+
+### 3.5 Marts
+
+- **A6, étape 11** : `mart_vulnerabilite_departement` (validé)
+  - grain : département, 45 lignes ; codes lisibles, pas de clé md5 ; score **relatif et indicatif**, méthode `v1` ;
+  - normalisation : rang centile 0-100 parmi les départements (ex aequo au rang moyen, macro `rang_centile` dans `macros/scores.sql`), 100 = le plus vulnérable ;
+  - **aléa sécheresse (60 %)** = moyenne des rangs de `freq_alerte_secheresse_pct` (1991-2020), `variabilite_pluie_cv_pct` et `pluie_saison_annee_seche_mm` (sens inverse : moins de pluie = plus vulnérable). `proba_saison_seche_pct` remplacée (SPI relatif à chaque département, 7 valeurs seulement), affichée comme indicateur brut ;
+  - **sensibilité des rendements (40 %)** = 0,7 × rang de `variabilite_rendement_pct` + 0,3 × rang inversé de `tendance_rendement_pct_an`, sur **1991-2015 seulement** (rupture superficie récoltée / semée en 2016), lignes avec `rendement_kg_ha is not null` (pas `est_observe`) pour les compteurs, la variabilité, la tendance et la pondération par la superficie moyenne, cultures avec au moins 10 campagnes ; `periode_rendement = '1991-2015'`. Alignement sur cette règle sans effet sur le classement (ρ = 1,00, top 10 identique ; 41 lignes sans rendement retirées des compteurs) ;
+  - hors score, affichés : `freq_alerte_exces_pct` (seuil absolu, mesure surtout un climat humide), `proba_saison_seche_pct`, `proba_sequence_seche_15j_pct` (redondant avec les alertes, ρ = 0,91), `part_cultures_pct` (déjà pris en compte par le besoin dans AgroDistrib) ;
+  - `confiance_rendement = 'faible'` si moins de 3 cultures ou moins de 15 campagnes observées au total (couples culture × campagne) : la sensibilité est alors NULL et ses indicateurs de rendement sont exclus du calcul des rangs des autres départements ; seul Dakar est concerné ;
+  - score NULL si une dimension manque, jamais remplacé par 0 : Guédiawaye et Pikine (aucun rendement), Dakar (confiance faible) ; leur aléa sécheresse reste affiché ;
+  - classes par quintiles calculés sur les 42 départements notés (9, 9, 8, 8, 8), libellées « (relatif) » ;
+  - effet des décisions : ρ = 0,88 avec l'aperçu initial (0,92 pour la seule période 1991-2015) ; top 5 : Saint-Louis, Matam, Dagana, Rufisque, Kébémer ; bas : Kédougou, Salémata, Saraya, Kolda, Tambacounda ;
+  - tests OK : 9 génériques et `tests/mart_vulnerabilite_valeurs_valides.sql` (recalcul du score, NULL, confiance faible, quintiles).
+
+- **B1** : `mart_ml_prevision_pluie` (pour l'équipe ML, voir [`ml/README.md`](../../ml/README.md))
+  - grain : département × année, 2 025 lignes (45 × 1981-2025) ; codes lisibles, pas de clé md5 ;
+  - variables connues fin mai seulement : `indice_oni_mars_mai`, `indice_tna_mars_mai`, `indice_tsa_mars_mai`, `indice_amo_mars_mai`, `pluie_saison_n_moins_1_mm`, `humidite_sol_avril_mai_m3_m3`, `pluie_normale_saison_mm`, plus `nb_variables_manquantes` ;
+  - cibles `pluie_saison_mm` et `classe_saison` issues de `fact_saison_departement` (identiques à la table de prédicteurs : 0 écart) ;
+  - `jeu` : `ENTRAINEMENT` (≤ 2015, 1 575 lignes) / `TEST` (2016-2025, 450 lignes) ; découpage temporel, jamais aléatoire ;
+  - vérifié : indices océaniques identiques pour tous les départements d'une même année ; **AMO : dernière valeur en 2022, nulle de 2023 à 2025** (135 lignes) ; pluie N-1 = cible de l'année précédente, nulle seulement en 1981 ; normale identique au profil ;
+  - humidité du sol nulle sur 282 lignes : 6 départements côtiers sur toute la période (Dakar, Guédiawaye, Pikine, Rufisque, Oussouye, Ziguinchor), Goudomp (4 années entre 1989 et 2003), 8 départements en 1986 ; les valeurs nulles restent nulles ;
+  - la normale 1991-2020 chevauche le jeu de test (2016-2020) ; les variables de saison (connues après fin mai) sont volontairement absentes ;
+  - tests OK : 8 génériques et `tests/mart_ml_prevision_pluie_valeurs_valides.sql` (grain, volume, découpage, indices par année, pluie N-1, variables obligatoires).
+
+- **B2, marts par écran** (pour l'API et le front ; contrat détaillé dans [`contrat-donnees.md`](contrat-donnees.md)). Tous à plat, codes lisibles, sans clé md5 ; tests génériques dans `_marts.yml` et `tests/marts_ecrans_valeurs_valides.sql`.
+  - `mart_carte_agroclimat` : département × campagne, 2 025 lignes ; `latitude`, `longitude` et `zone_secondaire` (seed `ref_departements`) ; variables de `fact_saison_departement`, normale du profil, `risque_saison` (règle à 4 valeurs : 943 normal, 629 excès, 363 sécheresse, 90 les deux), `score_vulnerabilite` et `classe_vulnerabilite` (un seul écran carte ; NULL pour Dakar, Guédiawaye, Pikine) ;
+  - `mart_suivi_decadaire` : département × année × décade, 71 280 lignes (44 départements) ; observé, normale et écart côte à côte (décade et cumul), fourchette climatologique 1991-2020 du département, `libelle_decade` selon l'année ; `pluie_normale_mm` = moyenne 1991-2020 de `fact_climatologie_decadaire` (vérifié, 1 584/1 584) ;
+  - `mart_choix_cultures` : département × culture × `type_option` (`CYCLE` / `VARIETE`) × option, 1 710 lignes (1 620 + 90), colonnes propres à un type NULL pour l'autre ; `rang_option` sur `proba_cycle_couvert_pct` (NULL pour le manioc et Sahel 177) ; **valeurs principales = valeurs finales de l'équipe** (`score_adequation`, `proba_besoin_eau_couvert_pct`, `niveau_adequation`, depuis les colonnes `_final`), valeurs de la source à côté (`_source`, inchangées), `methode_niveau` (`FAO décadaire v1, ancrage sur le cycle moyen de la source` 1 064, `source` 630, `source, sans données décadaires` 16 pour les cycles court et long de Guédiawaye, qui gardent le niveau de la source), `note_score` (« probabilité eau de la source » pour le cycle moyen, « probabilité eau ancrée sur le cycle moyen de la source (écart décadaire entre cycles) » pour les cycles court et long) ; unicité du grain testée ;
+  - `mart_besoins` : département × culture depuis `dim_geographie`, 369 lignes (367 + Guédiawaye et Pikine avec « pas de superficie agricole de référence ») ; `besoin_semences_retenu_t` (riz pluvial de Casamance exclu, 9 lignes « non applicable (riz pluvial) »), `reference_anterieure_2015` (dernière année de référence < 2015 : 13 lignes), `irrigation_totale_m3` seulement si « irrigation requise » (41 lignes), libellés « dose à saisir » / « superficie de référence nulle » / « calculé » ;
+  - `mart_territoires_agrodistrib` : département × culture avec superficie de référence > 0, 345 lignes (43 départements) ; `besoin_semences_applicable` et `besoin_semences_retenu_t` ; additifs : superficie et besoins ; non additifs : tout le reste. Potentiel de gain : valeurs de zone, `niveau_source_potentiel = 'ZONE'`, `potentiel_gain_kg_ha` NULL quand `est_rendement_national` (aucune ligne concernée aujourd'hui : les rendements nationaux recopiés portent sur des couples zone × culture sans superficie départementale) ; meilleur niveau d'adéquation, sol du département, recommandations de zone, vulnérabilité.
+- **Précision validée sur la règle 9** : elle interdit de recopier une valeur de zone sur les départements **puis de l'additionner** (double comptage). Porter une valeur de zone comme attribut non additif servant à classer est autorisé (spécification AgroDistrib) ; ces colonnes ne distinguent pas les départements d'une même zone.
+- **D, documentation** :
+  - D1 : `dbt/README.md` réécrit (dimensions, faits, marts réellement construits, anciens marts supprimés) ; `README.md` (modules et marts) ; `docs/technique/README-constellation.md` (hiérarchie corrigée : zone et région parallèles ; encadré d'état de mise en œuvre en tête : construit, non construit et pourquoi, faits ajoutés, marts par écran, anciens marts supprimés) ; coopératives retirées de `dataset/README.md` ; commentaire de `fact_saison_departement.sql` mis à jour ;
+  - D2 : [`docs/technique/contrat-donnees.md`](contrat-donnees.md) (7 marts : grain, colonnes, unités, limites, exemple de requête vérifié) ;
+  - D3 : `dbt docs generate` fonctionne (catalogue et site générés dans `dbt/target/`).
+
+### 3.6 Total
+
+- Après B2 et D : 40 modèles actifs (16 staging, 1 intermediate, 7 dimensions, 9 faits, 7 marts), 1 seed, **221 tests, tous OK**.
+- Après les nouveaux référentiels et la couverture en eau (11/11/2026) : 41 modèles actifs (16 staging, 2 intermediate, 7 dimensions, 9 faits, 7 marts), 3 seeds (`ref_intrants`, `ref_departements`, `ref_cultures`), **238 tests, tous OK** (282 nœuds au `dbt build`).
+- **19/11/2026, doses PIA, prix et Cadre harmonisé** (sections 6 et 10) : nouveaux `ref_doses_pia`, `ref_prix_intrants` (seeds), `int_reference_dose`, `dim_prix_intrant`, `stg_cadre_harmonise`, `fact_cadre_harmonise`, `mart_cadre_harmonise_departement`. Volumes : `int_reference_dose` 345 candidates (280 retenues), `fact_reference_agronomique` 175, `fact_besoin_reference` 367 (249 avec formule d'engrais), `mart_besoins` 369, `mart_territoires_agrodistrib` 345, `dim_prix_intrant` 5, `fact_cadre_harmonise` 2 127 (25 cycles, 2014-2026), `mart_cadre_harmonise_departement` 45. Build ciblé : 319 nœuds, 0 erreur. Total : 51 modèles, 5 seeds, **348 tests**.
+
+### 3.7 Modèles d'IA (`ml/`)
+
+- **Comparaison des algorithmes (16/11/2026)** : 6 familles (linéaire régularisé, k plus proches voisins, forêt aléatoire, gradient boosting, XGBoost, réseau de neurones) comparées à des références, pour les trois parties de `ml/README.md`. Code et méthode dans `ml/comparaison/`, résultats dans `ml/sorties/comparaison_*.csv`, rapport dans [`rapport-comparaison-modeles.md`](rapport-comparaison-modeles.md).
+  - Validation temporelle (jamais d'années mélangées), réglages choisis sur la validation, test regardé une fois. Intervalles à 90 % calculés sur des années entières.
+  - **Pluie de saison** : linéaire régularisé retenu (test 2016-2025 : RMSE 111 mm contre 122 mm pour la normale, RPSS +0,22). Les 6 familles sont équivalentes en validation.
+  - **Rendement** : aucune famille ne bat la tendance (moyenne des 10 campagnes précédentes) ; pour la chute de la récolte, le linéaire est devant en validation, sans gain prouvé sur le test.
+  - **AgroDistrib** : pas de vérité observée, donc comparaison de 6 méthodes de répartition au prorata du besoin (cas : 20 000 t de NPK pour le mil). Prorata multicritère retenu, avec l'arbitrage rendement / équité α réglé par le décideur. Vulnérabilité et valeur indicative tirent en sens inverse (corrélation de rang −0,56).
+  - **Aucun moteur en service ne change** : `m1-v1` et `m3-v1` sont déjà linéaires régularisés. Les sorties servies par l'API n'ont pas été recalculées.
+- **Correspondance avec `ml/README.md`** : le modèle 1 correspond à la partie 1, le modèle 3 à la partie 2 (cible validée le 18/11/2026 : rapport à la moyenne des 10 campagnes précédentes, pas `anomalie_rendement_pct`, dont la tendance utilise les années futures). AgroDistrib n'a pas encore de moteur servi.
+- **Modèle 2 (années semblables) retiré le 16/11/2026** : absent de `ml/README.md` et plus affiché. Retirés : `ml/m2_annees_semblables/`, ses sorties, la table `ANNEES_SEMBLABLES` de `snowflake/20_ml_resultats.sql` et de `ml/charger_snowflake.py`, la route `/previsions/annees-semblables` de l'API et son test. `SALTIS.ML` ne contenait aucune table : rien à supprimer dans Snowflake. **Modèle 4 (date de semis) gardé** comme complément hors README (« Quand semer », « Ma parcelle », « Surface », assistant vocal).
+- `pyarrow` ajouté à `requirements.txt` : `ml/commun/donnees.py` en a besoin pour les copies locales des marts (`ml/donnees/`, ignoré par git).
+- **Documentation du ML remise à jour (18/11/2026)**, sans changement de code ni de sortie :
+  - `ml/README.md` : modèle 4 (date de semis) présenté comme complément, avec lien vers `MODELES.md` et le rapport de comparaison (point 1 du rapport clos) ; cible réellement utilisée pour le rendement (rapport à la moyenne des 10 campagnes précédentes), **validée par l'équipe le 18/11/2026** (point 4 du rapport clos) ; section 6 alignée sur les 4 tables de `SALTIS.ML` (`PREVISION_SAISONNIERE`, `PREVISION_RENDEMENT`, `RISQUE_SEMIS`, `EVALUATION_MODELES`), `SALTIS.APP` signalé « à venir » ; accès `USER_ML` noté comme déjà créé ;
+  - `ml/m1_prevision_saison/README.md` : 2 475 lignes (1981-2035) au lieu de 2 025, type `PREVISION_OCEAN` pour 2026 ;
+  - `ml/m4_date_semis/README.md` : 59 136 lignes (2016-2035 et année type, 2 816 par année) au lieu de 30 976, avec les 4 valeurs de `type_prevision` ;
+  - commentaires « 5 tables » → « 4 tables » dans `snowflake/20_ml_resultats.sql` et `ml/charger_snowflake.py` (restes du modèle 2) ;
+  - chiffres vérifiés sur les CSV de `ml/sorties/`.
+- **Reproductibilité vérifiée (18/11/2026)** : M1, M3 et M4 relancés dans l'ordre depuis les copies locales `ml/donnees/` (6 s, 51 s, 4 s). Les 6 sorties (`prevision_saison`, `prevision_rendement`, `risque_semis`, `evaluation_m1`, `evaluation_m3`, `evaluation_m4`) sont **identiques** aux fichiers servis (mêmes lignes, mêmes colonnes, valeurs égales à 1e-9 près), seule `date_calcul` change. Les fichiers d'origine (`date_calcul` = 2026-11-13) ont été remis en place. Les copies locales datent du 16/11/2026 : la vérification ne dit pas si `SALTIS.MARTS` a changé depuis.
+- **Moteur AgroDistrib `agrodistrib-v1` (18/11/2026)**, décisions validées le 18/11/2026 (point 3 du rapport de comparaison) : `ml/agrodistrib/` (`moteur.py`, `repartir.py`, `README.md`) et `ml/tests/test_agrodistrib.py`.
+  - Méthode : prorata multicritère, poids = besoin × (0,5 + α × valeur indicative + (1 − α) × vulnérabilité), jamais au-delà du besoin. Trois scénarios rendus à chaque demande (Équité α = 0, Équilibré 0,5, Rendement 1), plus α du décideur ; indicateurs comparés au prorata du besoin. **Pas d'optimisation linéaire** (décision).
+  - Valeur indicative = potentiel de gain de la zone ramené entre 0 et 1 **dans chaque culture** (validé le 18/11/2026 : les kg/ha de deux cultures ne se comparent pas ; pour une seule culture, c'est le calcul de la comparaison ; négatif → 0) × probabilité de cycle couvert × (1 − probabilité **climatologique** de saison sèche du mart, décision). Indicateur de priorité, pas un gain mesuré.
+  - Critère vide (vulnérabilité de Dakar, valeur du manioc) : **médiane** des autres lignes, signalée dans `critere_impute`, jamais 0 (décision (a)).
+  - Intrants répartis : NPK, urée, DAP, fumier, semences (`besoin_semences_retenu_t`) ; éléments et eau exclus. Dose manquante : couple non servi et listé ; dose saisie par le décideur appliquée aux seuls couples sans dose (`SAISIE_DECIDEUR`), jamais à la place d'une dose existante.
+  - Calcul par département ; zone et région = somme (non emboîtées). Le statut de la dose suit chaque ligne et chaque territoire.
+  - Cas de démonstration (20 000 t de NPK, mil, par zone) : mêmes quantités par département que `ml/comparaison/agrodistrib.py` dans les 3 scénarios (testé à 0,05 t). Gains recalculés sans arrondi intermédiaire : Équilibré +0,9 % de ciblage et +0,8 % de valeur (rapport : +1,0 % et +0,6 %, note ajoutée au rapport, section 5), Gini 0,059.
+  - Tests : `venv/bin/python -m pytest ml/tests`, **20 OK** ; `api/tests` toujours OK (89).
+  - Sorties `ml/sorties/agrodistrib_*` : **versionnées pour le moment** (décision du 18/11/2026). Elles contiennent le cas de démonstration ; `repartir.py` les écrase à chaque lancement, donc relancer le cas de démonstration (ou `git checkout`) avant de commiter.
+  - Non fait : branchement dans l'API (`api/` géré par Abdou Djigo) et enregistrement des scénarios dans `SALTIS.APP` (schéma absent).
+- **`SALTIS.ML` chargé (20/11/2026)** : `snowflake/20_ml_resultats.sql` exécuté, puis `ml/charger_snowflake.py --confirmer` avec `R_ML` (`.env` : `SNOWFLAKE_ROLE=SYSADMIN` pour dbt et l'ingestion, `SNOWFLAKE_ML_ROLE=R_ML` pour le chargement). Volumes vérifiés, égaux aux CSV de `ml/sorties/` : `PREVISION_SAISONNIERE` 2 475 (validation 1 575, test 450, `PREVISION_OCEAN` 45 pour 2026, `PREVISION_TENDANCE` 405 pour 2027-2035), `PREVISION_RENDEMENT` 14 036 (43 départements), `RISQUE_SEMIS` 59 136, `EVALUATION_MODELES` 893 (M1 15, M3 864, M4 14) ; versions `m1-v1`, `m3-v1`, `m4-v1`, `date_calcul` = 2026-11-13. Volumes attendus en commentaire de `20_ml_resultats.sql` mis à jour.
+  - Les tables n'ont qu'un droit : `OWNERSHIP` de `R_ML`. **Le rôle de l'API (`SYSADMIN` par défaut, `api/config.py`) ne peut pas les lire** : l'API retombe sans erreur sur `ml/sorties/*.csv` (`api/source_snowflake.py`), mêmes données aujourd'hui. Les `grant` sont prévus, commentés, en fin de `20_ml_resultats.sql` (rôle de l'API à fixer).
+  - `R_ML` lit `MARTS` (`SELECT` table par table, accordé le 19/11/2026) : à accorder à nouveau pour tout nouveau mart.
+
+---
+
+## 4. Règles d'usage pour les marts et l'aval
+
+### Saison ou décadaire
+
+- Bilan d'une saison (total, démarrage, fin, séquences sèches, classe, alertes) : **`fact_saison_departement`**, toujours. C'est la source de référence.
+- Suivi en cours de campagne, décade par décade (pluie de la décade, cumul depuis juin comparé à la normale) : **`fact_pluviometrie_decadaire`**.
+- Ne pas recalculer le total de saison en sommant les décades : le cumul décadaire à fin octobre diffère de `pluie_saison_mm` (1 663 couples département × année sur 1 980 avec plus de 1 mm d'écart, écart moyen −2,4 mm, maximum 41 mm ; les deux mesures sont calculées différemment par la source).
+
+### Marts par écran (B2)
+
+- Construits sur les faits et dimensions, à plat, avec noms lisibles et codes (`code_departement`, région, zone), sans clé md5 exposée.
+- **`mart_carte_agroclimat`** : `risque_saison` à construire. 90 saisons sur 2 025 portent les deux alertes à la fois, d'où la règle retenue :
+  - `'sécheresse et excès de pluie'` si `alerte_secheresse` et `alerte_exces_pluie` ;
+  - `'sécheresse'` si seulement `alerte_secheresse` ;
+  - `'excès de pluie'` si seulement `alerte_exces_pluie` ;
+  - `'normal'` sinon.
+  Garder aussi `alerte_secheresse` et `alerte_exces_pluie` dans le mart. (L'ancien `mart_saisons` donnait la priorité à la sécheresse : règle abandonnée.)
+- **`mart_choix_cultures`** : comparer les cycles sur `proba_cycle_couvert_pct`, pas sur le score. Afficher le score et le niveau finaux (valeurs principales), avec `note_score` : le cycle moyen est celui de la source, les cycles court et long y ajoutent l'écart décadaire entre cycles ; les valeurs de la source (`_source`) servent à la comparaison.
+- **`zone_secondaire`** (`dim_geographie`, `mart_carte_agroclimat`) : information sur les départements de transition, à afficher ; jamais une clé d'agrégation (agréger par `zone_agroecologique`).
+- **`mart_besoins`** :
+  - partir de `dim_geographie` (45 départements) : Guédiawaye et Pikine apparaissent avec « pas de superficie agricole de référence » ;
+  - totaliser les semences sur `besoin_semences_retenu_t` (exclut `besoin_semences_applicable = false`, « non applicable (riz pluvial) » ; aucune ligne concernée depuis la dose PIA) ;
+  - afficher `annees_reference` avec un indicateur « référence antérieure à 2015 » ;
+  - irrigation totale (m³) = `superficie_reference_ha` × `volume_irrigation_m3_ha` (zone, `fact_reference_agronomique`), **uniquement** quand `niveau_adequation = 'irrigation requise'` (`fact_adequation_culture`), NULL sinon ;
+  - culture sans formule → besoin NULL, « dose à saisir » ; produit absent d'une formule retenue → 0, « pas dans la formule » (`libelle_<produit>`) ; fumier toujours NULL, hors totaux (`libelle_fumier`).
+- **Riz** : « Riz (irrigué) » inclut le riz pluvial de Casamance. Hors Vallée, la dose de semis retenue est désormais la dose PIA du riz (60 kg/ha, nationale) ; la dose de repiquage Faye 2020 (40 kg/ha) ne vaut que dans la Vallée. L'ancienne règle « riz pluvial de Casamance non applicable (7 858 t) » est **caduque** : aucune ligne n'a `besoin_semences_applicable = false` aujourd'hui (le garde-fou reste en place).
+- **Potentiel de gain** (B2 et AgroDistrib) : quand `est_rendement_national` est vrai (`fact_facteurs_limitants`), le potentiel de gain (écart atteignable − moyen) est « non évalué au niveau de la zone » et ne doit jamais servir à comparer ni classer les zones.
+
+---
+
+## 5. Prochaines étapes
+
+12. Faits AgroDistrib (besoins prévisionnels, stocks, allocations), en attente des tables PostgreSQL :
+    - `APP_ORGANISATIONS` (ONG, services de l'État ; associations de semenciers à confirmer) ;
+    - `APP_INTRANTS` (une semence peut référencer une variété ; reprend les 9 `code_intrant` de `ref_intrants`) ;
+    - `APP_STOCKS_INTRANTS` ;
+    - `APP_SCENARIOS_ALLOCATION`, `APP_ALLOCATIONS_INTRANTS` ;
+    - `APP_PLANS_CULTURAUX_DEPARTEMENT`, `APP_PLANS_CULTURAUX_PRODUCTEUR`.
+
+    Besoins : deux faits distincts, un au niveau producteur et un au niveau département. Aucun niveau coopérative. `id_variete` nullable dans les besoins en semences, pour rapprocher l'offre des semenciers de la demande.
+
+    **Répartition multi-niveaux.** Le décideur (ministère, ONG) saisit ses intrants : produit, quantité, campagne. Il choisit ensuite le **niveau de répartition** (zone agroécologique, région ou département) et ses critères (prorata des besoins, priorité à la vulnérabilité, plafonds…). Le modèle propose alors une quantité par territoire, selon la situation de chaque territoire.
+    - Une exécution = un seul niveau. `fact_allocation_intrant` porte `niveau_destination` (`ZONE` / `REGION` / `DEPARTEMENT`) et la clé du territoire correspondant. Une seule clé est renseignée par ligne.
+    - Les besoins et indicateurs des zones et des régions sont **agrégés** depuis le département (somme des besoins, jamais une valeur zonale recopiée sur les départements).
+    - Un intrant est lié aux cultures auxquelles il s'applique. Seuls les territoires qui cultivent ces cultures reçoivent une part.
+    - `dim_region` existe (A1) : utiliser `id_region` de `dim_geographie` pour agréger.
+    - Zone et région ne sont pas emboîtées (voir section 3.2) : ne pas coder une hiérarchie zone → région.
+    - **Critères du modèle**, calculés au niveau du département puis agrégés (le sol varie fortement à l'intérieur d'une même zone : pH de 5,6 à 7,0 dans le Bassin arachidier) :
+      - besoin (superficie × dose) ;
+      - potentiel de gain (écart entre rendement atteignable et rendement moyen) ;
+      - capacité à valoriser l'intrant (adéquation climat et cycle, risque de saison sèche, facteur limitant principal) ;
+      - contraintes de sol (pH, texture, réserve utile, carbone organique) ;
+      - vulnérabilité (`mart_vulnerabilite_departement`, relatif et indicatif).
+    - Le décideur règle l'arbitrage **rendement / équité** par des pondérations. L'allocation ne dépasse jamais le besoin. Le gain de rendement est une **estimation indicative** : aucune donnée de réponse aux engrais par territoire n'est disponible (à valider avec l'ISRA).
+13. `fact_prevision_saisonniere` (département × campagne × version de modèle) quand le modèle ML existera. Ne jamais la mélanger avec `fact_saison_departement`.
+14. Potentiel de gain par département (option b, avec l'ISRA) : calculer un rendement atteignable par département depuis `fact_rendement_departement` (ex. 90e centile 1991-2015) pour distinguer les départements d'une même zone ; aujourd'hui, le potentiel est une valeur de zone (`niveau_source_potentiel = 'ZONE'`).
+
+Plan restant de la passation : **C1 à C3, plateforme Snowflake**. Le schéma `SALTIS.ML` (créé le 11/11/2026), le rôle `R_ML` et l'utilisateur `USER_ML` (lecture `MARTS`, écriture `ML`) ont été créés par Ibrahima. Restent : le schéma `SALTIS.APP` (absent au 11/11/2026), l'accès de l'API, le DDL de `SALTIS.APP`, puis la déclaration de ces tables comme sources dbt et le réalignement de `stg_organisations` et `stg_intrants`.
+
+---
+
+## 6. Circuit des doses et données ISRA
+
+- Usage : besoins et AgroDistrib uniquement. **Jamais dans `fact_rendement_departement`.**
+- Circuit en place (19/11/2026) :
+
+```
+stg_besoins_hectare (Tounkara 2022, Faye 2020, extrapolations) ─┐
+ref_doses_pia (catalogue IFDC-CORAF PIA v1.1, fiches ISRA, national) ┴→ int_reference_dose
+  → fact_reference_agronomique (doses par hectare)
+  → fact_besoin_reference (superficie × dose retenue)
+```
+
+- Une ligne par dose et par source : une nouvelle source s'ajoute, elle n'écrase rien. Une dose nationale est candidate dans chaque zone, jamais recopiée par département.
+- **Une seule source par zone × culture × groupe** (`ENGRAIS` = formule entière avec éléments et fumier, `SEMENCES`, `EAU`) : on ne mélange jamais deux formules.
+- Priorité (`rang_priorite`) : 1. dose de recherche propre à la zone (`VALIDEE` ou `A_CONFIRMER` : Tounkara 2022 mil Casamance, Faye 2020 riz Vallée) ; 2. dose nationale `VALIDEE` ou `A_CONFIRMER` (PIA) ; 3. le reste (`NON_VERIFIEE`). À rang égal : `VALIDEE` d'abord, puis ordre alphabétique.
+- Besoins : produit engrais absent d'une formule retenue → **0** (« pas dans la formule ») ; culture sans formule (sésame, coton, manioc, oignon, tomate, pastèque) → **NULL** (« dose à saisir ») ; fumier → **NULL**, hors totaux (« non chiffré : fumure organique conseillée si possible ») ; phosphate de fond des fiches PIA (400 kg/ha tous les 3 ans) **exclu** du besoin annuel (`phosphate_fond_exclu`, `note_dap`).
+- Tests : `tests/int_reference_dose_priorite.sql` (une source par groupe, exactement une ligne retenue par intrant de la source retenue, groupes retenus = groupes ayant une dose dans les entrées, rang, contrôles métier), `tests/ref_doses_pia_valeurs_valides.sql`.
+- Doses ISRA à venir : elles entreront comme une source de plus dans `int_reference_dose` (base : `data/referentiels/doses_engrais.csv` et `doses_semis.csv`), avec source, unité, statut et date de réception.
+
+---
+
+## 7. Scripts Snowflake à exécuter par l'équipe
+
+Les scripts du dossier `snowflake/` sont écrits par l'équipe données et **exécutés à la main** par un membre de l'équipe.
+
+- `snowflake/00_drop_anciens_marts.sql` : suppression des 8 anciens `MART_*` de `SALTIS.MARTS` (à lancer avant B2, car `mart_besoins` sera recréé). Restes d'un ancien build (2026-11-08) : `SALTIS.ANALYTICS_MARTS` (3 tables `MART_*`) et `SALTIS.ANALYTICS_STAGING` (3 vues `STG_*`) ; leurs `drop` (y compris `drop schema`) sont commentés en fin de script, après les commandes `show` de vérification.
+- `snowflake/10_geo_departements.sql` : création de `RAW.GEO_DEPARTEMENTS` pour les contours GADM 4.1 niveau 2, puis activer `geo_departements_charge` dans `dbt_project.yml`. Le front attend un GeoJSON simplifié du même fichier.
+
+---
+
+## 8. Points ouverts
+
+### À signaler
+
+- `api/` appartient à Anthony : l'équipe données n'y modifie rien. L'endpoint `/saisons` de `api/main.py` lit `marts_marts.mart_saisons`, supprimé en T0. Il devra être rebranché sur `mart_carte_agroclimat` après B2.
+- Contours GADM 4.1 niveau 2 : récupérés par l'équipe, à charger avec `snowflake/10_geo_departements.sql` (section 7). Le front attend aussi une version simplifiée dans `app/public/geo/departements.geojson` (propriété `GID_2`).
+- Front (`app/`, 11/11/2026, React + TypeScript) : construit sur des données d'exemple aux colonnes des marts. Associations de producteurs de semences : **option B appliquée côté front** (offre de variétés déclarée + adéquation variétés × départements, sans scénario), désactivable par `VITE_ACTIVER_SEMENCIERS=false` si la cible est retirée ; la décision reste à confirmer par l'équipe. Routes attendues de l'API (authentification JWT, `/referentiels`, `/carte`, `/suivi`, `/choix-cultures`, `/besoins`, `/vulnerabilite`, `/agrodistrib/*`), CORS et cache : voir [`app/README.md`](../../app/README.md), section 3. À reprendre par l'équipe API.
+- **Marts reconstruits depuis une version ancienne du code** : le 11/11/2026 vers 02:51 UTC, `SALTIS.MARTS` a été reconstruit sans la colonne `besoin_semences_applicable` de `mart_territoires_agrodistrib`, pourtant présente dans le commit `c109ae1`. Reconstruit depuis `dev/aby` le 11/11/2026 (262 nœuds, 0 erreur). Tant que la construction n'est pas faite depuis une seule branche, chaque `dbt build` lancé depuis une autre copie du dépôt écrase `SALTIS.MARTS` : convenir de qui construit, et depuis quelle branche.
+- **Sécurité de la mise en production (16/11/2026)** : API (débit par adresse IP, tailles maximales, CORS fermé et `/docs` coupé en production, erreurs 500 sans détail, liste blanche des identifiants SQL : `api/securite.py`, `api/tests/test_securite.py`), Caddy (CSP, en-têtes), Docker Compose (Redis sur réseau privé, limites, contrôles de santé). Détail et réglages : [`deploy/README.md`](../../deploy/README.md), section 6. À faire sur le VPS : `git pull` puis `docker compose -f docker-compose.prod.yml up -d --build`. `requirements-api.txt` et `requirements-voix.txt` ne fixent aucune version : à figer.
+- **Modèles d'IA, à trancher (16/11/2026)** (détail en section 8 du [rapport](rapport-comparaison-modeles.md)) :
+  - modèle 4 (date de semis), gardé : ajouté à `ml/README.md` le 18/11/2026 ;
+  - modèle 1 : garder ONI + TSA, ou ajouter le TNA (écart dans le bruit ; le TNA 2026 n'est pas dans `ml/entrees/indices_ocean.csv`) ;
+  - AgroDistrib : valider le prorata multicritère, la valeur de départ de α (0,5) et la définition de la « valeur indicative » d'une tonne ;
+  - cible du rendement à préciser dans `ml/README.md`.
+
+- **Pages légales du front (16/11/2026)** : politique de confidentialité à `/confidentialite` (`app/src/pages/site/Confidentialite.tsx`), séparée des mentions légales ; conditions générales d'utilisation à `/conditions-generales` (`ConditionsGenerales.tsx`, droit sénégalais, estimations indicatives, licence GADM). À tenir à jour à chaque changement de ce que le front enregistre ou envoie à un tiers (mesure d'audience, formulaire de contact). Hébergeur du VPS et adresse de contact (`EMAIL_CONTACT`) à renseigner.
+- **HTTPS forcé (16/11/2026)** : `DOMAINE` devient obligatoire dans `.env` (plus de valeur `:80`) ; tout le HTTP est redirigé vers `https://<domaine>`, HSTS avec `includeSubDomains`. Sur le VPS : renseigner `DOMAINE` avant le prochain `up -d --build`. Détail : `deploy/README.md`, section 6.
+- **Consentement aux cookies (16/11/2026)** : bandeau sur toutes les pages (`app/src/consentement/`), choix gardé 6 mois dans le navigateur, rouvert par « Gérer les cookies » (pied de page). Tout traceur facultatif doit tester `consentement.audienceAcceptee()` avant de se charger ; aucun n'est branché aujourd'hui (mesure d'audience à venir). Augmenter `VERSION` dans `consentement.ts` quand la liste des traceurs change.
+- **Titres et descriptions meta (17/11/2026)** : chaque page du front pose son titre, sa description, ses balises Open Graph et son adresse canonique (`app/src/lib/meta.ts`, `useMeta`) ; la page introuvable est en `noindex`. `index.html` porte les valeurs de l'accueil (à garder identiques à `ACCUEIL`). L'image et l'adresse de partage viennent de `VITE_URL_SITE`, déduite de `DOMAINE` en production. **Pré-rendu (17/11/2026)** : titres et descriptions sont rassemblés dans `app/src/lib/pages.ts` ; le build écrit une page HTML par adresse (`a-propos.html`…, `404.html` en `noindex`) avec ses propres balises, servie par Caddy (`try_files {path}.html`) et par Vercel (`cleanUrls`). Les aperçus de partage (WhatsApp, LinkedIn…) voient donc le bon titre sur chaque page.
+- **Plan du site (17/11/2026)** : `sitemap.xml` (8 pages publiques) et `robots.txt` sont écrits au build du front (`plansDuSite` dans `app/vite.config.ts`), avec l'adresse `VITE_URL_SITE`. Une nouvelle page publique s'ajoute à `app/src/lib/pages.ts`. Après la mise en ligne : déclarer `https://<domaine>/sitemap.xml` dans Google Search Console.
+- **Textes alternatifs (17/11/2026)** : audit du front sans image dépourvue d'attribut `alt` ; logos des sources nommés « Logo … », carte Mapbox nommée en français (`aria-label` du canevas dans `Carte.tsx`). Règle : `alt=""` pour un logo décoratif placé à côté du nom écrit, texte descriptif sinon ; icônes et SVG décoratifs en `aria-hidden`.
+- **Images du front (17/11/2026)** : les 4 icônes PNG de `app/public/` sont compressées en palette (125 Ko → 47 Ko, sans bande visible) par `npm run images` (`app/scripts/compress_images.py`), à relancer après tout nouveau PNG. Logos WebP laissés tels quels (déjà compressés avec perte). Attention : `npm run icons` (`generate_icons.py`) dessine un ancien logo, différent des icônes actuelles ; ne pas le lancer sans le mettre à jour.
+- **Vitesse de chargement du front (17/11/2026)** : accueil = environ 125 Ko compressés de JS et CSS, 97 Ko de polices, 89 Ko de contours ; Mapbox (551 Ko compressés) n'est chargé qu'avec la carte. Caddy compresse (zstd) et met en cache tout ce qui doit l'être (vérifié en conteneur). Les deux polices latines sont préchargées au build (`prechargerLesPolices` dans `app/vite.config.ts`). Mesure locale seulement (affichage en 0,47 s, décalage de mise en page nul) : à refaire avec Lighthouse ou PageSpeed Insights sur le site en ligne. Reste ouvert : les deux contours de carte sont préchargés par `index.html` sur toutes les pages, même celles sans carte.
+- **Contraste des couleurs (17/11/2026)** : seuil WCAG AA (4,5:1, 3:1 pour le grand texte). Règle du front : **aucun texte blanc sous `text-white/60`** sur les fonds sombres (vert profond, panneaux de la carte, y compris leurs surfaces blanches translucides jusqu'à 15 %) ; placeholders en `encre-douce` (clair) et `white/60` (sombre). 43 usages de `/35` à `/55` relevés à `/60` (13 fichiers). Hiérarchie rétablie ensuite dans la carte, un cran plus haut : étiquettes `/60`, texte courant `/70` (anciens `/60`), puis `/75`, `/80`, `/85`, `/90` (anciens `/65` à `/80`) ; icône décorative de la poignée à `/40` (3:1). Audit dans le navigateur : 0 défaut sur l'accueil et les 8 pages du site ; écrans de la carte vérifiés par calcul seulement (API locale arrêtée).
+- **Affichage sur téléphone (17/11/2026)** : audit à 375 et 320 px de l'accueil, des 8 pages du site et des 11 fonctionnalités de la carte (deux profils, données d'exemple : configuration `front-demo` de `.claude/launch.json`, port 5174). Corrigé : mascottes de voix décalées hors de l'écran (`Mascottes.tsx`), bouton Menu de l'accueil hors écran à 320 px, champs à 16 px sur téléphone (sinon iOS agrandit la page), zones de toucher du logo, bord estompé de la navigation qui défile. **Sans WebGL, l'écran de la carte restait blanc** : `Carte.tsx` affiche désormais un message et garde les fiches utilisables. Non vérifié : la carte elle-même (WebGL indisponible dans le navigateur de test) et un vrai téléphone.
+- **Page introuvable (17/11/2026)** : `Introuvable.tsx` rappelle l'adresse demandée et propose l'accueil, l'entrée dans la carte et les pages du site ; `noindex`. Caddy répond désormais **404** (et non plus 200) pour toute adresse qui n'est ni un fichier ni une page connue : la liste `@page` de `deploy/Caddyfile` doit suivre les routes de `app/src/App.tsx`. Vercel répond toujours 200 (non modifié).
+- **Liens (17/11/2026)** : audit des liens du front (9 pages, 15 liens internes, 5 ancres, 14 fichiers publics, 5 liens externes) : aucun lien interne ni fichier cassé ; gadm.org répond. Corrigé : pour un visiteur entré dans la carte, `/` affiche la carte, donc les liens vers les sections de l'accueil (`/#zones`, `/#ciel`, `/#entrer`) n'aboutissaient pas ; pied de page, en-tête des pages et page introuvable proposent alors « Revenir à la carte ». Les 4 profils LinkedIn de l'équipe ne sont pas vérifiables automatiquement (LinkedIn exige une connexion) : à ouvrir à la main.
+- **Validation des formulaires (17/11/2026, revu le 21/11/2026)** : les saisies agriculteur et « Répartir » (coordonnées de la parcelle, surface et doses de « Mes besoins », stock) passent par `lireSaisie` (`app/src/lib/saisie.ts`) : virgule ou point, espaces de milliers, rien d'autre ; bornes surface > 0 et ≤ 10 000 ha, dose 0 à 2 000 kg/ha, stock > 0 et ≤ 1 000 000 t (20 000 000 sacs), latitude ±90°, longitude ±180°. Les autres saisies de l'espace ONG (prix, besoins pays, export) gardent `lireNombre`, même format mais sans bornes ni message. Message sous le champ (`ErreurChamp`, `role=alert`, `aria-invalid`, `aria-describedby`), bordure dorée. Coordonnées interverties détectées, avec un bouton « Les échanger ». Avant : une saisie invalide valait 0 sans rien dire. Bornes à faire valider par l'équipe métier. Aucun formulaire ne part vers un serveur (Contact = lien e-mail).
+- **Anti-spam (17/11/2026)** : aucun formulaire du front n'envoie ni ne stocke de message ; les routes publiques en écriture de l'API (questions et voix) sont déjà limitées par adresse IP (`api/securite.py`, non modifié). La cible restante était l'adresse de contact, écrite en clair dans le JavaScript : elle s'appelle désormais `EMAIL_CONTACT` (sans préfixe `VITE_`, sinon Vite la recopie avec les autres dans `import.meta.env`), est codée au build (`app/vite.config.ts`) et n'entre dans la page qu'au clic sur « Afficher l'adresse e-mail » (`AdresseContact.tsx`, `src/lib/contact.ts`). L'ancien nom reste accepté par `docker-compose.prod.yml`. Si un formulaire est ajouté plus tard : champ piège caché, délai minimal de saisie et limite de débit côté API.
+- **Mesure d'audience (17/11/2026)** : Umami 3.4.1 auto-hébergé (conteneurs `umami` et `umami-db` de `docker-compose.prod.yml`, sans cookie). Le site n'en expose que `/stats/script.js` et `/stats/api/send` (même origine, CSP inchangée) ; le tableau de bord écoute sur `127.0.0.1:3001` du VPS seulement (tunnel SSH). Le script n'est chargé qu'après « Accepter » (`app/src/consentement/audience.ts`) ; refuser après coup pose `umami.disabled`, qui coupe les envois. Sans `VITE_UMAMI_ID`, ni script ni bandeau. Consentement passé en version 2 (redemandé). Enregistré : chemin de la page (sans paramètres ni ancre), provenance, appareil, navigateur, langue, pays et ville approximative. **Sur le VPS** : `UMAMI_DB_PASSWORD` et `UMAMI_APP_SECRET` obligatoires avant le prochain déploiement, puis création du site et `UMAMI_WEBSITE_ID` (`deploy/README.md`, section 7). Testé de bout en bout en local.
+- **Appel à l'action (17/11/2026)** : une seule action principale sur tout le site, « Entrer dans la carte », avec un seul style (`.bouton-action` de `app/src/index.css`, jaune soleil sur texte vert profond) : en-tête de l'accueil, accueil, menu, en-tête des pages, page introuvable. Libellé raccourci à l'écran en « Entrer » sur les en-têtes étroits, complet pour les lecteurs d'écran. « Voir le récit » et « Revenir à l'accueil » deviennent de simples liens. Corrigé au passage : entre 768 et ~880 px, les chapitres de l'en-tête de l'accueil poussaient le bouton Menu hors de l'écran (chapitres affichés à partir de 1024 px).
+- **Secrets et front (16/11/2026)** : audit sans secret trouvé (code, build, historique git) ; seul le jeton public Mapbox (`pk.…`) est dans le front, à restreindre au domaine dans le compte Mapbox. `app/vite.config.ts` refuse désormais de construire si une variable `VITE_*` ressemble à un secret (nom ou valeur).- **Fusion des branches `dev/front-djigo`, `dev/front-niass` et `dev/ml-niass` (21/11/2026)** : la résolution des conflits du rebase avait gardé les deux versions de nombreuses lignes (front qui ne compilait plus, `api/cache/construction.py` avec des marqueurs de conflit, `mart_carte_opportunites.sql` invalide, sources et variables dbt en double). Corrigé : la structure des fiches de `front-djigo` (`FicheReponse`, puces) est gardée, avec le contraste et la validation des saisies de `front-niass` ; le modèle 2 reste retiré ; `eau_chargee: true` est conservé. Vérifié : `ruff`, `pytest` (API et ML), `dbt parse`, `tsc`, `eslint`, `vite build`.
+
+### Questions pour l'ISRA
+
+- Arachide : confirmer la dose « 150 kg/ha de 6-20-10 », citée seulement dans le texte du statut (`note_source`), sans dose chiffrée.
+- Mil : poids de semences par hectare (seule la densité est documentée : 5 graines par poquet à 80 × 80 cm, démariage à 3 plants).
+- Plus largement : doses validées par zone pour toutes les cultures « à compléter » (voir section 6).
+- Mil : dose de fumier hors Casamance (seule la référence Tounkara 2022 de Casamance en chiffre une).
+- Maïs : quelle formule retenir, hybride (300 kg NPK + 200 kg urée) ou variété à pollinisation libre (200 + 160, retenue aujourd'hui) ?
+
+### À signaler au producteur du dataset
+
+- Besoins de référence : `annees_reference` très hétérogène (2019-2021 pour 279 lignes, mais jusqu'à 2003-2004 ou 2004-2008) ; mettre à jour les superficies de référence anciennes (antérieures à 2015).
+- Rendements et besoins : « Riz (irrigué) » regroupe aussi le riz pluvial de Casamance ; la dose de semis de 40 kg/ha (repiquage irrigué) ne vaut pas pour le riz pluvial. À séparer quand les données le permettront.
+- Facteurs limitants, Vallée du fleuve Sénégal × Sésame : rendement atteignable (723,88) inférieur au rendement moyen (750), écart −26,12 kg/ha.
+- Facteurs limitants, Niayes : `correlation_chaleur` absente pour arachide, maïs, mil (souna), niébé et sorgho, alors que les trois autres corrélations sont calculées.
+- Prédicteurs saisonniers (priorité basse) : `humidite_sol_avril_mai_m3_m3` manque ponctuellement sur 12 valeurs, en plus des 6 départements côtiers absents sur toute la période : Goudomp (4 années entre 1989 et 2003) et 8 départements en 1986 (Bambey, Diourbel, Fatick, Foundiougne, Mbour, Saint-Louis, Thiès, Tivaouane).
+
+### À confirmer
+
+- **Vulnérabilité, validation par les techniciens** :
+  - la Vallée du fleuve est en tête alors qu'une grande partie de son agriculture est irriguée : l'aléa pluvial peut y surestimer la vulnérabilité ;
+  - Saint-Louis (1er) et Rufisque (4e) sont des départements en partie urbains.
+
+---
+
+## 9. Points de vigilance sur les données
+
+- Le mil ressort « déconseillé » dans le nord alors qu'il y est cultivé : calibration à faire avec les techniciens.
+- La variété « Mil sanio (type tardif) » est rattachée à la culture « Mil (souna) », qui est en réalité le libellé générique du mil chez DAPSA.
+- Rendements : superficie récoltée jusqu'en 2015, superficie semée ensuite (`type_superficie`). Pour agréger le rendement, calculer `sum(production) / sum(superficie)`, jamais la moyenne des rendements. Les indicateurs de tendance et de variabilité s'arrêtent à 2015 pour éviter cette rupture.
+- NDVI disponible à partir de 2000 seulement.
+
+---
+
+## 10. Prix des intrants et Cadre harmonisé
+
+### Prix (`ref_prix_intrants` → `dim_prix_intrant`)
+
+- Grain : `code_intrant` × `campagne`, 5 lignes (campagne 2026). Sources : APS (30 sept. 2025, ICS) et circulaire du ministère de l'Agriculture du 30 avril 2026 (numéro non publié : à vérifier).
+- `cout_reel_sac_50kg_fcfa` = prix de cession + subvention / 20 (testé).
+- Limite : urée et DAP sans prix public trouvé → `A_SAISIR`, valeurs NULL (jamais 0).
+
+### Cadre harmonisé (`stg_cadre_harmonise` → `fact_cadre_harmonise` → `mart_cadre_harmonise_departement`)
+
+- Source : « Cadre harmonisé, CILSS et partenaires ; données via HDX (Food Security and Nutrition Working Group, Afrique de l'Ouest et du Centre) », licence CC BY (citation obligatoire).
+- Fait : département × cycle × type de période (`current` / `projected`), 2014-2026. Mart : 45 départements, dernier cycle.
+- Règles :
+  - Keur Massar (créé en 2021, absent de GADM) est fusionné dans Pikine (effectifs additionnés, phase la plus haute ; `fusion_keur_massar`, `note_fusion`) ;
+  - période retenue = celle marquée `usethisperiod`, sinon (les deux ou aucune) la projection ;
+  - jamais d'addition entre cycles ni entre types de période (mêmes personnes) ; population additive entre départements d'une même période seulement ;
+  - hors score de vulnérabilité (`mart_vulnerabilite_departement` inchangé).
+- Limites :
+  - `periode_terminee` et `mention_periode` (« période terminée, prochain cycle attendu ») sont calculés au jour du build (`date_calcul`) : le front recalcule depuis `date_fin_periode_retenue` ;
+  - le contrôle 836 787 personnes en phases 3 à 5 (`tests/fact_cadre_harmonise_valeurs_valides.sql`) est propre au cycle de mars 2026 (projection juin-août) : à revoir au cycle suivant.
+
+
+### Front et API (19/11/2026)
+
+- API : `GET /prix-intrants?campagne=`, `GET /cadre-harmonise` (et `/{code_departement}`), `GET /referentiels/intrants`, `GET /referentiels/phases-cadre-harmonise` (voir `docs/technique/guide-api.md`).
+- Front : espace ONG en 7 étapes (`app/src/scene/modes/`), dont le budget au prix subventionné, au coût réel ou au prix « saisi par vous ».
+- Export PDF (dossier national et fiche département) généré dans le navigateur avec jsPDF 4.2.1 (`app/src/export/`), sans serveur.

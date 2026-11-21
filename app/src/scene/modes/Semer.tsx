@@ -21,13 +21,13 @@ import { libelle, nombre, pct } from '../../lib/format'
 import type { LigneChoixCulture, NiveauAdequation } from '../../types/marts'
 import type { PrevisionRendement } from '../../types/previsions'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { NIVEAUX, NON_DISPONIBLE } from '../couleurs'
+import { NIVEAUX, NON_DISPONIBLE } from '../carte/couleurs'
 import { MarquesRendement, MethodeModele } from '../previsions'
-import { cultureWo, FIN_WO, wo } from '../wolof'
-import { anneesSur5, cultureRetenue, cycleDit, laCulture, repliCulture } from '../conseil'
-import { aLire, CHOISIR, puceAnnee, puceCulture, type EtatLigne, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { AFaire, Barre, Categories, Cle, Cles, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Squelette, type Action } from '../ui'
+import { cultureWo, FIN_WO, wo } from '../voix/wolof'
+import { anneesSur5, cultureRetenue, cycleDit, laCulture, repliCulture } from '../regles/conseil'
+import { aLire, CHOISIR, puceAnnee, puceCulture, type EtatLigne, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { AFaire, Barre, Categories, Cle, Cles, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Squelette, type Action } from '../interface/ui'
 
 const ORDRE: NiveauAdequation[] = ['adaptée', 'à risque', 'déconseillée', 'irrigation requise', 'non évaluée (culture pluriannuelle)']
 const rang = (n: NiveauAdequation | null) => (n ? ORDRE.indexOf(n) : ORDRE.length)
@@ -44,18 +44,18 @@ function Recolte({ etat, ligne, annee, couverte }: { etat: EtatPrevision; ligne:
   const vide = !couverte ? `pas de prévision de récolte pour ${annee}` : etat === 'chargement' ? 'chargement…' : etat === 'non-chargee' ? 'prévisions pas encore chargées' : etat === 'erreur' ? 'les prévisions ne répondent pas' : etat === 'absente' ? `non disponible pour ${annee}` : !ligne ? 'non disponible pour cette culture' : null
   return (
     <div className="mt-3 border-t border-white/[0.09] pt-2.5">
-      <p className="text-2xs font-medium tracking-etiquette text-white/50 uppercase">Récolte attendue <span className="tracking-normal text-white/35 normal-case">{annee}</span></p>
-      {vide || !ligne ? <p className="mt-1.5 text-xs text-white/55">Récolte attendue : {vide}.</p> : (
+      <p className="text-2xs font-medium tracking-etiquette text-white/60 uppercase">Récolte attendue <span className="tracking-normal text-white/60 normal-case">{annee}</span></p>
+      {vide || !ligne ? <p className="mt-1.5 text-xs text-white/60">Récolte attendue : {vide}.</p> : (
         <>
           <p className="mt-1.5 text-sm font-medium text-white tabular-nums">
             {ligne.rendement_bas_kg_ha === null || ligne.rendement_haut_kg_ha === null ? 'Fourchette non disponible' : `${nombre(ligne.rendement_bas_kg_ha)} – ${nombre(ligne.rendement_haut_kg_ha)}`}
-            <span className="ml-1 text-xs font-normal text-white/55">kg/ha · habituel {ligne.tendance_kg_ha === null ? 'non disponible' : nombre(ligne.tendance_kg_ha)}</span>
+            <span className="ml-1 text-xs font-normal text-white/60">kg/ha · habituel {ligne.tendance_kg_ha === null ? 'non disponible' : nombre(ligne.tendance_kg_ha)}</span>
           </p>
           <div className="mt-1.5">
             <Fourchette bas={ligne.rendement_bas_kg_ha} haut={ligne.rendement_haut_kg_ha} valeur={ligne.rendement_median_kg_ha} repere={ligne.tendance_kg_ha} couleur="var(--color-soleil-500)"
               description={`Rendement entre ${nombre(ligne.rendement_bas_kg_ha)} et ${nombre(ligne.rendement_haut_kg_ha, { unite: 'kg/ha' })}, 8 chances sur 10 ; habituel ${nombre(ligne.tendance_kg_ha, { unite: 'kg/ha' })}`} />
           </div>
-          <p className="mt-1 mb-2 text-2xs text-white/45">Bande : année difficile à bonne année · trait : rendement habituel</p>
+          <p className="mt-1 mb-2 text-2xs text-white/60">Bande : année difficile à bonne année · trait : rendement habituel</p>
           <MarquesRendement ligne={ligne} quoi="rendement" />
         </>
       )}

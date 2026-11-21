@@ -6,7 +6,7 @@
 - Agriculteur : dans mon département, cette campagne, combien puis-je attendre de chaque culture — en année difficile, en année moyenne, en bonne année ?
 - ONG : dans quels départements la récolte risque-t-elle de **chuter**, c'est-à-dire de tomber sous 80 % de son niveau habituel ?
 
-La réponse est mise à jour à quatre moments : fin mai, fin juin, fin juillet, fin août (mêmes décades que le modèle 2 : 18, 21, 24).
+La réponse est mise à jour à quatre moments : fin mai, fin juin, fin juillet, fin août (décades 18, 21 et 24 pour les trois derniers).
 
 ## Ce que le modèle regarde
 Cinq cultures pluviales assez observées : arachide, mil, sorgho, niébé, maïs.

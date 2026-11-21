@@ -9,8 +9,8 @@ dbt transforme les tables agricoles chargées dans `SALTIS.RAW` en une constella
 
 Les modèles ne chargent pas les CSV : les tables sources doivent déjà exister dans `SALTIS.RAW` avec leurs en-têtes correctement définis.
 
-- **Décisions, règles, état détaillé de chaque modèle et points ouverts** : [`docs/etat-modelisation.md`](../docs/etat-modelisation.md).
-- **Contrat de données des marts** (grain, colonnes, unités, limites, exemples de requêtes) : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md).
+- **Décisions, règles, état détaillé de chaque modèle et points ouverts** : [`docs/technique/etat-modelisation.md`](../docs/technique/etat-modelisation.md).
+- **Contrat de données des marts** (grain, colonnes, unités, limites, exemples de requêtes) : [`docs/technique/contrat-donnees.md`](../docs/technique/contrat-donnees.md).
 
 ## Dimensions
 
@@ -39,6 +39,7 @@ Zone et région sont deux regroupements **parallèles** des départements (Louga
 | C | `fact_facteurs_limitants` | zone × culture | 72 |
 | C | `fact_reference_agronomique` | zone × culture × intrant × source (doses de référence) | 141 |
 | C | `fact_besoin_reference` | département × culture (besoins de référence historiques) | 367 |
+| E | `fact_eau_departement` | département (eau de surface, nappes, irrigation ; actif si `eau_chargee`) | 45 |
 
 ## Marts
 
@@ -51,6 +52,7 @@ Zone et région sont deux regroupements **parallèles** des départements (Louga
 | D | `mart_territoires_agrodistrib` | département × culture cultivée | 345 |
 | D | `mart_vulnerabilite_departement` | département (score relatif) | 45 |
 | ML | `mart_ml_prevision_pluie` | département × année | 2 025 |
+| E | `mart_carte_opportunites` | département : jaune / vert (saison), bleu (eau mobilisable) | 45 |
 
 Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_adequation_varietes`, `mart_rendements`, `mart_facteurs_limitants` et `mart_agrodistrib` (copies du staging) ont été supprimés ; `mart_besoins` a été reconstruit sur les faits. Les marts ne fabriquent pas de prévisions : l'adéquation est celle calculée dans les données d'entrée, et la vulnérabilité est un score relatif et indicatif.
 
@@ -61,6 +63,7 @@ Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_a
 - Les besoins sont des besoins de référence historiques, pas prévisionnels. Les stocks, scénarios et allocations d'AgroDistrib attendent les tables de l'application ; les anciennes simulations (`D_SCENARIOS_REPARTITION`) ne sont pas de vrais scénarios.
 - Les rendements historiques ont leurs propres limites de couverture : campagnes observées de 1981 à 2021, superficie récoltée jusqu'en 2015 puis semée.
 - Les contours des départements (GADM 4.1) ne sont pas encore chargés ; tout est prêt derrière la variable `geo_departements_charge`.
+- La couche bleue de `mart_carte_opportunites` attend les sources eau (`SALTIS.RAW.E_*`) ; tout est prêt derrière la variable `eau_chargee`. Voir [`docs/technique/carte-opportunites.md`](../docs/technique/carte-opportunites.md).
 - Pour fonctionner, chaque table de `SALTIS.RAW` doit avoir des colonnes portant les noms des en-têtes du CSV correspondant. Si Snowflake crée des colonnes comme `C1`, `C2`, le chargement du fichier doit être corrigé avant d'exécuter le modèle `stg_` associé.
 
 ## Exécuter les modèles
@@ -68,19 +71,28 @@ Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_a
 Depuis la racine du dépôt, après avoir défini les variables Snowflake nécessaires dans l'environnement PowerShell :
 
 ```powershell
-.\dbt.ps1 debug --profiles-dir . --target snowflake
-.\dbt.ps1 seed  --profiles-dir . --target snowflake
-.\dbt.ps1 run   --profiles-dir . --target snowflake
-.\dbt.ps1 test  --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 debug --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 seed  --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 run   --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 test  --profiles-dir . --target snowflake
 ```
 
-`dbt.ps1` (à la racine) lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
+`dbt/dbt.ps1` lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
 
 Pour reconstruire uniquement les vues staging ou un mart et ses dépendances :
 
 ```powershell
-.\dbt.ps1 run   --profiles-dir . --target snowflake --select path:models/staging
-.\dbt.ps1 build --profiles-dir . --target snowflake --select +fact_saison_departement
+.\dbt\dbt.ps1 run   --profiles-dir . --target snowflake --select path:models/staging
+.\dbt\dbt.ps1 build --profiles-dir . --target snowflake --select +fact_saison_departement
 ```
 
 Le profil du projet utilise l'authentification Snowflake par mot de passe. Ne partagez et ne versionnez jamais le mot de passe ou le fichier local `.env`.
+
+## Cibles : production et CI
+
+| Cible | Commande | Schémas écrits | Usage |
+|---|---|---|---|
+| `snowflake` (par défaut) | `dbt build --target snowflake` | `STAGING`, `INTERMEDIATE`, `MARTS` (lus par l'API) | Mise à jour des données, à la main, depuis `main` |
+| `ci` | `dbt build --target ci` | `CI_STAGING`, `CI_INTERMEDIATE`, `CI_MARTS` | Le CI GitHub (`.github/workflows/ci.yml`) : PR, `main`, `develop` ou lancement manuel |
+
+La cible `ci` ne peut **jamais** écrire dans les schémas de la production : `macros/generate_schema_name.sql` préfixe tous les schémas par `CI_`, et le CI vérifie le manifeste avant de construire (étape « Garde-fou »). Les sources (`SALTIS.RAW`) sont seulement lues. Un rôle dédié au CI peut être donné par la variable `SNOWFLAKE_CI_ROLE` (sinon `SNOWFLAKE_ROLE`) : idéalement, il a le droit de créer les schémas `CI_*` et de lire `RAW`, mais aucun droit d'écriture sur `STAGING`, `INTERMEDIATE` et `MARTS`.

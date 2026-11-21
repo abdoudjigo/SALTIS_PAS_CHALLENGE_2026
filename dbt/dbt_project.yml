@@ -17,7 +17,7 @@ seeds:
     +schema: staging
 
 vars:
-  # Carte des opportunités (docs/carte-opportunites.md).
+  # Carte des opportunités (docs/technique/carte-opportunites.md).
   # Passer à true une fois les 3 tables SALTIS.RAW.E_* chargées : active stg_eau_*,
   # fact_eau_departement et la couche bleue de mart_carte_opportunites.
   eau_chargee: true

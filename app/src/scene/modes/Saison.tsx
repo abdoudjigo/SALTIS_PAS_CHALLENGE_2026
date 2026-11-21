@@ -15,17 +15,17 @@ import { useSuivi } from '../../hooks/donnees'
 import { useActuelles, etatActuel, etatPrevision, usePrevisionSaison } from '../../hooks/previsions'
 import { mm, nombre } from '../../lib/format'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { CLASSES3, couleurPluie, degrade, parts3, tendance } from '../couleurs'
-import { datesDecade, MODELES, natureAnnee } from '../fiabilite'
+import { CLASSES3, couleurPluie, degrade, parts3, tendance } from '../carte/couleurs'
+import { datesDecade, MODELES, natureAnnee } from '../regles/fiabilite'
 import { Attente, MethodeModele } from '../previsions'
-import { dire } from '../lecture'
-import { CLASSE_WO, FIN_WO, pctWo, wo } from '../wolof'
-import { anneeSecheARisque, SEUIL_SAISON_INCERTAINE_PCT } from '../conseil'
-import { aLire, puceAnnee, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { AFaire, Cle, Cles, Degrade, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Parts, type Action } from '../ui'
+import { dire } from '../voix/lecture'
+import { CLASSE_WO, FIN_WO, pctWo, wo } from '../voix/wolof'
+import { anneeSecheARisque, SEUIL_SAISON_INCERTAINE_PCT } from '../regles/conseil'
+import { aLire, puceAnnee, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { AFaire, Cle, Cles, Degrade, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Parts, type Action } from '../interface/ui'
 
-const CourbeCumul = lazy(() => import('../CourbeCumul'))
+const CourbeCumul = lazy(() => import('../interface/CourbeCumul'))
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 
 const METRES_PAR_MM = 45

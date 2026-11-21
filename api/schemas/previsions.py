@@ -40,28 +40,6 @@ class PrevisionSaison(Territoire, Trace):
     classe_observee: Classe3 | None = Field(description="Classe réellement observée")
 
 
-class AnneeSemblable(Territoire, Trace):
-    """ML.ANNEES_SEMBLABLES — modèle 2, « Comment finira la saison » : les 3 années passées les plus proches."""
-
-    annee: int = Field(examples=[2024])
-    moment_prevision: Moment
-    variables_utilisees: Literal["océan", "océan + pluie tombée"]
-    rang: int = Field(ge=1, le=3, description="1 = la plus semblable")
-    annee_semblable: int = Field(examples=[2010])
-    ressemblance_pct: float | None = Field(description="100 = situation identique ; 61 = un écart-type d'écart")
-    pluie_saison_semblable_mm: float | None = Field(description="Pluie de la saison semblable (mm)")
-    anomalie_saison_semblable_pct: float | None = None
-    classe_saison_semblable: ClasseSaison | None = None
-    debut_saison_jour_semblable: float | None = None
-    plus_longue_sequence_seche_semblable_j: float | None = None
-    alerte_secheresse_semblable: bool | None = None
-    alerte_exces_pluie_semblable: bool | None = None
-    proba_seche_pct: float | None = Field(description="Tirée des 8 années semblables. **Vide à FIN_MAI** : afficher le modèle 1")
-    proba_normale_pct: float | None = None
-    proba_humide_pct: float | None = None
-    classe_prevue: Classe3 | None = None
-
-
 class PrevisionRendement(Territoire, Trace):
     """ML.PREVISION_RENDEMENT — modèle 3, « Quelle culture » et « Alerte récolte »."""
 
@@ -104,7 +82,7 @@ class RisqueSemis(Territoire, Trace):
 class EvaluationModele(Modele):
     """ML.EVALUATION_MODELES — fiabilité des modèles comparée à une prévision simple."""
 
-    modele: Literal["M1", "M2", "M3", "M4"]
+    modele: Literal["M1", "M3", "M4"]
     version_modele: str
     periode: str = Field(examples=["test 2016-2025"])
     moment: str | None = None

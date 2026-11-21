@@ -54,15 +54,15 @@ On le compare à la **fréquence passée** de chaque département (1986-2015). L
 - **Fin trop tôt** : le gain vient du lissage de la loi normale. L'AUC très élevée ne prouve rien : elle est facile à obtenir, puisque semer en juin ou en août change tout. Le gain de Brier est le vrai chiffre.
 
 ## Ce qu'il produit
-`ml/sorties/risque_semis.csv`, une ligne par département × année × culture × décade de semis (30 976 lignes) :
+`ml/sorties/risque_semis.csv`, une ligne par département × année × culture × décade de semis (59 136 lignes) :
 - 44 départements (Guédiawaye n'a pas de pluie décadaire) ;
 - 8 cultures pluviales (arachide, coton, maïs, mil, niébé, pastèque, sésame, sorgho) ;
 - 8 décades ;
-- les années 2016-2025, plus une **année type** (`ANNEE_TYPE`, année sans prévision particulière).
+- les années 2016-2035, plus une **année type** (`ANNEE_TYPE`, année sans prévision particulière), soit 2 816 lignes par année.
 
 | Colonne | Contenu |
 |---|---|
-| `code_departement`, `departement`, `annee`, `type_prevision` | `RETROSPECTIVE_TEST` (2016-2025) ou `ANNEE_TYPE` (`annee` vide) |
+| `code_departement`, `departement`, `annee`, `type_prevision` | `RETROSPECTIVE_TEST` (2016-2025), `PREVISION_OCEAN` (2026), `PREVISION_TENDANCE` (2027-2035) ou `ANNEE_TYPE` (`annee` vide). Pour 2026-2035, la probabilité de saison sèche vient de `prevision_saison.csv` (modèle 1) |
 | `culture`, `cycle_jours` | La culture et son cycle moyen |
 | `decade_semis`, `libelle_decade` | 16 à 23, « 2e décade de juillet » |
 | `chance_pluie_semis_pct` | Part des années (1986-2015) avec une pluie de semis à cette décade |

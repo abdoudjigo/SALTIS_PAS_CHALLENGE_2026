@@ -126,7 +126,7 @@ export const api = {
       ? marts<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { culture })
       : exemple<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { params: { culture } })),
 
-  // Module E — mart_carte_opportunites (docs/carte-opportunites.md). null tant que le mart n'est pas construit
+  // Module E — mart_carte_opportunites (docs/technique/carte-opportunites.md). null tant que le mart n'est pas construit
   // (l'API répond 404 opportunites_indisponible) : l'écran n'affiche alors rien de plus
   opportunites: () =>
     ou404<CarteOpportunite[] | null>(reel ? marts<CarteOpportunite[]>('/opportunites') : exemple<CarteOpportunite[]>('/opportunites'), null),
@@ -145,7 +145,7 @@ export const api = {
   phasesCadreHarmonise: () =>
     ou404<PhaseCadreHarmonise[] | null>(reel ? marts<PhaseCadreHarmonise[]>('/referentiels/phases-cadre-harmonise') : exemple<PhaseCadreHarmonise[]>('/referentiels/phases-cadre-harmonise'), null),
 
-  // IA — résultats des 4 modèles (SALTIS.ML), voir ml/MODELES.md
+  // IA — résultats des 3 modèles (SALTIS.ML), voir ml/MODELES.md
   previsionSaison: (annee: number) => previsions<PrevisionSaison>(`/saison/${annee}`),
   previsionRendement: (code: string, annee: number) => previsions<PrevisionRendement>(`/rendement/${enc(code)}/${annee}`),
   alerteRecolte: (annee: number, moment: Moment, culture?: string | null) => previsions<PrevisionRendement>(`/alerte-recolte/${annee}`, { moment, culture }),

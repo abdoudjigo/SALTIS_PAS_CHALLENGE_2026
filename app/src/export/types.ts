@@ -1,7 +1,7 @@
 // Types du module d'export PDF (dossier national et fiche département), pilotés par l'appelant.
 import type { Map as CarteMapbox } from 'mapbox-gl'
 
-/** Ce dont la capture a besoin de l'instance Mapbox unique (scene/Carte.tsx) : rien d'autre. */
+/** Ce dont la capture a besoin de l'instance Mapbox unique (scene/carte/Carte.tsx) : rien d'autre. */
 export type CarteCapturable = Pick<CarteMapbox, 'once' | 'triggerRepaint' | 'getCanvas'>
 
 /** Cellule de tableau : null ou undefined s'écrit « non disponible », jamais 0. */
@@ -29,7 +29,7 @@ export interface Legende {
   note?: string
 }
 
-/** mêmes états que la checklist de l'écran (scene/fiche.tsx) */
+/** mêmes états que la checklist de l'écran (scene/interface/fiche.tsx) */
 export type EtatCheck = 'ok' | 'attention' | 'non' | 'info'
 
 export interface ElementChecklist {
@@ -104,7 +104,7 @@ export interface DonneesDossier {
   repartition: Tableau
   sources: Source[]
   mentions: Mention[]
-  /** phrases de fiabilité (scene/fiabilite.ts) ; absentes = libellés de MODELES */
+  /** phrases de fiabilité (scene/regles/fiabilite.ts) ; absentes = libellés de MODELES */
   fiabilite?: string[]
   limites?: string[]
   /** contours GADM affichés sur les cartes : la licence est alors citée */

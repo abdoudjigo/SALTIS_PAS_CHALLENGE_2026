@@ -3,8 +3,8 @@
 L'API expose les marts de `SALTIS.MARTS` (Snowflake) pour le front et la BI. Toutes ses réponses sont précalculées et servies depuis un **cache complet** : en mémoire par défaut, ou dans Redis (optionnel).
 
 - Documentation interactive : `http://localhost:8080/docs` (Swagger), `http://localhost:8080/redoc`.
-- Contrat des colonnes : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md).
-- **Guide pratique** (lancer, arrêter, routes expliquées) : [`docs/guide-api.md`](../docs/guide-api.md).
+- Contrat des colonnes : [`docs/technique/contrat-donnees.md`](../docs/technique/contrat-donnees.md).
+- **Guide pratique** (lancer, arrêter, routes expliquées) : [`docs/technique/guide-api.md`](../docs/technique/guide-api.md).
 
 ## Démarrage
 
@@ -196,7 +196,7 @@ Le score est **relatif** : il compare les départements entre eux, ce n'est pas 
 
 ### E · Opportunités : où semer court ou long, où produire toute l'année, où investir ?
 
-Une carte, trois couleurs (`MART_CARTE_OPPORTUNITES`) : **jaune** saison des pluies courte (semences à cycle court), **vert** saison longue (cycle long possible), **bleu** eau mobilisable et peu exploitée en saison sèche (contre-saison, aménagement, forage). Méthode, seuils et limites : [`docs/carte-opportunites.md`](../docs/carte-opportunites.md).
+Une carte, trois couleurs (`MART_CARTE_OPPORTUNITES`) : **jaune** saison des pluies courte (semences à cycle court), **vert** saison longue (cycle long possible), **bleu** eau mobilisable et peu exploitée en saison sèche (contre-saison, aménagement, forage). Méthode, seuils et limites : [`docs/technique/carte-opportunites.md`](../docs/technique/carte-opportunites.md).
 
 | Route | On obtient |
 |---|---|
@@ -219,7 +219,7 @@ Phase d'insécurité alimentaire du dernier cycle du Cadre harmonisé (CILSS, do
 
 La période retenue est celle que le Cadre harmonisé marque à utiliser (sinon la projection). `periode_terminee` et `mention_periode` sont **recalculées à chaque requête** depuis `date_fin_periode_retenue`. Pikine inclut Keur Massar (`fusion_keur_massar`, `note_fusion`). Les populations s'additionnent entre départements, les phases jamais. Couleurs : `/referentiels/phases-cadre-harmonise`. Mart **facultatif** : `404` `cadre_harmonise_indisponible` tant que dbt ne l'a pas construit (de même `prix_indisponible` pour `/prix-intrants`).
 
-### IA · Prévisions : les 4 modèles d'IA
+### IA · Prévisions : les 3 modèles d'IA
 
 Les résultats des modèles de `ml/` (voir [`ml/MODELES.md`](../ml/MODELES.md)) sont lus dans **`SALTIS.ML`**. **Tant que `SALTIS.ML` n'est pas chargé, l'API les lit directement dans `ml/sorties/*.csv`** (`source_locale.py`) : `python -m api` suffit pour tout servir. S'il n'y a ni table ni fichier, ces routes répondent `404` (`prevision_indisponible`) et les marts restent servis.
 
@@ -227,7 +227,6 @@ Les résultats des modèles de `ml/` (voir [`ml/MODELES.md`](../ml/MODELES.md)) 
 |---|---|---|
 | `/previsions/saison/{annee}` | 1 → « La saison qui vient » | les 45 départements : probabilités sèche / normale / humide, pluie prévue et sa fourchette |
 | `/previsions/saison/departements/{code}` | 1 | les prévisions d'un département, année par année (1981-2025) |
-| `/previsions/annees-semblables/{code}/{annee}?moment=` | 2 → « Comment finira la saison » | les 3 années passées les plus semblables et comment leur saison a fini, à chaque moment (`FIN_MAI` … `FIN_AOUT`) |
 | `/previsions/rendement/{code}/{annee}?culture=` | 3 → « Quelle culture » | la fourchette de rendement par culture, aux 4 moments |
 | `/previsions/alerte-recolte/{annee}?moment=FIN_JUILLET&culture=` | 3 → « Alerte récolte » | tous les départements, du risque de chute de récolte le plus fort au plus faible |
 | `/previsions/semis/departements/{code}?annee=&culture=` | 4 → « Quand semer » | pour chaque décade de semis : les deux risques, le risque total, la décade conseillée. Sans `annee` : année type |
@@ -236,7 +235,6 @@ Les résultats des modèles de `ml/` (voir [`ml/MODELES.md`](../ml/MODELES.md)) 
 
 Ce qu'il faut afficher honnêtement (rappelé dans `meta.avertissements`) :
 - **modèle 1** : le gain est modeste, donc on affiche toujours les 3 probabilités et la fourchette, jamais une classe seule ;
-- **modèle 2** : fiable à partir de `FIN_JUILLET` ; à `FIN_MAI`, ses probabilités sont vides et on affiche celles du modèle 1 ;
 - **modèle 3** : une prévision de l'année seulement là où `alerte_fiable` ou `rendement_fiable` est vrai ; ailleurs, c'est la récolte et le risque **habituels** du département. Les lignes `PROJECTION_NON_EVALUEE` (2022-2025) sont invérifiables ;
 - **modèle 4** : les seuils (pluie de semis, décade sèche) sont à valider avec les agronomes.
 
@@ -273,7 +271,7 @@ curl -X POST -H "X-Admin-Token: $API_ADMIN_TOKEN" http://localhost:8080/api/v1/s
 
 ### Colonnes ajoutées le 11/11/2026
 
-Les colonnes `latitude`, `longitude`, `zone_secondaire`, `methode_niveau`, `nb_annees_calc` et `*_source` n'existent dans Snowflake qu'après un `dbt build` des commits d'Aby (référentiels d'Ibrahima, couverture en eau des cycles). Tant que `SALTIS.MARTS` n'est pas reconstruit, l'API fonctionne quand même : ces colonnes valent `null`, et l'avertissement du choix des cultures rappelle que la part « eau » des cycles court et long est encore celle du cycle moyen. Après la reconstruction, il suffit de redémarrer l'API (ou d'appeler `rafraichir`).
+Les colonnes `latitude`, `longitude`, `zone_secondaire`, `methode_niveau`, `nb_annees_calc` et `*_source` n'existent dans Snowflake qu'après un `dbt build` des commits d'Aby (référentiels d'Ibrahima, couverture en eau des cycles). Tant que `SALTIS.MARTS` n'est pas reconstruit, l'API fonctionne quand même : ces colonnes valent `null`, et l'avertissement du choix des cultures rappelle que la part « eau » des cycles court et long est encore celle du cycle moyen. Après la reconstruction, appeler `rafraichir` (avec Redis, un simple redémarrage garde l'ancienne version ; sans Redis, redémarrer suffit).
 
 ## Fonctionnement du cache
 

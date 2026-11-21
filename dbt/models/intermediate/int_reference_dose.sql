@@ -2,7 +2,7 @@
     config(materialized='view')
 }}
 
--- Circuit des doses (docs/etat-modelisation.md, section 6) : union de toutes les sources
+-- Circuit des doses (docs/technique/etat-modelisation.md, section 6) : union de toutes les sources
 -- de doses, puis choix d'UNE source par zone x culture x groupe de doses.
 -- Grain : zone d'application x culture x code_intrant x source_reference.
 --   - zone_agroecologique : zone de la source (NULL = dose nationale) ;

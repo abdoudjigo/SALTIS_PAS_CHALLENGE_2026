@@ -5,6 +5,9 @@ Deux familles :
 - les résultats des modèles d'IA (`SALTIS.ML`), facultatifs : tant qu'ils ne sont pas chargés,
   l'API sert les marts et les routes `/previsions` répondent 404 `prevision_indisponible`.
 
+`MART_CARTE_OPPORTUNITES` est un mart facultatif : tant que dbt ne l'a pas construit, l'API démarre normalement
+et les routes `/opportunites` répondent 404 `opportunites_indisponible`.
+
 `MART_ML_PREVISION_PLUIE` (table d'entraînement) n'est volontairement pas exposé : on expose ses prévisions.
 """
 
@@ -14,7 +17,6 @@ from typing import Literal
 from pydantic import BaseModel
 
 from .schemas import (
-    AnneeSemblable,
     Besoin,
     CadreHarmonise,
     CarteAgroclimat,
@@ -54,14 +56,13 @@ MARTS: dict[str, DefinitionMart] = {
         DefinitionMart("besoins", "MART_BESOINS", Besoin, "code_departement, culture nulls first"),
         DefinitionMart("agrodistrib", "MART_TERRITOIRES_AGRODISTRIB", TerritoireAgrodistrib, "code_departement, culture"),
         DefinitionMart("vulnerabilite", "MART_VULNERABILITE_DEPARTEMENT", Vulnerabilite, "rang_vulnerabilite nulls last, code_departement"),
-        # ---- modèles d'IA (ml/), facultatifs
-        # ---- carte des opportunités (pluie et eau), facultative
+        # ---- carte des opportunités (pluie et eau), facultative : nouveau mart, déployable avant son premier dbt build
         DefinitionMart("opportunites", "MART_CARTE_OPPORTUNITES", CarteOpportunite, "code_departement", "marts", False),
         # ---- prix des intrants et Cadre harmonisé, facultatifs (routes 404 tant que dbt ne les a pas construits)
         DefinitionMart("prix", "DIM_PRIX_INTRANT", PrixIntrant, "campagne, code_intrant", "marts", False),
         DefinitionMart("cadre_harmonise", "MART_CADRE_HARMONISE_DEPARTEMENT", CadreHarmonise, "code_departement", "marts", False),
+        # ---- modèles d'IA (ml/), facultatifs
         DefinitionMart("prev_saison", "PREVISION_SAISONNIERE", PrevisionSaison, "annee, code_departement", "ml", False),
-        DefinitionMart("semblables", "ANNEES_SEMBLABLES", AnneeSemblable, "code_departement, annee, moment_prevision, rang", "ml", False),
         DefinitionMart("prev_rendement", "PREVISION_RENDEMENT", PrevisionRendement,
                        "code_departement, annee, culture, moment_prevision", "ml", False),
         DefinitionMart("semis", "RISQUE_SEMIS", RisqueSemis, "code_departement, annee nulls last, culture, decade_semis", "ml", False),

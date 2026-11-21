@@ -1,6 +1,9 @@
 // Pied de page de la landing : la terre sous le ciel. Marque et mission, liens, puis les sources
 // et crédits (obligatoires) dans un bloc à part, et la mention d'honnêteté du prototype.
 import { Link } from 'react-router'
+import { useAuth } from '../auth/AuthContext'
+import { config } from '../config'
+import { consentement } from '../consentement/consentement'
 
 const RUBRIQUES: { titre: string; liens: { libelle: string; to: string; ancre?: boolean }[] }[] = [
   {
@@ -22,7 +25,11 @@ const RUBRIQUES: { titre: string; liens: { libelle: string; to: string; ancre?: 
   },
   {
     titre: 'Informations',
-    liens: [{ libelle: 'Mentions légales et confidentialité', to: '/mentions-legales' }],
+    liens: [
+      { libelle: 'Mentions légales', to: '/mentions-legales' },
+      { libelle: 'Politique de confidentialité', to: '/confidentialite' },
+      { libelle: 'Conditions générales', to: '/conditions-generales' },
+    ],
   },
 ]
 
@@ -55,7 +62,13 @@ const EQUIPE: [string, string][] = [
 const LIEN = 'inline-flex min-h-11 items-center text-sm text-white/70 underline-offset-4 transition hover:text-white hover:underline'
 const ETIQUETTE = 'text-2xs font-medium tracking-etiquette text-soleil-500 uppercase'
 
+// Une fois entré par une porte, « / » affiche la carte et non plus l'accueil : les liens vers les sections
+// de l'accueil (/#zones…) y mèneraient sans rien montrer. On propose alors seulement de revenir à la carte.
+const PLATEFORME_CONNECTE: (typeof RUBRIQUES)[number] = { titre: 'Plateforme', liens: [{ libelle: 'Revenir à la carte', to: '/' }] }
+
 export function PiedDePage() {
+  const { estConnecte } = useAuth()
+  const rubriques = estConnecte ? RUBRIQUES.map((r) => (r.titre === 'Plateforme' ? PLATEFORME_CONNECTE : r)) : RUBRIQUES
   return (
     <footer className="pointer-events-auto relative bg-vert-900 text-white">
       {/* L'horizon : deux lignes de terre, comme sur l'emblème, font la transition depuis la page claire */}
@@ -71,17 +84,18 @@ export function PiedDePage() {
             <p className="mt-4 text-md leading-relaxed text-white/70">
               La pluie, le sol et les cultures des 45 départements du Sénégal, pour décider quoi semer et où porter les intrants.
             </p>
-            <p className="mt-6 text-sm text-white/55">Équipe AKAI · SALTIS PAS Challenge 2026</p>
+            <p className="mt-6 text-sm text-white/60">Équipe AKAI · SALTIS PAS Challenge 2026</p>
           </div>
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
-            {RUBRIQUES.map((r) => (
+            {rubriques.map((r) => (
               <nav key={r.titre} aria-label={r.titre}>
                 <h2 className={ETIQUETTE}>{r.titre}</h2>
                 <ul className="mt-2">
                   {r.liens.map((l) => (
                     <li key={l.to}>{l.ancre ? <a href={l.to} className={LIEN}>{l.libelle}</a> : <Link to={l.to} className={LIEN}>{l.libelle}</Link>}</li>
                   ))}
+                  {r.titre === 'Informations' && config.umamiId && <li><button type="button" onClick={consentement.rouvrir} className={LIEN}>Gérer les cookies</button></li>}
                 </ul>
               </nav>
             ))}
@@ -105,14 +119,14 @@ export function PiedDePage() {
           <dl className="mt-4 grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
             {SOURCES.map(([quoi, source]) => (
               <div key={quoi} className="flex flex-col border-l border-white/15 pl-3.5">
-                <dt className="text-xs text-white/50">{quoi}</dt>
+                <dt className="text-xs text-white/60">{quoi}</dt>
                 <dd className="text-sm text-white/85">{source}</dd>
               </div>
             ))}
           </dl>
         </section>
 
-        <div className="mt-10 flex flex-col gap-2 border-t border-white/12 pt-6 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col gap-2 border-t border-white/12 pt-6 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between">
           <p><strong className="font-medium text-white/80">Estimations indicatives, pas des garanties.</strong> Doses et recommandations à valider avec l'ISRA et les conseillers agricoles.</p>
           <p className="shrink-0">© 2026 AKAI</p>
         </div>

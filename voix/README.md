@@ -6,7 +6,7 @@ Chaque fenêtre de résultats a deux mascottes, en haut (en haut à droite du ti
 | Mascotte | Badge | Langue | Voix |
 |---|---|---|---|
 | Le garçon | **FR** | Français, toutes les fonctionnalités | Synthèse vocale du navigateur, instantanée |
-| La fille | **WLF** | Wolof, les 5 fonctionnalités de l'agriculteur | Texte wolof préparé à l'avance (`app/src/scene/wolof.ts` et `aEcouterWo` de chaque fonctionnalité), dit par l'API (`POST /api/v1/voix/parler`) |
+| La fille | **WLF** | Wolof, les 5 fonctionnalités de l'agriculteur | Texte wolof préparé à l'avance (`app/src/scene/voix/wolof.ts` et `aEcouterWo` de chaque fonctionnalité), dit par l'API (`POST /api/v1/voix/parler`) |
 
 On appuie sur une mascotte : elle lit l'essentiel de ce qu'affiche la fenêtre. On rappuie : elle s'arrête. La voix wolof est gardée en mémoire : la rejouer est instantané. Sans Space configuré, la fille affiche « voix wolof non configurée ».
 
@@ -25,7 +25,7 @@ Ce que dit la mascotte FR :
 | Alerte récolte | Les départements en alerte et leur risque, ce que vaut l'alerte |
 | Vulnérabilité, Besoins du pays, Répartir un stock | Le classement, les totaux, la répartition proposée |
 
-Comment c'est fait (`app/src/scene/lecture.ts`) :
+Comment c'est fait (`app/src/scene/voix/lecture.ts`) :
 - **Rien d'inventé** : chaque fonctionnalité compose ses phrases avec les chiffres qu'elle affiche (`aEcouter` dans sa sortie). Une valeur absente se dit « non disponible ».
 - **Écrit pour l'oreille** : pas d'abréviation (« 589 millimètres », « 41 pour cent », « N P K quinze quinze quinze », « kilos par hectare ») ; les cultures avec leur article (« le niébé », « de l'arachide ») ; les grosses quantités arrondies.
 - **Fiable dans tous les navigateurs** : lecture phrase par phrase (Chrome coupe les lectures de plus de 15 secondes) ; choix automatique de la meilleure voix française de l'appareil (voix « Natural » d'Edge, « Google français » de Chrome, voix « Premium » d'Apple ; les voix robotiques sont écartées) ; la lecture s'arrête quand on change de fonctionnalité.

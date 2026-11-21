@@ -6,8 +6,10 @@ Ce document dit **quelles données sont disponibles** pour les modèles, **où l
 2. **Prévision de l'anomalie de rendement** (si le temps le permet) ;
 3. **AgroDistrib** : proposition de répartition des intrants d'une organisation (ministère, ONG) entre zones, régions ou départements.
 
+L'équipe ML a ajouté un complément, le **modèle de date de semis** (« Quand semer » : à quelle décade semer pour courir le moins de risque), qui utilise la sortie du modèle de pluie. Les modèles construits, leur fiabilité et leurs sorties sont décrits dans [`MODELES.md`](MODELES.md) ; la comparaison des algorithmes dans [`docs/technique/rapport-comparaison-modeles.md`](../docs/technique/rapport-comparaison-modeles.md).
 
-**Détail des colonnes** (unités, valeurs possibles, limites, exemples de requêtes) : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md). Décisions et état de la modélisation : [`docs/etat-modelisation.md`](../docs/etat-modelisation.md).
+
+**Détail des colonnes** (unités, valeurs possibles, limites, exemples de requêtes) : [`docs/technique/contrat-donnees.md`](../docs/technique/contrat-donnees.md). Décisions et état de la modélisation : [`docs/technique/etat-modelisation.md`](../docs/technique/etat-modelisation.md).
 
 ---
 
@@ -136,6 +138,8 @@ Les indices mars–mai 2026 (ONI, TNA, TSA), la pluie 2025 et l'humidité du sol
 
 **Cible** : `anomalie_rendement_pct`, l'écart du rendement à sa tendance. 7 428 valeurs ; médiane +2,5 % ; quelques **valeurs extrêmes** (jusqu'à +1 349 %).
 
+**Cible retenue (validée par l'équipe le 18/11/2026)** : le modèle de rendement (`ml/m3_rendement/`) n'utilise pas `anomalie_rendement_pct`, mais le **rapport du rendement à la moyenne des 10 campagnes précédentes** du même département et de la même culture (au moins 5 observées). La tendance fournie par la source (`tendance_rendement_kg_ha`, d'où vient `anomalie_rendement_pct`) est ajustée sur toute la série, années futures comprises : elle n'est pas connue au moment de la prévision.
+
 Dans `FACT_RENDEMENT_DEPARTEMENT`, filtrer sur **`rendement_kg_ha is not null`** (8 040 lignes), et non sur `est_observe`. `est_observe = true` (8 244 lignes) signifie qu'au moins une valeur a été publiée : il inclut 204 lignes sans rendement, dont 58 avec seulement une superficie, 14 avec seulement une production et 132 avec une superficie et une production mais sans rendement publié. Les 7 428 anomalies sont toutes sur des lignes avec un rendement.
 
 **Variables de saison** : dans `FACT_SAISON_DEPARTEMENT`, à joindre sur département et campagne. Les variables propres à chaque culture (`indice_satisfaction_eau_pct`, `deficit_hydrique_mm`) sont dans le fait de rendement.
@@ -209,6 +213,8 @@ Comment lire ces colonnes :
 
 Les **stocks déclarés** et les **paramètres saisis** par le décideur seront dans `SALTIS.APP`, alimenté par l'application.
 
+**Moteur construit** : [`agrodistrib/`](agrodistrib/README.md) (18/11/2026), prorata multicritère avec l'arbitrage α du décideur, à partir de cette table. Il n'est pas encore servi par l'API.
+
 En secours, les mêmes informations se trouvent dans les CSV `c_besoins_departement_culture`, `c_besoins_par_hectare`, `c_facteurs_limitants_zone_culture`, `b_adequation_culture_departement` et `a_profil_agroclimatique_departement`, mais sans les règles ci-dessus (semences non applicables, potentiel non évalué, vulnérabilité).
 
 ### Points d'attention sur ces données
@@ -229,20 +235,23 @@ En secours, les mêmes informations se trouvent dans les CSV `c_besoins_departem
 
 ## 6. Où déposer les résultats
 
-| Résultat | Où | Contenu attendu |
-|---|---|---|
-| Prévision de pluie | `SALTIS.ML.PREVISION_SAISONNIERE` | Par département et campagne : version du modèle, date des données utilisées, pluie prévue avec une fourchette, probabilités sèche / normale / humide, classe prévue. Distinguer les prévisions rétrospectives (années passées) de la prévision opérationnelle (année à venir). |
-| Prévision de rendement | `SALTIS.ML.PREVISION_RENDEMENT` | Par département, campagne et culture : anomalie prévue, date de prévision (fin mai ou fin juillet). |
-| Fiabilité des modèles | `SALTIS.ML.EVALUATION_MODELES` | Métriques par version, par zone et par culture. Elles permettent à l'application d'afficher la fiabilité. |
-| Scénarios AgroDistrib | `SALTIS.APP` | Paramètres du scénario, quantité proposée par territoire, détail par département pour l'explication. La quantité validée est saisie par le décideur dans l'application. |
+Les modèles écrivent d'abord des CSV dans `ml/sorties/`. Les tables de `SALTIS.ML` sont créées par [`snowflake/20_ml_resultats.sql`](../snowflake/20_ml_resultats.sql) (à exécuter à la main, une fois), puis remplies par [`charger_snowflake.py`](charger_snowflake.py) : sans option, il vérifie sans écrire ; avec `--confirmer`, il vide chaque table puis la remplit.
 
-Le format exact des tables est fixé avec l'équipe données avant la première écriture. **Ne jamais écrire dans `RAW` ni dans `MARTS`.** Une prévision ne remplace jamais une observation.
+| Résultat | Où | Fichier | Contenu |
+|---|---|---|---|
+| Prévision de pluie (modèle 1) | `SALTIS.ML.PREVISION_SAISONNIERE` | `prevision_saison.csv` | Par département et année (1981-2035) : version du modèle, date de calcul, pluie prévue avec une fourchette, probabilités sèche / normale / humide, classe prévue. `type_prevision` distingue les prévisions rétrospectives (`RETROSPECTIVE_VALIDATION`, `RETROSPECTIVE_TEST`) des prévisions des années à venir (`PREVISION_OCEAN` pour 2026, `PREVISION_TENDANCE` pour 2027-2035). |
+| Prévision de rendement (modèle 2 de ce document) | `SALTIS.ML.PREVISION_RENDEMENT` | `prevision_rendement.csv` | Par département, culture, campagne et moment de prévision (fin mai à fin août) : fourchette de rendement, probabilité de chute de la récolte, drapeaux `rendement_fiable` et `alerte_fiable`. |
+| Date de semis (complément) | `SALTIS.ML.RISQUE_SEMIS` | `risque_semis.csv` | Par département, année, culture et décade de semis : risques de faux départ et de fin trop tôt, décade conseillée. |
+| Fiabilité des modèles | `SALTIS.ML.EVALUATION_MODELES` | `evaluation_m1.csv`, `evaluation_m3.csv`, `evaluation_m4.csv` | Une ligne par mesure : version, période, moment, culture. Elles permettent à l'application d'afficher la fiabilité. |
+| Scénarios AgroDistrib | `SALTIS.APP` (**à venir** : schéma pas encore créé) | — | Paramètres du scénario, quantité proposée par territoire, détail par département pour l'explication. La quantité validée est saisie par le décideur dans l'application. |
+
+Le format des tables est à valider avec l'équipe données avant la première écriture. **Ne jamais écrire dans `RAW` ni dans `MARTS`.** Une prévision ne remplace jamais une observation.
 
 ---
 
 ## 7. Ce qu'il faut demander à l'équipe données
 
-- L'accès Snowflake (`USER_ML` avec le rôle `R_ML`, identifiants de connexion) : auprès d'Ibrahima.
+- Les identifiants de connexion de `USER_ML` (rôle `R_ML`, déjà créés) : auprès d'Ibrahima, pour le fichier `.env` local.
 - Les contours des départements (GADM 4.1), s'ils sont utiles aux modèles.
 - Les variables 2026 dès leur publication.
 - Toute nouvelle variable utile : elle sera ajoutée proprement dans les tables `MART_*`, pas bricolée dans le code ML.

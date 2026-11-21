@@ -1,6 +1,6 @@
 // Dossier national de campagne : page de garde, une page par étape (carte capturée avec la même
 // sélection), répartition complète de l'étape 5, page « Sources, fiabilité et limites ».
-import { MODELES } from '../scene/fiabilite'
+import { MODELES } from '../scene/regles/fiabilite'
 import { attendreRepos, capturerCarte } from './capture'
 import { creerDocument, Redacteur, terminer } from './pdf'
 import { dateHeureFr, dateIso, estFumier, ligneSource, sourcesCompletes } from './texte'

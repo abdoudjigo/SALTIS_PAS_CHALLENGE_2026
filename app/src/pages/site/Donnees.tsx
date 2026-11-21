@@ -1,9 +1,11 @@
+import { PAGES } from '../../lib/pages'
 import { PageSite, Partie, Tableau } from './PageSite'
 
 export default function Donnees() {
   return (
     <PageSite
-      titre="Données et sources"
+      titre={PAGES.donnees.titre}
+      description={PAGES.donnees.description}
       chapeau="Toutes les données sont publiques. Elles sont nettoyées, contrôlées et testées avant d'arriver sur la carte."
     >
       <Partie titre="D'où viennent les données">

@@ -16,10 +16,10 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from ..marts import MARTS
 from ..schemas import (
     Agregat,
-    AnneeSemblable,
     Besoin,
     CadreHarmonise,
     CarteAgroclimat,
+    CarteOpportunite,
     ChoixCulture,
     CultureRef,
     DepartementRef,
@@ -38,14 +38,13 @@ from ..schemas import (
     Vulnerabilite,
     ZoneRef,
 )
-from . import cles
 from ..schemas.cadre_harmonise import LIBELLES_PHASES
-from ..schemas.opportunites import CarteOpportunite
+from . import cles
 from .cles import SUFFIXE_GZIP, normaliser
 
 SEUIL_GZIP_OCTETS = 1024
 
-# --- Limites d'usage renvoyées dans meta.avertissements (reprises de docs/contrat-donnees.md) ---
+# --- Limites d'usage renvoyées dans meta.avertissements (reprises de docs/technique/contrat-donnees.md) ---
 AV_CARTE = [
     "classe_saison est relative à chaque département.",
     "NDVI disponible à partir de 2000 seulement.",
@@ -84,6 +83,14 @@ AV_AGRODISTRIB = [
     "Potentiel de gain : valeur de zone, non additive, identique pour les départements d'une même zone.",
     "Gain de rendement indicatif : aucune donnée de réponse aux engrais par territoire.",
 ]
+AV_OPPORTUNITES = [
+    "Indicateur de repérage, pas une étude de faisabilité : foncier, salinité, qualité de l'eau et accès à vérifier sur place.",
+    "Saison courte / longue : même calcul que /choix-cultures (cycle qui passe au moins 4 années sur 5).",
+    "Irrigation équipée : FAO GMIA, vers 2005. Nappes : BGS, échelle continentale (grille 5 km).",
+]
+AV_OPPORTUNITES_SANS_EAU = "Couche bleue non évaluée : les sources eau ne sont pas encore chargées (categorie_eau = « non évaluée »)."
+COULEURS = ("bleu", "jaune", "vert")
+
 AV_VULNERABILITE = [
     "Score relatif et indicatif (méthode v1), à valider avec les techniciens.",
     "NULL pour Dakar (confiance faible), Guédiawaye et Pikine (aucun rendement).",
@@ -120,7 +127,6 @@ class Index(BaseModel):
     annees_suivi: list[int]
     # Modèles d'IA (vides tant que SALTIS.ML n'est pas chargé ; valeurs par défaut pour relire un ancien index)
     annees_prev_saison: list[int] = []
-    annees_semblables: list[int] = []
     annees_prev_rendement: list[int] = []
     cultures_prev_rendement: list[str] = []
     annees_semis: list[int] = []
@@ -293,7 +299,6 @@ def construire(
     prix: list[PrixIntrant] = marts.get("prix", [])
     cadre: list[CadreHarmonise] = marts.get("cadre_harmonise", [])
     prev_saison: list[PrevisionSaison] = marts.get("prev_saison", [])
-    semblables: list[AnneeSemblable] = marts.get("semblables", [])
     prev_rendement: list[PrevisionRendement] = marts.get("prev_rendement", [])
     semis: list[RisqueSemis] = marts.get("semis", [])
     evaluation: list[EvaluationModele] = marts.get("evaluation", [])
@@ -316,7 +321,6 @@ def construire(
         campagnes=sorted({x.campagne_agricole for x in carte}),
         annees_suivi=sorted({x.annee for x in suivi}),
         annees_prev_saison=sorted({x.annee for x in prev_saison}),
-        annees_semblables=sorted({x.annee for x in semblables}),
         annees_prev_rendement=sorted({x.annee for x in prev_rendement}),
         cultures_prev_rendement=sorted({x.culture for x in prev_rendement}),
         annees_semis=sorted({x.annee for x in semis if x.annee is not None}),
@@ -473,9 +477,32 @@ def construire(
     _construire_opportunites(b, opportunites)
     _construire_prix(b, prix)
     _construire_cadre_harmonise(b, cadre)
-    _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, semblables, prev_rendement, semis,
+    _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, prev_rendement, semis,
                            evaluation)
     return b.c
+
+
+# ---------------------------------------------------------------- carte des opportunités
+
+
+def _construire_opportunites(b: _Constructeur, lignes: list[CarteOpportunite]) -> None:
+    """La carte entière, une couleur à la fois (bleu = classement des opportunités), et le détail d'un département."""
+    if not lignes:
+        return
+    table = MARTS["opportunites"].table
+    avertissements = list(AV_OPPORTUNITES)
+    if all(x.categorie_eau == "non évaluée" for x in lignes):
+        avertissements.insert(0, AV_OPPORTUNITES_SANS_EAU)
+    lignes = sorted(lignes, key=lambda x: x.code_departement)
+    b.ajouter(cles.opportunites(None), lignes, CarteOpportunite, table, None, avertissements)
+    for couleur in COULEURS:
+        membres = [x for x in lignes if x.couleur_carte == couleur]
+        if couleur == "bleu":
+            membres.sort(key=lambda x: (x.rang_opportunite_eau is None, x.rang_opportunite_eau or 0, x.code_departement))
+        b.ajouter(cles.opportunites(couleur), membres, CarteOpportunite, table, {"couleur": couleur}, avertissements)
+    for x in lignes:
+        b.ajouter(cles.opportunites_departement(x.code_departement), x, CarteOpportunite, table,
+                  {"code_departement": x.code_departement}, avertissements)
 
 
 # ---------------------------------------------------------------- modèles d'IA (SALTIS.ML)
@@ -487,10 +514,6 @@ AV_PREV_SAISON = [
 AV_PREV_TENDANCE = [
     "Prévision de tendance : océan de mars-mai pas encore connu pour cette année ; pluie attendue = moyenne des 15 dernières saisons.",
     "Erreur mesurée sur 2016-2025 : 115 mm (normale seule : 122 mm). Remplacée par la prévision océan dès fin mai de l'année.",
-]
-AV_SEMBLABLES = [
-    "Comparaison avec les années passées du même département : fiable à partir de FIN_JUILLET.",
-    "FIN_MAI : probabilités vides, afficher celles de /previsions/saison (modèle 1) ; les années semblables illustrent.",
 ]
 AV_RENDEMENT = [
     "Gain faible : la prévision ne bat la référence que là où alerte_fiable ou rendement_fiable est vrai.",
@@ -514,7 +537,6 @@ def _construire_previsions(
     b: _Constructeur,
     prefixe_ml: str,
     prev_saison: list[PrevisionSaison],
-    semblables: list[AnneeSemblable],
     prev_rendement: list[PrevisionRendement],
     semis: list[RisqueSemis],
     evaluation: list[EvaluationModele],
@@ -529,14 +551,6 @@ def _construire_previsions(
     for code, lignes in _grouper(prev_saison, lambda x: x.code_departement).items():
         b.ajouter(cles.prev_saison_departement(code), lignes, PrevisionSaison, source["prev_saison"], {"code_departement": code},
                   AV_PREV_SAISON)
-
-    # Modèle 2 : département × année, tous moments ou un seul
-    for (code, annee), lignes in _grouper(semblables, lambda x: (x.code_departement, x.annee)).items():
-        filtres = {"code_departement": code, "annee": annee}
-        b.ajouter(cles.semblables(code, annee, None), lignes, AnneeSemblable, source["semblables"], filtres, AV_SEMBLABLES)
-        for moment, du_moment in _grouper(lignes, lambda x: x.moment_prevision).items():
-            b.ajouter(cles.semblables(code, annee, moment), du_moment, AnneeSemblable, source["semblables"],
-                      {**filtres, "moment": moment}, AV_SEMBLABLES)
 
     # Modèle 3 : un département (toutes cultures ou une), et la carte d'alerte (tous départements)
     for (code, annee), lignes in _grouper(prev_rendement, lambda x: (x.code_departement, x.annee)).items():
@@ -570,36 +584,6 @@ def _construire_previsions(
         b.ajouter(cles.evaluation(None), evaluation, EvaluationModele, source["evaluation"], None, AV_EVALUATION)
         for modele, lignes in _grouper(evaluation, lambda x: x.modele).items():
             b.ajouter(cles.evaluation(modele), lignes, EvaluationModele, source["evaluation"], {"modele": modele}, AV_EVALUATION)
-
-
-AV_OPPORTUNITES = [
-    "Indicateur de repérage, pas une étude de faisabilité : foncier, salinité, qualité de l'eau et accès à vérifier sur place.",
-    "Saison courte / longue : même calcul que /choix-cultures (cycle qui passe au moins 4 années sur 5).",
-    "Irrigation équipée : FAO GMIA, vers 2005. Nappes : BGS, échelle continentale (grille 5 km).",
-]
-AV_OPPORTUNITES_SANS_EAU = "Couche bleue non évaluée : les sources eau ne sont pas encore chargées (categorie_eau = « non évaluée »)."
-COULEURS = ("bleu", "jaune", "vert")
-
-
-
-def _construire_opportunites(b: _Constructeur, lignes: list[CarteOpportunite]) -> None:
-    """La carte entière, une couleur à la fois (bleu = classement des opportunités), et le détail d'un département."""
-    if not lignes:
-        return
-    table = MARTS["opportunites"].table
-    avertissements = list(AV_OPPORTUNITES)
-    if all(x.categorie_eau == "non évaluée" for x in lignes):
-        avertissements.insert(0, AV_OPPORTUNITES_SANS_EAU)
-    lignes = sorted(lignes, key=lambda x: x.code_departement)
-    b.ajouter(cles.opportunites(None), lignes, CarteOpportunite, table, None, avertissements)
-    for couleur in COULEURS:
-        membres = [x for x in lignes if x.couleur_carte == couleur]
-        if couleur == "bleu":
-            membres.sort(key=lambda x: (x.rang_opportunite_eau is None, x.rang_opportunite_eau or 0, x.code_departement))
-        b.ajouter(cles.opportunites(couleur), membres, CarteOpportunite, table, {"couleur": couleur}, avertissements)
-    for x in lignes:
-        b.ajouter(cles.opportunites_departement(x.code_departement), x, CarteOpportunite, table,
-                  {"code_departement": x.code_departement}, avertissements)
 
 
 # ---------------------------------------------------------------- référentiel des intrants, prix, Cadre harmonisé

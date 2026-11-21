@@ -1,0 +1,4 @@
+scenario,alpha,choisi_par_le_decideur,stock_t,stock_reparti_t,stock_non_reparti_t,besoin_total_t,couverture_globale_pct,nb_departements_servis,couverture_min_pct,couverture_max_pct,gini_couverture,vulnerabilite_moyenne_d_une_tonne,valeur_indicative_d_une_tonne,gain_ciblage_vulnerabilite_pct,gain_valeur_indicative_pct
+Équité,0.0,False,20000.0,20000.0,0.0,120318.07,16.6,41,9.5,24.6,0.12,0.51,0.316,4.4,-4.0
+Équilibré,0.5,True,20000.0,20000.0,0.0,120318.07,16.6,41,12.7,21.6,0.059,0.493,0.332,0.9,0.8
+Rendement,1.0,False,20000.0,20000.0,0.0,120318.07,16.6,41,12.4,26.1,0.11,0.473,0.351,-3.2,6.6

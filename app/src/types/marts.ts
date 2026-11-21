@@ -1,4 +1,4 @@
-// Types des réponses de l'API : colonnes des marts SALTIS.MARTS (docs/contrat-donnees.md),
+// Types des réponses de l'API : colonnes des marts SALTIS.MARTS (docs/technique/contrat-donnees.md),
 // en minuscules, sans clé md5. `| null` = valeur inconnue ou non applicable (jamais 0).
 
 export type CodeDepartement = string // code GADM, ex. SEN.10.1_1
@@ -121,7 +121,7 @@ export interface LigneChoixCulture extends Territoire {
   zones_recommandees: string | null
 }
 
-// --- Module E : carte des opportunités (mart_carte_opportunites, docs/carte-opportunites.md) ---------
+// --- Module E : carte des opportunités (mart_carte_opportunites, docs/technique/carte-opportunites.md) ---------
 export type CouleurOpportunite = 'bleu' | 'jaune' | 'vert'
 export type CategorieEau =
   | 'eau de surface peu exploitée' | 'nappe accessible' | 'eau de surface déjà exploitée'

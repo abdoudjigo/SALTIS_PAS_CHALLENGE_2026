@@ -1,5 +1,5 @@
 // Bandeau des sources de données : elles défilent lentement, le survol met en pause.
-// Chaque source affiche son logo (public/logos/, tirés de les_logos/ à la racine : fond blanc retiré, recadrés,
+// Chaque source affiche son logo (public/logos/, tirés de docs/visuels/logos-sources/ : fond blanc retiré, recadrés,
 // 120 px de haut). Sans logo, le sigle sert de signature.
 import clsx from 'clsx'
 import { useEffect, useRef } from 'react'
@@ -35,7 +35,7 @@ function Signature({ s }: { s: Source }) {
     <li className="flex shrink-0 items-center gap-4 px-8 sm:px-10">
       {s.logo ? (
         <span className="logo-3d grid h-16 shrink-0 place-items-center rounded-2xl bg-white px-3">
-          <img src={s.logo} alt={s.sigle} width={s.l} height={s.h} loading="lazy" decoding="async" draggable={false} className="h-12 w-auto max-w-32 object-contain" />
+          <img src={s.logo} alt={`Logo ${s.sigle}`} width={s.l} height={s.h} loading="lazy" decoding="async" draggable={false} className="h-12 w-auto max-w-32 object-contain" />
         </span>
       ) : (
         <span className="font-titre text-2xl font-semibold tracking-tight whitespace-nowrap text-encre/80">{s.sigle}</span>

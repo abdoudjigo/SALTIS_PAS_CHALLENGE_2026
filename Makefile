@@ -1,30 +1,43 @@
+# Commandes du projet (Linux, macOS ; sous Windows : voir README.md, section « Windows »).
+# Python 3.12 (.python-version) et Node 22 (.nvmrc). Le venv s'appelle venv/ (ignoré par git).
 -include .env
 export
 
+VENV := venv
+PY   := $(VENV)/bin/python
+
+.PHONY: install up down load dbt-run api api-prod cache-warm cache-check test test-api test-ml lint \
+        front-install front front-build front-preview verifier
+
+# --- Python : API, dbt, ML ---
 install:
-	python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+	python3 -m venv $(VENV) && $(PY) -m pip install -r requirements.txt
 up:
 	docker compose up -d
 down:
 	docker compose down
 load:
-	.venv/bin/python ingestion/load_modules.py
+	$(PY) ingestion/load_modules.py
 dbt-run:
-	cd dbt && ../.venv/bin/dbt run --profiles-dir . && ../.venv/bin/dbt test --profiles-dir .
+	cd dbt && ../$(VENV)/bin/dbt run --profiles-dir . && ../$(VENV)/bin/dbt test --profiles-dir .
 api:
-	.venv/bin/python -m api
+	$(PY) -m api
+# Comme en production (deploy/Dockerfile.api) : un seul worker, la voix wolof n'est chargée qu'une fois en mémoire
 api-prod:
-	.venv/bin/uvicorn api.main:app --workers 4 --host 0.0.0.0 --port 8080
+	$(VENV)/bin/uvicorn api.main:app --workers 1 --host 0.0.0.0 --port 8080
 cache-warm:
-	.venv/bin/python -m api.cache.prechargement
+	$(PY) -m api.cache.prechargement
 cache-check:
-	.venv/bin/python -m api.cache.prechargement --verifier
+	$(PY) -m api.cache.prechargement --verifier
+test: test-api test-ml
 test-api:
-	.venv/bin/python -m pytest api/tests -q
+	$(PY) -m pytest api/tests -q
+test-ml:
+	$(PY) -m pytest ml/tests -q
 lint:
-	.venv/bin/ruff check .
+	$(VENV)/bin/ruff check . --select E9,F63,F7,F82,F401   # mêmes règles que la CI
 
-# --- Front (app/) : Node 20.19+ ---
+# --- Front (app/) : Node 22 ---
 front-install:
 	cd app && npm ci && ( [ -f .env.local ] || cp .env.example .env.local )
 front:
@@ -33,3 +46,6 @@ front-build:
 	cd app && npm run lint && npm run build
 front-preview:
 	cd app && npm run build && npm run preview
+
+# --- Tout vérifier avant une Pull Request ---
+verifier: lint test front-build

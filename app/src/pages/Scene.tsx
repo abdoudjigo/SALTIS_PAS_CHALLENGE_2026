@@ -6,23 +6,24 @@ import { useAuth } from '../auth/AuthContext'
 import { config } from '../config'
 import { useReferentiels } from '../hooks/donnees'
 import { usePrechargerDepartement } from '../hooks/precharger'
-import type { Survol, VueCarte } from '../scene/Carte'
+import { ACCUEIL, useMeta } from '../lib/meta'
+import type { Survol, VueCarte } from '../scene/carte/Carte'
 import { cadrer, questionDe, questionOng, type AccesExport, type Cadre, type Fonctionnalite, type Infobulle, type ModeOng, type PropsMode, type Sortie } from '../scene/cadre'
-import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../scene/dossier'
-import { definirCarte, registre } from '../scene/registreExport'
-import { AvisOng } from '../scene/AvisOng'
-import { Dock } from '../scene/Dock'
-import { hauteurCran, type Cran } from '../scene/crans'
-import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/Fenetre'
-import { GardeCarte } from '../scene/GardeCarte'
-import { useContours, useContoursZones } from '../scene/fonds'
-import type { LonLat } from '../scene/geo'
+import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../scene/ong/dossier'
+import { definirCarte, registre } from '../scene/ong/registreExport'
+import { AvisOng } from '../scene/ong/AvisOng'
+import { Dock } from '../scene/interface/Dock'
+import { hauteurCran, type Cran } from '../scene/carte/crans'
+import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/interface/Fenetre'
+import { GardeCarte } from '../scene/carte/GardeCarte'
+import { useContours, useContoursZones } from '../scene/carte/fonds'
+import type { LonLat } from '../scene/carte/geo'
 import type { Utilisateur } from '../types/auth'
 import { anneeAVenir } from '../types/previsions'
 
 // La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
 // données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
-const chargerCarte = () => import('../scene/Carte')
+const chargerCarte = () => import('../scene/carte/Carte')
 const Carte = lazy(chargerCarte)
 void chargerCarte()
 
@@ -105,12 +106,13 @@ function Bulle({ ref, infobulle }: { ref: Ref<PoigneeBulle>; infobulle: Sortie['
   return (
     <div className="verre-scene pointer-events-none absolute z-30 max-w-64 rounded-lg px-3 py-2" style={{ left: Math.max(8, Math.min(survol.x + 16, window.innerWidth - (window.innerWidth >= 768 ? LARGEUR_FENETRE_PX + 32 : 0) - 264)), top: Math.max(8, survol.y + 16) }} role="status">
       <p className="text-sm font-medium text-white">{contenu.titre}</p>
-      {contenu.lignes.map((l) => <p key={l} className="text-xs leading-relaxed text-white/70">{l}</p>)}
+      {contenu.lignes.map((l) => <p key={l} className="text-xs leading-relaxed text-white/80">{l}</p>)}
     </div>
   )
 }
 
 export default function Scene() {
+  useMeta({ titrePage: 'Carte', description: ACCUEIL.description })
   const { user, logout } = useAuth()
   const ecran = useEcran()
   const { data: ref, error } = useReferentiels()
@@ -229,7 +231,7 @@ export default function Scene() {
         </GardeCarte>
       ) : (
         <div className="grid h-full place-items-center px-6 text-center">
-          <p className={error ? 'text-soleil-500' : 'animate-pulse text-white/60'}>
+          <p className={error ? 'text-soleil-500' : 'animate-pulse text-white/70'}>
             {error ? `Les données ne répondent pas : ${error.message}` : 'La carte se prépare…'}
           </p>
         </div>
@@ -246,7 +248,7 @@ export default function Scene() {
               {config.donneesDemo && <span className="ml-1.5 rounded-full border border-white/20 px-1.5 whitespace-nowrap text-white/70" title="Données de démonstration synthétiques : elles illustrent la plateforme et ne servent pas à décider.">Démo · données synthétiques</span>}
             </p>
           </div>
-          <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/60 transition hover:text-white">
+          <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
             <LogOut className="size-4" />
           </button>
         </div>

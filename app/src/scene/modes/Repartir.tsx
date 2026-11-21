@@ -6,20 +6,20 @@
 import { useId, useMemo, useState } from 'react'
 import { useCadreHarmonise, usePrixIntrants, useTerritoires } from '../../hooks/donnees'
 import { libelle, nombre, pct, tonnes } from '../../lib/format'
-import { lireNombre } from '../../lib/saisie'
+import { lireSaisie } from '../../lib/saisie'
 import type { LigneTerritoireAgrodistrib } from '../../types/marts'
-import { besoinsParDepartement, culturePrincipale } from '../besoinsPays'
+import { besoinsParDepartement, culturePrincipale } from '../regles/besoinsPays'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { chCompte } from '../cadreHarmonise'
-import type { Arc } from '../Carte'
-import { couleurCouverture, NON_DISPONIBLE } from '../couleurs'
-import { useDossier } from '../dossier'
-import { aLire, puceAnnee, puceChoix, puceCulture, type LigneCheck, type Puce } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import type { LonLat } from '../geo'
-import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes, tonnesDeSacs, useDatesLimites } from '../ong'
-import { enSacsEntiers, METHODE, ordonner, remplirDansLOrdre, repartir, SCENARIOS, VERSION, type Criteres } from '../repartition'
-import { Avis, Champ, Degrade, Groupe, Marque, Methode, Segments, Squelette } from '../ui'
+import { chCompte } from '../regles/cadreHarmonise'
+import type { Arc } from '../carte/Carte'
+import { couleurCouverture, NON_DISPONIBLE } from '../carte/couleurs'
+import { useDossier } from '../ong/dossier'
+import { aLire, puceAnnee, puceChoix, puceCulture, type LigneCheck, type Puce } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import type { LonLat } from '../carte/geo'
+import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes, tonnesDeSacs, useDatesLimites } from '../ong/ong'
+import { enSacsEntiers, METHODE, ordonner, remplirDansLOrdre, repartir, SCENARIOS, VERSION, type Criteres } from '../regles/repartition'
+import { Avis, Champ, Degrade, ErreurChamp, Groupe, Marque, Methode, Segments, Squelette } from '../interface/ui'
 
 const DAKAR: LonLat = [-17.3, 14.74]
 const SAISIR = 'Saisissez votre stock pour voir la répartition'
@@ -70,9 +70,11 @@ export default function Repartir({ cadre, publier }: PropsMode) {
     }))
   }, [ch, demandes, lignesCulture, annee])
 
-  // Le stock saisi (tonnes ou sacs) ; sans saisie lisible et positive, aucune répartition n'est calculée
-  const lu = lireNombre(dossier.stock)
-  const stock_t = lu !== null && lu > 0 ? (sacs ? tonnesDeSacs(Math.floor(lu)) : lu) : null
+  // Le stock saisi (tonnes ou sacs) : plus de 0, au plus 1 000 000 t (20 000 000 sacs).
+  // Sans saisie valide, aucune répartition n'est calculée ; une saisie invalide affiche son message sous le champ.
+  const lectureStock = lireSaisie(dossier.stock, { min: 0, minExclu: true, max: sacs ? 20_000_000 : 1_000_000, unite: sacs ? 'sacs' : 't' })
+  const lu = lectureStock.valeur
+  const stock_t = lu !== null ? (sacs ? tonnesDeSacs(Math.floor(lu)) : lu) : null
   const resultat = useMemo(() => {
     if (stock_t === null) return null
     const r = scenario.id === 'proportionnel' ? repartir(stock_t, demandes, dossier.priorite / 100) : remplirDansLOrdre(stock_t, ordonner(demandes, criteres, scenario.id))
@@ -152,13 +154,15 @@ export default function Repartir({ cadre, publier }: PropsMode) {
   usePublier(publier, sortie)
 
   const puceStock: Puce = {
-    id: 'stock', nom: 'Stock', libelle: stock_t === null ? 'Stock : à saisir' : `Stock : ${quantite(stock_t)}`,
+    id: 'stock', nom: 'Stock', libelle: lectureStock.erreur ? 'Stock : à corriger' : stock_t === null ? 'Stock : à saisir' : `Stock : ${quantite(stock_t)}`,
     contenu: (fermer) => (
       <div className="space-y-2">
         <Champ libelle={`Stock disponible (${sacs ? 'sacs de 50 kg' : 'tonnes'})`}>
           <input className="champ-scene tabular-nums" inputMode="decimal" autoFocus placeholder="à saisir"
-            value={dossier.stock} onChange={(e) => majDossier({ stock: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fermer() } }} />
+            value={dossier.stock} onChange={(e) => majDossier({ stock: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fermer() } }}
+            aria-invalid={Boolean(lectureStock.erreur)} aria-describedby={lectureStock.erreur ? 'erreur-stock' : undefined} />
         </Champ>
+        {lectureStock.erreur && <ErreurChamp id="erreur-stock" className="mt-0">Stock : {lectureStock.erreur}</ErreurChamp>}
         <Segments libelle="Unité" options={[{ id: 't', libelle: 'Tonnes' }, { id: 'sacs', libelle: 'Sacs' }]} valeur={dossier.unite} onChange={(u) => majDossier({ unite: u, stock: '' })} />
       </div>
     ),

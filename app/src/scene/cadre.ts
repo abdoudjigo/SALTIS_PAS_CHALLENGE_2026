@@ -6,9 +6,9 @@ import type { LucideIcon } from 'lucide-react'
 import type { Utilisateur } from '../types/auth'
 import type { Referentiels } from '../types/marts'
 import { anneeAVenir, anneeCouverte, anneesPassees, DERNIERE_ANNEE_PREVISION, type CodeModele } from '../types/previsions'
-import type { Camera, VueCarte } from './Carte'
-import type { LigneCheck } from './fiche'
-import { emprise, SENEGAL, type Contours, type LonLat } from './geo'
+import type { Camera, VueCarte } from './carte/Carte'
+import type { LigneCheck } from './interface/fiche'
+import { emprise, SENEGAL, type Contours, type LonLat } from './carte/geo'
 
 export interface Infobulle {
   titre: string

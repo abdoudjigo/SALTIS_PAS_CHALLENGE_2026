@@ -6,6 +6,7 @@ app/dev-dist
 .git
 .env
 **/.env.local
+**/.env.*.local
 ml/donnees
 voix/cache
 voix/.venv
@@ -15,3 +16,6 @@ dbt
 **/__pycache__
 .pytest_cache
 .ruff_cache
+
+# Documentation (et audit) : inutile aux images
+docs

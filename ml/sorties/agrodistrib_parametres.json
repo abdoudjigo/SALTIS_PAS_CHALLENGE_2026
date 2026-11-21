@@ -1,0 +1,17 @@
+{
+  "methode": "Prorata multicritère",
+  "version_algorithme": "agrodistrib-v1",
+  "code_intrant": "NPK_15_15_15",
+  "unite_dose": "kg/ha",
+  "cultures": [
+    "MIL (SOUNA)"
+  ],
+  "stock_t": 20000.0,
+  "niveau_destination": "ZONE",
+  "alpha_decideur": 0.5,
+  "campagne": 2026,
+  "doses_saisies": {},
+  "probabilite_saison_seche": "climatologie (MART_TERRITOIRES_AGRODISTRIB.proba_saison_seche_pct)",
+  "critere_vide": "médiane des autres lignes, signalée dans critere_impute",
+  "date_calcul": "2026-11-18"
+}

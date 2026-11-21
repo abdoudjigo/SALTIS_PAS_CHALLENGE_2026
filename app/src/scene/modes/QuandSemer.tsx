@@ -16,14 +16,14 @@ import { useActuelles, etatActuel, useCarteSemis, useRisqueSemis } from '../../h
 import { libelle, nombre, pct } from '../../lib/format'
 import type { RisqueSemis } from '../../types/previsions'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { couleurDecade, degrade } from '../couleurs'
-import { datesDecade, debutDecade, MODELES, natureAnnee, periodeDecades } from '../fiabilite'
+import { couleurDecade, degrade } from '../carte/couleurs'
+import { datesDecade, debutDecade, MODELES, natureAnnee, periodeDecades } from '../regles/fiabilite'
 import { Attente, MethodeModele } from '../previsions'
-import { cultureWo, decadeWo, FIN_WO, pctWo, wo } from '../wolof'
-import { cultureRetenue, decadesCulture, fenetre, PLUIE_SEMIS_MM, repliCulture, RISQUE_BON_MOMENT } from '../conseil'
-import { aLire, CHOISIR, puceAnnee, puceCulture, trierLignes, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { AFaire, Cle, Cles, Degrade, Groupe, Ligne, Lignes, LigneFiabilite, type Action } from '../ui'
+import { cultureWo, decadeWo, FIN_WO, pctWo, wo } from '../voix/wolof'
+import { cultureRetenue, decadesCulture, fenetre, PLUIE_SEMIS_MM, repliCulture, RISQUE_BON_MOMENT } from '../regles/conseil'
+import { aLire, CHOISIR, puceAnnee, puceCulture, trierLignes, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { AFaire, Cle, Cles, Degrade, Groupe, Ligne, Lignes, LigneFiabilite, type Action } from '../interface/ui'
 
 type Temps = 'tot' | 'bon' | 'tard'
 const TEMPS: Record<Temps, { nom: string; classe: string }> = {
@@ -38,7 +38,7 @@ function Frise({ decades, de, a, choisie, onChoisir }: { decades: RisqueSemis[];
   const zones = ([['tot', de], ['bon', a - de + 1], ['tard', decades.length - a - 1]] as [Temps, number][]).filter(([, n]) => n > 0)
   return (
     <div>
-      <div className="grid grid-cols-8 gap-0.5 text-2xs font-medium text-white/80" aria-hidden>
+      <div className="grid grid-cols-8 gap-0.5 text-2xs font-medium text-white/90" aria-hidden>
         {zones.map(([t, n]) => <span key={t} className="truncate pb-1.5" style={{ gridColumn: `span ${n}` }}>{n > 1 || t === 'bon' ? TEMPS[t].nom : ''}</span>)}
       </div>
       <div className="grid grid-cols-8 gap-0.5" role="radiogroup" aria-label="Période de semis">
@@ -50,7 +50,7 @@ function Frise({ decades, de, a, choisie, onChoisir }: { decades: RisqueSemis[];
           </button>
         ))}
       </div>
-      <div className="mt-1.5 grid grid-cols-8 gap-0.5 text-2xs text-white/55 tabular-nums" aria-hidden>
+      <div className="mt-1.5 grid grid-cols-8 gap-0.5 text-2xs text-white/60 tabular-nums" aria-hidden>
         <span className="col-span-3">1er juin</span><span className="col-span-3">1er juil.</span><span className="col-span-2">1er août</span>
       </div>
     </div>

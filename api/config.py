@@ -7,7 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Parametres(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # env_ignore_empty : une variable laissée vide (« SMTP_PORT= », copiée de .env.example) prend la valeur par défaut
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore", env_ignore_empty=True)
 
     # Snowflake : mêmes variables que dbt. Les marts sont lus dans <database>.<schema_marts>.
     snowflake_account: str = ""

@@ -14,16 +14,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { useBesoins, useCarte, useChoixCultures, useTerritoires, useVulnerabilite } from '../../hooks/donnees'
 import { useActuelles, etatActuel, useRecolteFinMai, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
 import { libelle, mm, nombre, pct } from '../../lib/format'
+import { lireSaisie } from '../../lib/saisie'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { NIVEAUX, teinteVulnerabilite, tendance } from '../couleurs'
-import { cleZone, trouverDepartement, ZONE_PAR_CLE, type LonLat } from '../geo'
-import { natureAnnee, periodeDecades } from '../fiabilite'
+import { NIVEAUX, teinteVulnerabilite, tendance } from '../carte/couleurs'
+import { cleZone, trouverDepartement, ZONE_PAR_CLE, type LonLat } from '../carte/geo'
+import { natureAnnee, periodeDecades } from '../regles/fiabilite'
 import { Attente, MethodeModele, Morceau } from '../previsions'
-import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, wo } from '../wolof'
-import { cycleDit, fenetreCulture, joursEau, laCulture, nombreSacs, sacsEngraisParHa, texteJoursEau } from '../conseil'
-import { aLire, puceAnnee, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { AFaire, Avis, Bouton, Cle, Cles, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../ui'
+import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, wo } from '../voix/wolof'
+import { cycleDit, fenetreCulture, joursEau, laCulture, nombreSacs, sacsEngraisParHa, texteJoursEau } from '../regles/conseil'
+import { aLire, puceAnnee, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { AFaire, Avis, Bouton, Cle, Cles, ErreurChamp, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../interface/ui'
 
 const vide = (etat: EtatPrevision) => (etat === 'chargement' ? '…' : 'non disponible')
 
@@ -141,9 +142,15 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
     )
   }
-  const lat = Number(saisie.lat.replace(',', '.'))
-  const lon = Number(saisie.lon.replace(',', '.'))
-  const saisieValide = saisie.lat !== '' && saisie.lon !== '' && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+  // Coordonnées en degrés décimaux. Le Sénégal est vers 12 à 17° de latitude et -17,5 à -11° de longitude :
+  // deux valeurs dans ces plages mais interverties sont signalées (erreur fréquente). Un point valide hors du pays
+  // est accepté, puis signalé « hors du Sénégal » après recherche du département.
+  const lectureLat = lireSaisie(saisie.lat, { min: -90, max: 90, negatif: true, unite: '°' })
+  const lectureLon = lireSaisie(saisie.lon, { min: -180, max: 180, negatif: true, unite: '°' })
+  const [lat, lon] = [lectureLat.valeur ?? NaN, lectureLon.valeur ?? NaN]
+  const saisieValide = lectureLat.valeur !== null && lectureLon.valeur !== null
+  const interverties = saisieValide && lat < -10 && lat > -18 && lon > 11 && lon < 17.5
+  const erreurCoordonnees = lectureLat.erreur ? `Latitude : ${lectureLat.erreur}` : lectureLon.erreur ? `Longitude : ${lectureLon.erreur}` : null
 
   // La réponse : où est le champ et combien de cultures y réussissent ; le sol dit simplement
   const texture = sol?.classe_texture ? libelle(sol.classe_texture).toLowerCase() : null
@@ -227,11 +234,20 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
           <>
             <p className="mt-4 text-sm leading-relaxed text-white/70">Activez la localisation, ou touchez la carte à l’endroit du champ : elle descend jusqu’à la parcelle.</p>
             <Groupe titre="Ou saisir les coordonnées">
-              <form className="grid grid-cols-[1fr_1fr_auto] gap-2" onSubmit={(e) => { e.preventDefault(); if (saisieValide) definirPosition([lon, lat]) }}>
-                <input className="champ-scene" inputMode="decimal" placeholder="Lat. 14,15" aria-label="Latitude" value={saisie.lat} onChange={(e) => setSaisie((s) => ({ ...s, lat: e.target.value }))} />
-                <input className="champ-scene" inputMode="decimal" placeholder="Lon. -16,07" aria-label="Longitude" value={saisie.lon} onChange={(e) => setSaisie((s) => ({ ...s, lon: e.target.value }))} />
+              <form className="grid grid-cols-[1fr_1fr_auto] gap-2" noValidate onSubmit={(e) => { e.preventDefault(); if (saisieValide) definirPosition([lon, lat]) }}>
+                <input className="champ-scene" inputMode="decimal" placeholder="Lat. 14,15" aria-label="Latitude" value={saisie.lat} onChange={(e) => setSaisie((s) => ({ ...s, lat: e.target.value }))}
+                  aria-invalid={Boolean(lectureLat.erreur)} aria-describedby={erreurCoordonnees || interverties ? 'erreur-coordonnees' : undefined} />
+                <input className="champ-scene" inputMode="decimal" placeholder="Lon. -16,07" aria-label="Longitude" value={saisie.lon} onChange={(e) => setSaisie((s) => ({ ...s, lon: e.target.value }))}
+                  aria-invalid={Boolean(lectureLon.erreur)} aria-describedby={erreurCoordonnees || interverties ? 'erreur-coordonnees' : undefined} />
                 <Bouton disabled={!saisieValide} onClick={() => saisieValide && definirPosition([lon, lat])}>Aller</Bouton>
               </form>
+              {erreurCoordonnees && <ErreurChamp id="erreur-coordonnees">{erreurCoordonnees}</ErreurChamp>}
+              {!erreurCoordonnees && interverties && (
+                <ErreurChamp id="erreur-coordonnees">
+                  Latitude et longitude semblent interverties : au Sénégal, la latitude est positive (vers 14) et la longitude négative (vers -16).{' '}
+                  <button type="button" onClick={() => setSaisie((s) => ({ lat: s.lon, lon: s.lat }))} className="font-semibold text-white underline underline-offset-4">Les échanger</button>
+                </ErreurChamp>
+              )}
             </Groupe>
           </>
         } />

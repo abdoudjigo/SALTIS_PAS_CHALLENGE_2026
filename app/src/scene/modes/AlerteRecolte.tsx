@@ -6,12 +6,12 @@ import { etatPrevision, useAlerteRecolte } from '../../hooks/previsions'
 import { libelle, nombre, pct } from '../../lib/format'
 import { CULTURES_RENDEMENT, MOMENTS, SEUIL_ALERTE_PCT, type Moment, type PrevisionRendement } from '../../types/previsions'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { couleurChute, degrade, eclaircir, NON_DISPONIBLE, teinteChute } from '../couleurs'
-import { nomMoment } from '../fiabilite'
+import { couleurChute, degrade, eclaircir, NON_DISPONIBLE, teinteChute } from '../carte/couleurs'
+import { nomMoment } from '../regles/fiabilite'
 import { Attente, MarquesRendement, MethodeModele } from '../previsions'
-import { aLire, puceAnnee, puceChoix, puceCulture, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { Cle, Cles, Degrade, Fourchette, Groupe, Lien, Ligne, Lignes, Marque, Rang } from '../ui'
+import { aLire, puceAnnee, puceChoix, puceCulture, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { Cle, Cles, Degrade, Fourchette, Groupe, Lien, Ligne, Lignes, Marque, Rang } from '../interface/ui'
 
 const TOUTES = 'TOUTES'
 
@@ -116,7 +116,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
                     detail={fiche.chute_observee === null ? undefined : fiche.chute_observee ? 'chute observée' : 'pas de chute'} />
                 )}
               </Lignes>
-              {fiche.explication && <p className="mt-3 text-xs leading-relaxed text-white/60">Ce qui pèse le plus : {fiche.explication}.</p>}
+              {fiche.explication && <p className="mt-3 text-xs leading-relaxed text-white/70">Ce qui pèse le plus : {fiche.explication}.</p>}
             </Groupe>
           </>
         )}

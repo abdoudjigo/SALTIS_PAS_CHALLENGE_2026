@@ -19,11 +19,10 @@ TERRITOIRE = ("code_departement", "departement", "code_region", "region", "zone_
 # clé du registre → fichier CSV produit par ml/
 FICHIERS = {
     "prev_saison": "prevision_saison.csv",
-    "semblables": "annees_semblables.csv",
     "prev_rendement": "prevision_rendement.csv",
     "semis": "risque_semis.csv",
 }
-EVALUATIONS = {"M1": "evaluation_m1.csv", "M2": "evaluation_m2.csv", "M3": "evaluation_m3.csv", "M4": "evaluation_m4.csv"}
+EVALUATIONS = {"M1": "evaluation_m1.csv", "M3": "evaluation_m3.csv", "M4": "evaluation_m4.csv"}
 IDENTIFIANTS_EVALUATION = ("version_modele", "periode", "moment", "culture", "risque", "variables")
 _ENTIER_EN_FLOTTANT = re.compile(r"^-?\d+\.0$")
 
@@ -41,7 +40,7 @@ def _lire_csv(fichier: Path) -> list[dict[str, Any]]:
 
 
 def _evaluation(dossier: Path) -> list[dict[str, Any]]:
-    """Les 4 fichiers d'évaluation en format long : une ligne par mesure (comme SALTIS.ML.EVALUATION_MODELES)."""
+    """Les 3 fichiers d'évaluation (modèles 1, 3 et 4) en format long : une ligne par mesure (comme SALTIS.ML.EVALUATION_MODELES)."""
     lignes = []
     for modele, nom in EVALUATIONS.items():
         if not (dossier / nom).exists():

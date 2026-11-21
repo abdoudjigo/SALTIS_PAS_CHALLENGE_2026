@@ -18,9 +18,15 @@ services:
       dockerfile: deploy/Dockerfile.web
       args:
         VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:?VITE_MAPBOX_TOKEN manquant dans .env}
-        VITE_EMAIL_CONTACT: ${VITE_EMAIL_CONTACT:-}
+        # Ancien nom VITE_EMAIL_CONTACT encore accepté
+        EMAIL_CONTACT: ${EMAIL_CONTACT:-${VITE_EMAIL_CONTACT:-}}
+        # Mesure d'audience : identifiant du site dans Umami (créé dans son tableau de bord, voir deploy/README.md)
+        VITE_UMAMI_ID: ${UMAMI_WEBSITE_ID:-}
+        # Adresse publique du site, pour les aperçus de partage (Open Graph)
+        VITE_URL_SITE: https://${DOMAINE:?DOMAINE manquant dans .env}
     environment:
-      DOMAINE: ${DOMAINE:-:80}
+      # Obligatoire : sans nom de domaine, pas de certificat, donc pas de HTTPS (deploy/README.md)
+      DOMAINE: ${DOMAINE:?DOMAINE manquant dans .env - un nom de domaine est obligatoire, le site est servi en HTTPS seulement}
     ports: ["80:80", "443:443"]
     volumes: [caddy-donnees:/data, caddy-config:/config]
     networks: [public]
@@ -87,9 +93,53 @@ services:
       timeout: 3s
       retries: 5
 
+  # Mesure d'audience (Umami, sans cookie). Le site n'en expose que le script et la route d'envoi, sous /stats
+  # (deploy/Caddyfile). Le tableau de bord n'écoute que sur le VPS lui-même (127.0.0.1:3001) : y accéder par
+  # un tunnel SSH (deploy/README.md, section 7).
+  umami:
+    <<: *durcissement
+    image: ghcr.io/umami-software/umami:3.4.1
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD manquant dans .env}@umami-db:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:?UMAMI_APP_SECRET manquant dans .env}
+      DISABLE_TELEMETRY: "1"
+    ports: ["127.0.0.1:3001:3000"]
+    networks: [public, umami]
+    depends_on:
+      umami-db: { condition: service_healthy }
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 200
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/heartbeat').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  umami-db:
+    <<: *durcissement
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD:?UMAMI_DB_PASSWORD manquant dans .env}
+    volumes: [umami-db:/var/lib/postgresql/data]
+    networks: [umami]
+    mem_limit: 256m
+    pids_limit: 100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
 networks:
   public:
   prive:
+    internal: true
+  # Base d'Umami : joignable par Umami seulement, sans sortie internet
+  umami:
     internal: true
 
 volumes:
@@ -98,3 +148,4 @@ volumes:
   api-donnees:
   voix-cache:
   redis-donnees:
+  umami-db:

@@ -1,7 +1,7 @@
 """Charge les résultats des modèles (ml/sorties/*.csv) dans SALTIS.ML.
 
 Étapes :
-    1. une fois : exécuter à la main snowflake/20_ml_resultats.sql (crée les 5 tables) ;
+    1. une fois : exécuter à la main snowflake/20_ml_resultats.sql (crée les 4 tables) ;
     2. relancer les modèles si besoin (voir ml/MODELES.md) ;
     3. vérifier sans rien écrire :   venv/bin/python -m ml.charger_snowflake
     4. charger :                      venv/bin/python -m ml.charger_snowflake --confirmer
@@ -32,12 +32,6 @@ TABLES = {
         "pluie_prevue_mm", "pluie_basse_mm", "pluie_haute_mm", "pluie_normale_mm", "pluie_observee_mm", "classe_observee",
         "version_modele", "date_calcul",
     ]),
-    "ANNEES_SEMBLABLES": ("annees_semblables.csv", [
-        "annee", "moment_prevision", "variables_utilisees", "rang", "annee_semblable", "ressemblance_pct",
-        "pluie_saison_semblable_mm", "anomalie_saison_semblable_pct", "classe_saison_semblable", "debut_saison_jour_semblable",
-        "plus_longue_sequence_seche_semblable_j", "alerte_secheresse_semblable", "alerte_exces_pluie_semblable",
-        "proba_seche_pct", "proba_normale_pct", "proba_humide_pct", "classe_prevue", "version_modele", "date_calcul",
-    ]),
     "PREVISION_RENDEMENT": ("prevision_rendement.csv", [
         "culture", "annee", "moment_prevision", "type_prevision", "tendance_kg_ha", "rendement_bas_kg_ha",
         "rendement_median_kg_ha", "rendement_haut_kg_ha", "proba_chute_pct", "proba_chute_reference_pct", "explication",
@@ -49,9 +43,8 @@ TABLES = {
         "proba_saison_seche_m1_pct", "version_modele", "date_calcul",
     ]),
 }
-BOOLEENS = {"alerte_secheresse_semblable", "alerte_exces_pluie_semblable", "rendement_fiable", "alerte_fiable",
-            "chute_observee", "decade_conseillee"}
-ENTIERS = {"annee", "rang", "annee_semblable", "decade_semis"}
+BOOLEENS = {"rendement_fiable", "alerte_fiable", "chute_observee", "decade_conseillee"}
+ENTIERS = {"annee", "decade_semis"}
 COLONNES_EVALUATION = ["modele", "version_modele", "periode", "moment", "culture", "risque", "variables", "mesure", "valeur"]
 
 
@@ -78,9 +71,9 @@ def preparer_table(table: str) -> pd.DataFrame:
 
 
 def preparer_evaluation() -> pd.DataFrame:
-    """Les 4 fichiers d'évaluation, en format long : une ligne par mesure."""
+    """Les 3 fichiers d'évaluation (modèles 1, 3 et 4), en format long : une ligne par mesure."""
     morceaux = []
-    for numero in (1, 2, 3, 4):
+    for numero in (1, 3, 4):
         df = pd.read_csv(SORTIES / f"evaluation_m{numero}.csv")
         ids = [c for c in ["version_modele", "periode", "moment", "culture", "risque", "variables"] if c in df.columns]
         long = df.melt(id_vars=ids, var_name="mesure", value_name="valeur")

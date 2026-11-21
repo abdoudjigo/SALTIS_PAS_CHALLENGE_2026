@@ -2,7 +2,7 @@
 -- À exécuter à la main dans Snowflake, une seule fois, AVANT le chargement :
 --     venv/bin/python -m ml.charger_snowflake --confirmer
 --
--- Les 5 tables sont remplies par ce script de chargement à partir de ml/sorties/*.csv.
+-- Les 4 tables sont remplies par ce script de chargement à partir de ml/sorties/*.csv.
 -- Chaque chargement vide la table puis la remplit : une table = la dernière version des modèles.
 -- L'API les lit au préchargement de son cache (lecture seule), comme les marts.
 --
@@ -38,37 +38,6 @@ create table if not exists SALTIS.ML.PREVISION_SAISONNIERE (
     date_calcul          date not null
 )
 comment = 'Modèle 1 : prévision de la saison des pluies faite fin mai (ml/m1_prevision_saison).';
-
--- ---------------------------------------------------------------------------
--- Modèle 2 — Comment finira la saison : département × année × moment × rang
--- ---------------------------------------------------------------------------
-create table if not exists SALTIS.ML.ANNEES_SEMBLABLES (
-    code_departement     varchar not null,
-    departement          varchar not null,
-    code_region          varchar not null,
-    region               varchar not null,
-    zone_agroecologique  varchar not null,
-    annee                number(4) not null,
-    moment_prevision     varchar not null comment 'FIN_MAI, FIN_JUIN, FIN_JUILLET, FIN_AOUT',
-    variables_utilisees  varchar not null comment 'océan ou océan + pluie tombée',
-    rang                 number(1) not null comment '1 = année la plus semblable',
-    annee_semblable      number(4) not null,
-    ressemblance_pct     float,
-    pluie_saison_semblable_mm               float,
-    anomalie_saison_semblable_pct           float,
-    classe_saison_semblable                 varchar,
-    debut_saison_jour_semblable             float,
-    plus_longue_sequence_seche_semblable_j  float,
-    alerte_secheresse_semblable             boolean,
-    alerte_exces_pluie_semblable            boolean,
-    proba_seche_pct      float comment 'Vide à FIN_MAI : afficher le modèle 1',
-    proba_normale_pct    float,
-    proba_humide_pct     float,
-    classe_prevue        varchar,
-    version_modele       varchar not null,
-    date_calcul          date not null
-)
-comment = 'Modèle 2 : années semblables et fin probable de la saison (ml/m2_annees_semblables).';
 
 -- ---------------------------------------------------------------------------
 -- Modèle 3 — Quelle culture / Alerte récolte : département × culture × année × moment
@@ -126,10 +95,10 @@ create table if not exists SALTIS.ML.RISQUE_SEMIS (
 comment = 'Modèle 4 : risque de semis par décade et décade conseillée (ml/m4_date_semis).';
 
 -- ---------------------------------------------------------------------------
--- Fiabilité des 4 modèles, en format long : une ligne par mesure
+-- Fiabilité des 3 modèles (1, 3 et 4), en format long : une ligne par mesure
 -- ---------------------------------------------------------------------------
 create table if not exists SALTIS.ML.EVALUATION_MODELES (
-    modele          varchar not null comment 'M1, M2, M3, M4',
+    modele          varchar not null comment 'M1, M3, M4',
     version_modele  varchar not null,
     periode         varchar not null,
     moment          varchar,
@@ -152,10 +121,10 @@ comment = 'Fiabilité des modèles comparée à une prévision simple (ml/sortie
 -- ---------------------------------------------------------------------------
 -- Vérifications, après le chargement
 -- ---------------------------------------------------------------------------
--- select 'PREVISION_SAISONNIERE' t, count(*) from SALTIS.ML.PREVISION_SAISONNIERE   -- 2 025
--- union all select 'ANNEES_SEMBLABLES', count(*) from SALTIS.ML.ANNEES_SEMBLABLES   -- 18 900
--- union all select 'PREVISION_RENDEMENT', count(*) from SALTIS.ML.PREVISION_RENDEMENT -- 12 136
--- union all select 'RISQUE_SEMIS', count(*) from SALTIS.ML.RISQUE_SEMIS             -- 30 976
--- union all select 'EVALUATION_MODELES', count(*) from SALTIS.ML.EVALUATION_MODELES;
+-- Volumes du chargement du 20/11/2026 :
+-- select 'PREVISION_SAISONNIERE' t, count(*) from SALTIS.ML.PREVISION_SAISONNIERE   -- 2 475
+-- union all select 'PREVISION_RENDEMENT', count(*) from SALTIS.ML.PREVISION_RENDEMENT -- 14 036
+-- union all select 'RISQUE_SEMIS', count(*) from SALTIS.ML.RISQUE_SEMIS             -- 59 136
+-- union all select 'EVALUATION_MODELES', count(*) from SALTIS.ML.EVALUATION_MODELES; -- 893
 -- Aucune valeur NaN (une valeur absente doit être NULL) :
 -- select count(*) from SALTIS.ML.PREVISION_SAISONNIERE where proba_seche_pct = 'NaN'::float;  -- 0

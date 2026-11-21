@@ -4,7 +4,7 @@
     1. une fois : exécuter à la main snowflake/30_eau_raw.sql (crée les 3 tables) ;
     2. vérifier sans rien écrire :   venv/bin/python -m ingestion.collecte.eau.charger_snowflake
     3. charger :                      venv/bin/python -m ingestion.collecte.eau.charger_snowflake --confirmer
-    4. passer la variable dbt eau_chargee à true, puis : .\\dbt.ps1 build --profiles-dir . --target snowflake --select +mart_carte_opportunites
+    4. passer la variable dbt eau_chargee à true, puis : .\\dbt\\dbt.ps1 build --profiles-dir . --target snowflake --select +mart_carte_opportunites
     5. rafraîchir le cache de l'API (POST /api/v1/systeme/cache/rafraichir, ou redémarrer l'API).
 
 Pourquoi ce script plutôt qu'un chargement à la main : il vérifie avant d'écrire (45 départements, codes connus,
@@ -52,7 +52,7 @@ def preparer(table: str) -> pd.DataFrame:
     fichier, colonnes = TABLES[table]
     chemin = MODULES / fichier
     if not chemin.exists():
-        raise SystemExit(f"{chemin.relative_to(RACINE)} absent : voir docs/carte-opportunites.md, étape 1")
+        raise SystemExit(f"{chemin.relative_to(RACINE)} absent : voir docs/technique/carte-opportunites.md, étape 1")
     df = pd.read_csv(chemin)
     manquantes = [c for c in colonnes if c not in df.columns]
     if manquantes:
@@ -147,7 +147,7 @@ def main():
                 print(f"SALTIS.RAW.{table} : {nb} lignes chargées")
     finally:
         conn.close()
-    print("\nTerminé. Étape suivante : eau_chargee: true dans dbt/dbt_project.yml, puis dbt build (voir docs/carte-opportunites.md).")
+    print("\nTerminé. Étape suivante : eau_chargee: true dans dbt/dbt_project.yml, puis dbt build (voir docs/technique/carte-opportunites.md).")
 
 
 if __name__ == "__main__":

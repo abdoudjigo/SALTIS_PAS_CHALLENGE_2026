@@ -2,7 +2,8 @@ services:
   postgres:
     image: postgres:16
     env_file: .env
-    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    # 127.0.0.1 : la base n'est joignable que depuis ce poste (pas depuis le Wi-Fi)
+    ports: ["127.0.0.1:${POSTGRES_PORT:-5432}:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 
   # Cache de l'API : toutes les réponses des marts, précalculées (environ 15 Mo par version).
@@ -11,7 +12,7 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
-    ports: ["${REDIS_PORT:-6379}:6379"]
+    ports: ["127.0.0.1:${REDIS_PORT:-6379}:6379"]
     volumes: [redisdata:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
