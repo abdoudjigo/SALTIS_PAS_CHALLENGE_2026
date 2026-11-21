@@ -1,4 +1,4 @@
-// Données d'EXEMPLE générées de façon déterministe, avec les colonnes des marts (docs/contrat-donnees.md).
+// Données d'EXEMPLE générées de façon déterministe, avec les colonnes des marts (docs/technique/contrat-donnees.md).
 // Ordres de grandeur plausibles (gradient de pluie nord-sud), valeurs NON réelles.
 import type {
   ClasseSaison, Departement, LigneBesoin, LigneCarte, LigneChoixCulture, LigneSuivi, LigneTerritoireAgrodistrib,
@@ -361,7 +361,7 @@ const SUPERFICIES: Record<string, Record<string, number>> = {
 }
 interface Dose { npk: number; uree: number; dap: number; fumier: number; statut: StatutDose; source: string }
 
-// Doses d'exemple (kg/ha) et statuts, alignées sur ce que décrit docs/etat-modelisation.md
+// Doses d'exemple (kg/ha) et statuts, alignées sur ce que décrit docs/technique/etat-modelisation.md
 function doseEngrais(zone: string, culture: string): Dose | null {
   if (culture === 'MIL (SOUNA)')
     return { npk: 125, uree: 93.75, dap: 0, fumier: 0, statut: zone === 'CASAMANCE' ? 'A_CONFIRMER' : 'NON_VERIFIEE',

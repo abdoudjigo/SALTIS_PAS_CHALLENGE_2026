@@ -10,7 +10,7 @@
 // puis remplacer le chemin ci-dessous.
 var DEPARTEMENTS = ee.FeatureCollection('projects/VOTRE_PROJET/assets/gadm41_SEN_2');
 
-// ---- Paramètres (documentés dans docs/carte-opportunites.md)
+// ---- Paramètres (documentés dans docs/technique/carte-opportunites.md)
 var MOIS_EAU_MIN = 10;         // eau présente au moins 10 mois sur 12 : encore là en saison sèche
 var RAYON_PROCHE_M = 2000;     // terres à moins de 2 km de cette eau : irrigables par pompage simple
 var NDVI_VERT = 0.3;           // en saison sèche, au-dessus de 0,3 la parcelle est cultivée (ou boisée)

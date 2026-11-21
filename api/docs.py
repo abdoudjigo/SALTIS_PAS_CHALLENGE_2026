@@ -47,7 +47,7 @@ précédente est conservée pour un retour arrière instantané.
 - Les besoins sont des **références historiques**, pas des prévisions. Aucune dose n'est encore validée par un spécialiste.
 - Chaque réponse porte ses limites dans `meta.avertissements`.
 
-Contrat détaillé des colonnes : `docs/contrat-donnees.md`. Estimations indicatives, pas des garanties.
+Contrat détaillé des colonnes : `docs/technique/contrat-donnees.md`. Estimations indicatives, pas des garanties.
 """
 
 TAGS = [
@@ -61,7 +61,7 @@ TAGS = [
     {"name": "D · Vulnérabilité", "description": "Score relatif et indicatif (`MART_VULNERABILITE_DEPARTEMENT`, méthode v1)."},
     {"name": "E · Opportunités", "description": "Carte à trois couleurs (`MART_CARTE_OPPORTUNITES`) : jaune saison courte, "
      "vert saison longue, bleu eau mobilisable en saison sèche. Conseils agriculteur et investisseur. "
-     "Voir `docs/carte-opportunites.md`."},
+     "Voir `docs/technique/carte-opportunites.md`."},
     {"name": "F · Cadre harmonisé", "description": "Phase d'insécurité alimentaire (CILSS) par département, dernier cycle "
      "(`MART_CADRE_HARMONISE_DEPARTEMENT`, facultatif : 404 `cadre_harmonise_indisponible`). Licence CC BY. "
      "Couleurs : `/referentiels/phases-cadre-harmonise`."},

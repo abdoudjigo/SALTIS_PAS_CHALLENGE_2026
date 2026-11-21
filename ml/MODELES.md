@@ -33,7 +33,7 @@ S'y ajoute le **moteur AgroDistrib** ([`agrodistrib/README.md`](agrodistrib/READ
 
 ## Quel algorithme pour chaque partie (16/11/2026)
 
-Six familles de modèles ont été comparées à des prévisions de référence, avec la même validation temporelle pour toutes. Méthode : [`comparaison/README.md`](comparaison/README.md). Résultats : [`docs/rapport-comparaison-modeles.md`](../docs/rapport-comparaison-modeles.md).
+Six familles de modèles ont été comparées à des prévisions de référence, avec la même validation temporelle pour toutes. Méthode : [`comparaison/README.md`](comparaison/README.md). Résultats : [`docs/technique/rapport-comparaison-modeles.md`](../docs/technique/rapport-comparaison-modeles.md).
 
 | Partie | Tâche | Algorithme retenu | Résultat sur le test |
 |---|---|---|---|
@@ -69,7 +69,7 @@ Dans un bouton qui combine, **chaque morceau de réponse dit de quel modèle il 
 Les boutons existants ont été renommés dans le front : « Que semer » devient « Quelle culture », « Le ciel » devient « Suivi de la pluie », « Besoins » devient « Besoins du pays ». Les boutons des modèles seront ajoutés quand les modèles passeront dans l'API.
 
 ## Prévoir l'année que l'on tape (2026-2035)
-Nos observations s'arrêtent en 2025. L'utilisateur tape l'année qu'il veut préparer ; la plateforme prédit (voir [`docs/v1-cahier-des-charges.md`](../docs/v1-cahier-des-charges.md)).
+Nos observations s'arrêtent en 2025. L'utilisateur tape l'année qu'il veut préparer ; la plateforme prédit (voir [`docs/projet/v1-cahier-des-charges.md`](../docs/projet/v1-cahier-des-charges.md)).
 
 | Année | Type | Comment | Fiabilité mesurée (2016-2025) |
 |---|---|---|---|

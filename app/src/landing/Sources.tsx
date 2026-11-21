@@ -1,5 +1,5 @@
 // Bandeau des sources de données : elles défilent lentement, le survol met en pause.
-// Chaque source affiche son logo (public/logos/, tirés de les_logos/ à la racine : fond blanc retiré, recadrés,
+// Chaque source affiche son logo (public/logos/, tirés de docs/visuels/logos-sources/ : fond blanc retiré, recadrés,
 // 120 px de haut). Sans logo, le sigle sert de signature.
 import clsx from 'clsx'
 import { useEffect, useRef } from 'react'

@@ -6,10 +6,10 @@ Ce document dit **quelles données sont disponibles** pour les modèles, **où l
 2. **Prévision de l'anomalie de rendement** (si le temps le permet) ;
 3. **AgroDistrib** : proposition de répartition des intrants d'une organisation (ministère, ONG) entre zones, régions ou départements.
 
-L'équipe ML a ajouté un complément, le **modèle de date de semis** (« Quand semer » : à quelle décade semer pour courir le moins de risque), qui utilise la sortie du modèle de pluie. Les modèles construits, leur fiabilité et leurs sorties sont décrits dans [`MODELES.md`](MODELES.md) ; la comparaison des algorithmes dans [`docs/rapport-comparaison-modeles.md`](../docs/rapport-comparaison-modeles.md).
+L'équipe ML a ajouté un complément, le **modèle de date de semis** (« Quand semer » : à quelle décade semer pour courir le moins de risque), qui utilise la sortie du modèle de pluie. Les modèles construits, leur fiabilité et leurs sorties sont décrits dans [`MODELES.md`](MODELES.md) ; la comparaison des algorithmes dans [`docs/technique/rapport-comparaison-modeles.md`](../docs/technique/rapport-comparaison-modeles.md).
 
 
-**Détail des colonnes** (unités, valeurs possibles, limites, exemples de requêtes) : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md). Décisions et état de la modélisation : [`docs/etat-modelisation.md`](../docs/etat-modelisation.md).
+**Détail des colonnes** (unités, valeurs possibles, limites, exemples de requêtes) : [`docs/technique/contrat-donnees.md`](../docs/technique/contrat-donnees.md). Décisions et état de la modélisation : [`docs/technique/etat-modelisation.md`](../docs/technique/etat-modelisation.md).
 
 ---
 

@@ -6,4 +6,4 @@
 | `gee_eau_surface.js` | Script Google Earth Engine : eau présente 10 mois sur 12, terres cultivables à moins de 2 km, vertes ou nues en saison sèche → `e_eau_surface_departement.csv` |
 | `charger_snowflake.py` | Vérifie les trois CSV, puis les charge dans `SALTIS.RAW.E_*` (`--confirmer`) |
 
-Ordre, raisons et limites : [`docs/carte-opportunites.md`](../../../docs/carte-opportunites.md).
+Ordre, raisons et limites : [`docs/technique/carte-opportunites.md`](../../../docs/technique/carte-opportunites.md).

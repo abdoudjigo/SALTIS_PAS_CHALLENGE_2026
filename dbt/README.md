@@ -9,8 +9,8 @@ dbt transforme les tables agricoles chargées dans `SALTIS.RAW` en une constella
 
 Les modèles ne chargent pas les CSV : les tables sources doivent déjà exister dans `SALTIS.RAW` avec leurs en-têtes correctement définis.
 
-- **Décisions, règles, état détaillé de chaque modèle et points ouverts** : [`docs/etat-modelisation.md`](../docs/etat-modelisation.md).
-- **Contrat de données des marts** (grain, colonnes, unités, limites, exemples de requêtes) : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md).
+- **Décisions, règles, état détaillé de chaque modèle et points ouverts** : [`docs/technique/etat-modelisation.md`](../docs/technique/etat-modelisation.md).
+- **Contrat de données des marts** (grain, colonnes, unités, limites, exemples de requêtes) : [`docs/technique/contrat-donnees.md`](../docs/technique/contrat-donnees.md).
 
 ## Dimensions
 
@@ -63,7 +63,7 @@ Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_a
 - Les besoins sont des besoins de référence historiques, pas prévisionnels. Les stocks, scénarios et allocations d'AgroDistrib attendent les tables de l'application ; les anciennes simulations (`D_SCENARIOS_REPARTITION`) ne sont pas de vrais scénarios.
 - Les rendements historiques ont leurs propres limites de couverture : campagnes observées de 1981 à 2021, superficie récoltée jusqu'en 2015 puis semée.
 - Les contours des départements (GADM 4.1) ne sont pas encore chargés ; tout est prêt derrière la variable `geo_departements_charge`.
-- La couche bleue de `mart_carte_opportunites` attend les sources eau (`SALTIS.RAW.E_*`) ; tout est prêt derrière la variable `eau_chargee`. Voir [`docs/carte-opportunites.md`](../docs/carte-opportunites.md).
+- La couche bleue de `mart_carte_opportunites` attend les sources eau (`SALTIS.RAW.E_*`) ; tout est prêt derrière la variable `eau_chargee`. Voir [`docs/technique/carte-opportunites.md`](../docs/technique/carte-opportunites.md).
 - Pour fonctionner, chaque table de `SALTIS.RAW` doit avoir des colonnes portant les noms des en-têtes du CSV correspondant. Si Snowflake crée des colonnes comme `C1`, `C2`, le chargement du fichier doit être corrigé avant d'exécuter le modèle `stg_` associé.
 
 ## Exécuter les modèles
@@ -71,19 +71,19 @@ Les anciens marts `mart_saisons`, `mart_profil_agro`, `mart_adequation`, `mart_a
 Depuis la racine du dépôt, après avoir défini les variables Snowflake nécessaires dans l'environnement PowerShell :
 
 ```powershell
-.\dbt.ps1 debug --profiles-dir . --target snowflake
-.\dbt.ps1 seed  --profiles-dir . --target snowflake
-.\dbt.ps1 run   --profiles-dir . --target snowflake
-.\dbt.ps1 test  --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 debug --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 seed  --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 run   --profiles-dir . --target snowflake
+.\dbt\dbt.ps1 test  --profiles-dir . --target snowflake
 ```
 
-`dbt.ps1` (à la racine) lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
+`dbt/dbt.ps1` lance dbt par l'interpréteur Python du venv (`python -c "from dbt.cli.main import cli; cli()"`), depuis le dossier `dbt/`, avec les arguments passés tels quels. Il remplace `dbt.exe`, que la stratégie de contrôle des applications de Windows peut bloquer.
 
 Pour reconstruire uniquement les vues staging ou un mart et ses dépendances :
 
 ```powershell
-.\dbt.ps1 run   --profiles-dir . --target snowflake --select path:models/staging
-.\dbt.ps1 build --profiles-dir . --target snowflake --select +fact_saison_departement
+.\dbt\dbt.ps1 run   --profiles-dir . --target snowflake --select path:models/staging
+.\dbt\dbt.ps1 build --profiles-dir . --target snowflake --select +fact_saison_departement
 ```
 
 Le profil du projet utilise l'authentification Snowflake par mot de passe. Ne partagez et ne versionnez jamais le mot de passe ou le fichier local `.env`.

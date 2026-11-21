@@ -3,8 +3,8 @@
 L'API expose les marts de `SALTIS.MARTS` (Snowflake) pour le front et la BI. Toutes ses réponses sont précalculées et servies depuis un **cache complet** : en mémoire par défaut, ou dans Redis (optionnel).
 
 - Documentation interactive : `http://localhost:8080/docs` (Swagger), `http://localhost:8080/redoc`.
-- Contrat des colonnes : [`docs/contrat-donnees.md`](../docs/contrat-donnees.md).
-- **Guide pratique** (lancer, arrêter, routes expliquées) : [`docs/guide-api.md`](../docs/guide-api.md).
+- Contrat des colonnes : [`docs/technique/contrat-donnees.md`](../docs/technique/contrat-donnees.md).
+- **Guide pratique** (lancer, arrêter, routes expliquées) : [`docs/technique/guide-api.md`](../docs/technique/guide-api.md).
 
 ## Démarrage
 
@@ -196,7 +196,7 @@ Le score est **relatif** : il compare les départements entre eux, ce n'est pas 
 
 ### E · Opportunités : où semer court ou long, où produire toute l'année, où investir ?
 
-Une carte, trois couleurs (`MART_CARTE_OPPORTUNITES`) : **jaune** saison des pluies courte (semences à cycle court), **vert** saison longue (cycle long possible), **bleu** eau mobilisable et peu exploitée en saison sèche (contre-saison, aménagement, forage). Méthode, seuils et limites : [`docs/carte-opportunites.md`](../docs/carte-opportunites.md).
+Une carte, trois couleurs (`MART_CARTE_OPPORTUNITES`) : **jaune** saison des pluies courte (semences à cycle court), **vert** saison longue (cycle long possible), **bleu** eau mobilisable et peu exploitée en saison sèche (contre-saison, aménagement, forage). Méthode, seuils et limites : [`docs/technique/carte-opportunites.md`](../docs/technique/carte-opportunites.md).
 
 | Route | On obtient |
 |---|---|
@@ -271,7 +271,7 @@ curl -X POST -H "X-Admin-Token: $API_ADMIN_TOKEN" http://localhost:8080/api/v1/s
 
 ### Colonnes ajoutées le 11/11/2026
 
-Les colonnes `latitude`, `longitude`, `zone_secondaire`, `methode_niveau`, `nb_annees_calc` et `*_source` n'existent dans Snowflake qu'après un `dbt build` des commits d'Aby (référentiels d'Ibrahima, couverture en eau des cycles). Tant que `SALTIS.MARTS` n'est pas reconstruit, l'API fonctionne quand même : ces colonnes valent `null`, et l'avertissement du choix des cultures rappelle que la part « eau » des cycles court et long est encore celle du cycle moyen. Après la reconstruction, il suffit de redémarrer l'API (ou d'appeler `rafraichir`).
+Les colonnes `latitude`, `longitude`, `zone_secondaire`, `methode_niveau`, `nb_annees_calc` et `*_source` n'existent dans Snowflake qu'après un `dbt build` des commits d'Aby (référentiels d'Ibrahima, couverture en eau des cycles). Tant que `SALTIS.MARTS` n'est pas reconstruit, l'API fonctionne quand même : ces colonnes valent `null`, et l'avertissement du choix des cultures rappelle que la part « eau » des cycles court et long est encore celle du cycle moyen. Après la reconstruction, appeler `rafraichir` (avec Redis, un simple redémarrage garde l'ancienne version ; sans Redis, redémarrer suffit).
 
 ## Fonctionnement du cache
 

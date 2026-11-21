@@ -3,11 +3,11 @@
 import { CloudOff } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useFiabilite, type EtatPrevision } from '../hooks/previsions'
-import { MODELES, natureAnnee, phrasesFiabilite, rappelsLisibles, type Cible } from './fiabilite'
+import { MODELES, natureAnnee, phrasesFiabilite, rappelsLisibles, type Cible } from './regles/fiabilite'
 import type { PrevisionRendement } from '../types/previsions'
 import type { Cadre, useAnnee } from './cadre'
 import type { PrevisionSaison } from '../types/previsions'
-import { Avis, Marque, Methode, SaisieAnnee, Squelette } from './ui'
+import { Avis, Marque, Methode, SaisieAnnee, Squelette } from './interface/ui'
 
 /** Ce qu'on montre à la place d'une prévision qui n'est pas là. Renvoie null quand la prévision est prête. */
 export function Attente({ etat, objet = 'cette sélection', lignes = 4 }: { etat: EtatPrevision; objet?: string; lignes?: number }) {

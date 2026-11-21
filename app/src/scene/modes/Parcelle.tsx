@@ -16,15 +16,15 @@ import { useActuelles, etatActuel, useRecolteFinMai, usePrevisionSaison, useRisq
 import { libelle, mm, nombre, pct } from '../../lib/format'
 import { lireSaisie } from '../../lib/saisie'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { NIVEAUX, teinteVulnerabilite, tendance } from '../couleurs'
-import { cleZone, trouverDepartement, ZONE_PAR_CLE, type LonLat } from '../geo'
-import { natureAnnee, periodeDecades } from '../fiabilite'
+import { NIVEAUX, teinteVulnerabilite, tendance } from '../carte/couleurs'
+import { cleZone, trouverDepartement, ZONE_PAR_CLE, type LonLat } from '../carte/geo'
+import { natureAnnee, periodeDecades } from '../regles/fiabilite'
 import { Attente, MethodeModele, Morceau } from '../previsions'
-import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, wo } from '../wolof'
-import { cycleDit, fenetreCulture, joursEau, laCulture, nombreSacs, sacsEngraisParHa, texteJoursEau } from '../conseil'
-import { aLire, puceAnnee, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { AFaire, Avis, Bouton, Cle, Cles, ErreurChamp, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../ui'
+import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, wo } from '../voix/wolof'
+import { cycleDit, fenetreCulture, joursEau, laCulture, nombreSacs, sacsEngraisParHa, texteJoursEau } from '../regles/conseil'
+import { aLire, puceAnnee, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { AFaire, Avis, Bouton, Cle, Cles, ErreurChamp, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../interface/ui'
 
 const vide = (etat: EtatPrevision) => (etat === 'chargement' ? '…' : 'non disponible')
 

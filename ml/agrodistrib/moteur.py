@@ -1,6 +1,6 @@
 """Moteur AgroDistrib : proposition de répartition du stock d'intrants d'une organisation.
 
-Méthode validée le 18/11/2026 (docs/rapport-comparaison-modeles.md, section 5) : **prorata
+Méthode validée le 18/11/2026 (docs/technique/rapport-comparaison-modeles.md, section 5) : **prorata
 multicritère**. Chaque couple département × culture reçoit une part du stock proportionnelle à
 
     besoin × (0,5 + α × valeur indicative + (1 − α) × vulnérabilité)

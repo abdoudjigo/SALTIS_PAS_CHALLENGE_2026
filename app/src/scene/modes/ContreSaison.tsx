@@ -1,5 +1,5 @@
 // Agriculteur — « Puis-je cultiver en saison sèche ? » : l'eau disponible en saison sèche près de ses terres
-// (carte des opportunités, docs/carte-opportunites.md) et ce qu'elle permet : les cultures irriguées du
+// (carte des opportunités, docs/technique/carte-opportunites.md) et ce qu'elle permet : les cultures irriguées du
 // département, l'eau qu'il leur faut en heures de pompage. Repérage indicatif, pas une étude de faisabilité.
 // La carte montre tout le pays : bleu (eau mobilisable), sinon jaune ou vert selon la saison des pluies.
 //
@@ -15,13 +15,13 @@ import { useActuelles } from '../../hooks/previsions'
 import { libelle, nombre, pct } from '../../lib/format'
 import type { CategorieEau } from '../../types/marts'
 import { cadrer, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { COULEURS_OPPORTUNITE, LEGENDE_OPPORTUNITES, NON_DISPONIBLE } from '../couleurs'
-import { culture as cult } from '../lecture'
-import { FIN_WO } from '../wolof'
-import { heuresPompage, laCulture, NON_DISPONIBLE_TXT } from '../conseil'
-import { aLire, CHOISIR, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { AFaire, Categories, Cle, Cles, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Methode, Squelette, type Action } from '../ui'
+import { COULEURS_OPPORTUNITE, LEGENDE_OPPORTUNITES, NON_DISPONIBLE } from '../carte/couleurs'
+import { culture as cult } from '../voix/lecture'
+import { FIN_WO } from '../voix/wolof'
+import { heuresPompage, laCulture, NON_DISPONIBLE_TXT } from '../regles/conseil'
+import { aLire, CHOISIR, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { AFaire, Categories, Cle, Cles, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Methode, Squelette, type Action } from '../interface/ui'
 
 const COULEURS = COULEURS_OPPORTUNITE
 const LEGENDE = LEGENDE_OPPORTUNITES

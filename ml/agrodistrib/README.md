@@ -8,7 +8,7 @@ Une organisation a un stock (par exemple 20 000 t de NPK 15-15-15 pour le mil). 
 AgroDistrib **propose** des répartitions. Il ne prévoit rien. L'organisation compare les propositions, les ajuste et valide ; la quantité validée est saisie dans l'application, pas ici. Le stock d'une organisation n'est jamais mélangé à celui d'une autre.
 
 ## La méthode (validée le 18/11/2026)
-Le **prorata multicritère**, retenu par la comparaison de 6 méthodes ([`docs/rapport-comparaison-modeles.md`](../../docs/rapport-comparaison-modeles.md), section 5). Chaque couple département × culture reçoit une part proportionnelle à :
+Le **prorata multicritère**, retenu par la comparaison de 6 méthodes ([`docs/technique/rapport-comparaison-modeles.md`](../../docs/technique/rapport-comparaison-modeles.md), section 5). Chaque couple département × culture reçoit une part proportionnelle à :
 
 ```
 besoin × (0,5 + α × valeur indicative + (1 − α) × vulnérabilité)

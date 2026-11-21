@@ -9,14 +9,14 @@ import { Portes } from '../landing/Portes'
 import { Sources } from '../landing/Sources'
 import { libelle, mm, nombre } from '../lib/format'
 import { ACCUEIL, useMeta } from '../lib/meta'
-import type { VueCarte } from '../scene/Carte'
-import { couleurAnomalie, couleurVulnerabilite, NIVEAUX, NON_DISPONIBLE } from '../scene/couleurs'
-import { useContours, useContoursZones } from '../scene/fonds'
-import { cleZone, SENEGAL, ZONES } from '../scene/geo'
+import type { VueCarte } from '../scene/carte/Carte'
+import { couleurAnomalie, couleurVulnerabilite, NIVEAUX, NON_DISPONIBLE } from '../scene/carte/couleurs'
+import { useContours, useContoursZones } from '../scene/carte/fonds'
+import { cleZone, SENEGAL, ZONES } from '../scene/carte/geo'
 import type { NiveauAdequation } from '../types/marts'
 import { useModeRendu } from '../lib/modeRendu'
 
-const Carte = lazy(() => import('../scene/Carte'))
+const Carte = lazy(() => import('../scene/carte/Carte'))
 
 type Etape = 'zones' | 'ciel' | 'terre' | 'decision' | 'entrer'
 

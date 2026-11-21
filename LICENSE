@@ -1,0 +1,19 @@
+Copyright (c) 2026 Équipe AKAI (Alliance for Knowledge, Action & Innovation). Tous droits réservés.
+
+Assaman & Suuf — plateforme d'aide à la décision agricole au Sénégal, réalisée dans le cadre
+du SALTIS PAS Challenge 2026.
+
+Le code source, la documentation, les modèles et les jeux de données construits par l'équipe
+(dossiers app/, api/, dbt/, ml/, ingestion/, voix/, snowflake/, deploy/, docs/) sont la propriété
+de l'équipe AKAI. Aucune licence d'utilisation, de copie, de modification ou de distribution
+n'est accordée sans l'accord écrit de l'équipe, sauf ce que permet le règlement du concours
+pour l'évaluation du projet.
+
+Les données et logiciels de tiers gardent leur propre licence, qui prime sur ce fichier :
+- sources de données : voir la page « Données » du site (app/src/pages/site/Donnees.tsx) et
+  docs/contrat-donnees.md (notamment GADM 4.1 : usage non commercial, citation obligatoire ;
+  Cadre harmonisé : CC BY ; SoilGrids : CC BY 4.0) ;
+- modèles vocaux : voir voix/README.md et voix/space/README.md ;
+- dépendances logicielles : voir app/package.json et requirements*.txt.
+
+Contact : voir la page Contact du site.

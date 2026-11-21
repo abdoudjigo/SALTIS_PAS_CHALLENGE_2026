@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Front de la plateforme Assaman & Suuf (SALTIS PAS Challenge 2026)",
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=20.19"
   },

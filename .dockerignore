@@ -16,3 +16,6 @@ dbt
 **/__pycache__
 .pytest_cache
 .ruff_cache
+
+# Documentation (et audit) : inutile aux images
+docs

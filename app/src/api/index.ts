@@ -126,7 +126,7 @@ export const api = {
       ? marts<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { culture })
       : exemple<LigneTerritoireAgrodistrib[]>('/agrodistrib/territoires', { params: { culture } })),
 
-  // Module E — mart_carte_opportunites (docs/carte-opportunites.md). null tant que le mart n'est pas construit
+  // Module E — mart_carte_opportunites (docs/technique/carte-opportunites.md). null tant que le mart n'est pas construit
   // (l'API répond 404 opportunites_indisponible) : l'écran n'affiche alors rien de plus
   opportunites: () =>
     ou404<CarteOpportunite[] | null>(reel ? marts<CarteOpportunite[]>('/opportunites') : exemple<CarteOpportunite[]>('/opportunites'), null),

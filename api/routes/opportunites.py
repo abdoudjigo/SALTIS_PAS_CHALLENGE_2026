@@ -1,7 +1,7 @@
 """Routes de la carte des opportunités (MART_CARTE_OPPORTUNITES) : réponses précalculées du cache, comme les autres marts.
 
 Tant que dbt n'a pas construit le mart, chaque route répond 404 `opportunites_indisponible`.
-Méthode, seuils et limites : docs/carte-opportunites.md.
+Méthode, seuils et limites : docs/technique/carte-opportunites.md.
 """
 
 from typing import Annotated, Literal
@@ -15,7 +15,7 @@ from ..schemas import CarteOpportunite, Reponse
 from .outils import CodeDepartement, exiger_departement, servir
 
 ERREURS = reponses_erreurs(404, 503)
-AIDE = "Le mart est construit par dbt (mart_carte_opportunites) : voir docs/carte-opportunites.md."
+AIDE = "Le mart est construit par dbt (mart_carte_opportunites) : voir docs/technique/carte-opportunites.md."
 
 FiltreCouleur = Annotated[
     Literal["bleu", "jaune", "vert"] | None,

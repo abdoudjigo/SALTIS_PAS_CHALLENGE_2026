@@ -7,23 +7,23 @@ import { config } from '../config'
 import { useReferentiels } from '../hooks/donnees'
 import { usePrechargerDepartement } from '../hooks/precharger'
 import { ACCUEIL, useMeta } from '../lib/meta'
-import type { Survol, VueCarte } from '../scene/Carte'
+import type { Survol, VueCarte } from '../scene/carte/Carte'
 import { cadrer, questionDe, questionOng, type AccesExport, type Cadre, type Fonctionnalite, type Infobulle, type ModeOng, type PropsMode, type Sortie } from '../scene/cadre'
-import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../scene/dossier'
-import { definirCarte, registre } from '../scene/registreExport'
-import { AvisOng } from '../scene/AvisOng'
-import { Dock } from '../scene/Dock'
-import { hauteurCran, type Cran } from '../scene/crans'
-import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/Fenetre'
-import { GardeCarte } from '../scene/GardeCarte'
-import { useContours, useContoursZones } from '../scene/fonds'
-import type { LonLat } from '../scene/geo'
+import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../scene/ong/dossier'
+import { definirCarte, registre } from '../scene/ong/registreExport'
+import { AvisOng } from '../scene/ong/AvisOng'
+import { Dock } from '../scene/interface/Dock'
+import { hauteurCran, type Cran } from '../scene/carte/crans'
+import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/interface/Fenetre'
+import { GardeCarte } from '../scene/carte/GardeCarte'
+import { useContours, useContoursZones } from '../scene/carte/fonds'
+import type { LonLat } from '../scene/carte/geo'
 import type { Utilisateur } from '../types/auth'
 import { anneeAVenir } from '../types/previsions'
 
 // La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
 // données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
-const chargerCarte = () => import('../scene/Carte')
+const chargerCarte = () => import('../scene/carte/Carte')
 const Carte = lazy(chargerCarte)
 void chargerCarte()
 

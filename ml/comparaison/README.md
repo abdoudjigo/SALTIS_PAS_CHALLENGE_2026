@@ -1,6 +1,6 @@
 # Comparaison des modèles — documentation
 
-Ce dossier compare **6 familles de modèles** à des **prévisions de référence**, pour chacune des trois parties de [`ml/README.md`](../README.md), et désigne le modèle à prendre. Les résultats chiffrés et les décisions sont dans [`docs/rapport-comparaison-modeles.md`](../../docs/rapport-comparaison-modeles.md).
+Ce dossier compare **6 familles de modèles** à des **prévisions de référence**, pour chacune des trois parties de [`ml/README.md`](../README.md), et désigne le modèle à prendre. Les résultats chiffrés et les décisions sont dans [`docs/technique/rapport-comparaison-modeles.md`](../../docs/technique/rapport-comparaison-modeles.md).
 
 | Partie de `ml/README.md` | Script | Ce qui est comparé |
 |---|---|---|

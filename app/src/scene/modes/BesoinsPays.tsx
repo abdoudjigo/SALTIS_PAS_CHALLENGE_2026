@@ -5,15 +5,15 @@
 import { useMemo } from 'react'
 import { usePrixIntrants, useTerritoires } from '../../hooks/donnees'
 import { libelle, nombre, pct, tonnes } from '../../lib/format'
-import { besoinsParDepartement, partSurfaceAvecDose } from '../besoinsPays'
+import { besoinsParDepartement, partSurfaceAvecDose } from '../regles/besoinsPays'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { couleurQuantite, NON_DISPONIBLE } from '../couleurs'
-import { aLire, puceAnnee, puceCulture, type LigneCheck } from '../fiche'
-import { FicheReponse } from '../FicheReponse'
-import { cleZone, ZONES } from '../geo'
-import { useDossier } from '../dossier'
-import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes } from '../ong'
-import { Avis, Champ, Degrade, Groupe, Ligne, Lignes, Marque, Methode, Rang, Squelette } from '../ui'
+import { couleurQuantite, NON_DISPONIBLE } from '../carte/couleurs'
+import { aLire, puceAnnee, puceCulture, type LigneCheck } from '../interface/fiche'
+import { FicheReponse } from '../interface/FicheReponse'
+import { cleZone, ZONES } from '../carte/geo'
+import { useDossier } from '../ong/dossier'
+import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes } from '../ong/ong'
+import { Avis, Champ, Degrade, Groupe, Ligne, Lignes, Marque, Methode, Rang, Squelette } from '../interface/ui'
 
 const STATUT_PRIX = { VALIDEE: 'validé', A_CONFIRMER: 'à confirmer', A_SAISIR: 'à saisir' } as const
 

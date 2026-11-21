@@ -53,7 +53,12 @@ Première construction : 5 à 10 minutes (PyTorch processeur, dépendances du si
 git pull
 docker compose -f docker-compose.prod.yml up -d --build
 ```
-Après une mise à jour des marts dans Snowflake (`dbt build`), redémarrer seulement l'API pour relire les données : `docker compose -f docker-compose.prod.yml restart api`.
+Après une mise à jour des marts ou des résultats des modèles dans Snowflake (`dbt build`, `ml/charger_snowflake.py`), **relire les données** sans redémarrer :
+```bash
+curl -X POST -H "X-Admin-Token: <API_ADMIN_TOKEN du .env>" https://<domaine>/api/v1/systeme/cache/rafraichir
+curl https://<domaine>/api/v1/systeme/sante      # version_active change une fois le préchargement terminé
+```
+`API_ADMIN_TOKEN` doit donc être renseigné dans le `.env` du serveur (`openssl rand -hex 24`). **Redémarrer l'API ne suffit pas** : avec Redis, elle reprend la version déjà en cache sans relire Snowflake. Autre possibilité, depuis le serveur : `docker compose -f docker-compose.prod.yml exec api python -m api.cache.prechargement`.
 
 ## 5. Commandes utiles
 | Besoin | Commande |

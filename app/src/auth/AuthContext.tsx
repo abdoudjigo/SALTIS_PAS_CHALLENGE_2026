@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { Utilisateur } from '../types/auth'
-import { viderExport } from '../scene/registreExport'
+import { viderExport } from '../scene/ong/registreExport'
 import { sessionStore } from './session'
 
 interface ValeurAuth {

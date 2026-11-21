@@ -13,7 +13,7 @@ Usage, depuis la racine du dépôt :
     venv/bin/python -m ingestion.collecte.eau.preparer_eau --hors-ligne # prépare avec les fichiers déjà présents
 
 Les cartes BGS ne sont pas téléchargeables par un lien direct stable : les déposer à la main dans data/raw/eau/bgs/
-(voir docs/carte-opportunites.md, étape 1). Le script reconnaît les fichiers à leur nom (depth, productivity, storage),
+(voir docs/technique/carte-opportunites.md, étape 1). Le script reconnaît les fichiers à leur nom (depth, productivity, storage),
 en .zip ou en .txt.
 
 Méthode : un point de grille (centre de cellule) appartient au département dont le contour GADM le contient.

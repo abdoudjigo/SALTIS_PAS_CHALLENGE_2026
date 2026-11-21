@@ -44,7 +44,7 @@ from .cles import SUFFIXE_GZIP, normaliser
 
 SEUIL_GZIP_OCTETS = 1024
 
-# --- Limites d'usage renvoyées dans meta.avertissements (reprises de docs/contrat-donnees.md) ---
+# --- Limites d'usage renvoyées dans meta.avertissements (reprises de docs/technique/contrat-donnees.md) ---
 AV_CARTE = [
     "classe_saison est relative à chaque département.",
     "NDVI disponible à partir de 2000 seulement.",
