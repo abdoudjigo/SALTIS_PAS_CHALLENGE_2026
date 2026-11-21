@@ -388,22 +388,23 @@ Diagramme `erDiagram` des dimensions et faits, carte des flux et lignée : `05-d
 
 ## 9. Suivi des corrections (21/11/2026, après l'audit)
 
-Périmètre choisi par l'équipe pour le rendu du code source : **structure et organisation du projet, sans déplacement à risque**. Les dossiers `app/`, `api/`, `dbt/` et `ml/` gardent leur nom. Rien n'est commité à ce stade.
+Périmètre choisi par l'équipe pour le rendu du code source : **structure et organisation du projet, sans déplacement à risque**, puis la correction du constat critique DATA-01. Les dossiers `app/`, `api/`, `dbt/` et `ml/` gardent leur nom. Le travail est commité par l'équipe sur la branche `assaman_suuf` (commit `2a9c664`).
 
 | Étape | Ce qui a été fait | Constats |
 |---|---|---|
-| 1. Secret | Valeurs SMTP retirées de `.env.example` ; plus aucun fichier du dépôt ne contient le mot de passe | SEC-01 = PRIV-03 (partiel) |
+| 1. Secret | Valeurs SMTP retirées de `.env.example` ; plus aucun fichier du dépôt ne contient le mot de passe ; **mot de passe révoqué** par l'équipe dans le compte Google | SEC-01 = PRIV-03 |
 | 2. Racine | Logos d'origine vers `docs/visuels/` ; `package-lock.json` vide supprimé ; `dbt.ps1` vers `dbt/` (chemins corrigés partout) ; `REGLE.md` vers `docs/outils-ia/` ; PostgreSQL et Redis de dev sur `127.0.0.1` ; `LICENSE` « tous droits réservés » ; `docs` exclu des images Docker | ARC-10, SEC-10, GOV-03 (partiel) |
 | 3. Documentation et commandes | README racine réécrit (structure, démarrage Linux et Windows, licence) ; `Makefile` sur `venv/`, `api-prod` à 1 worker, `make test` et `make verifier`, lint identique à la CI ; `.python-version` et `.nvmrc` ; `.env.example` complété ; `app/README.md` sans les sections obsolètes ; procédure de rafraîchissement corrigée ; `CONTRIBUTING.md` et modèle de PR | QUA-05, OPS-09, ARC-03 (partiel), QUA-06 (partiel) |
 | 4. `docs/` | Rangé en `technique/`, `projet/`, `audit/` (`kit/`, `rapports/`), `visuels/`, `outils-ia/`, avec un index ; liens corrigés dans 34 fichiers ; 0 lien relatif cassé | QUA-06 (partiel) |
 | 5. Front | `app/src/scene/` rangé en `carte/`, `interface/`, `regles/`, `voix/`, `ong/` (25 fichiers, imports réécrits) ; typecheck, ESLint et build réussis ; 13 écrans et le formulaire d'avis vérifiés dans le navigateur | ARC-08 (partiel) |
+| 6. CI dbt | Cible `ci` isolée (`CI_STAGING`, `CI_INTERMEDIATE`, `CI_MARTS`) ; dbt lancé seulement sur les PR, `main`, `develop` ou à la main ; garde-fou sur le manifeste ; `ci-status` accepte un job dbt sauté ; `dbt/README.md` documente les deux cibles | DATA-01 = SEC-02 |
 
-**Bilan** (constats consolidés) : 3 corrigés (ARC-10, SEC-10, OPS-09) et 6 partiellement (SEC-01 = PRIV-03, ARC-03, ARC-08, QUA-05, QUA-06, GOV-03), sur 85. Les notes de la synthèse ne changent pas : elles décrivent la version auditée.
+**Bilan** (constats consolidés) : 5 corrigés (SEC-01 = PRIV-03, DATA-01 = SEC-02, ARC-10, SEC-10, OPS-09) et 5 partiellement (ARC-03, ARC-08, QUA-05, QUA-06, GOV-03), sur 85. **Plus aucun constat critique ouvert** (les deux 🔴 sont corrigés ; restent des actions recommandées côté Snowflake et Google). Les notes de la synthèse ne changent pas : elles décrivent la version auditée.
 
 **Vérifications après corrections** : `make lint` OK ; `make test` → 121 tests réussis ; `npm run typecheck`, `eslint`, `npm run build` OK ; `dbt parse` OK ; `docker compose config` (dev) OK.
 
 **Reste prioritaire avant le rendu ou la démo** (hors périmètre « structure ») :
-1. **Révoquer le mot de passe Gmail** (compte Google), puis décider de réécrire ou non l'historique git (SEC-01).
-2. Désactiver `dbt build` sur les push `dev/**` dans la CI (DATA-01).
+1. ~~Révoquer le mot de passe Gmail~~ : **fait**. Reste facultatif : vérifier l'activité du compte, consigner l'incident, nettoyer l'historique git si le dépôt devient public (SEC-01).
+2. ~~Isoler la CI dbt~~ : **fait** dans le code (cible `ci`). Reste : rôle CI dédié et vérification de `QUERY_HISTORY` (DATA-01).
 3. Alertes récolte seulement si fiables ; cache hors ligne ; sélecteur de département (IA-01, FE-01, FE-02).
-4. Commiter le travail de réorganisation sur une branche, puis l'ouvrir en PR vers `develop`.
+4. Commiter la correction de DATA-01, puis ouvrir une PR de `assaman_suuf` vers `develop` : le CI de la PR utilisera déjà la cible `ci`.

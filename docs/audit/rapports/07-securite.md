@@ -40,7 +40,7 @@ La note est tirée vers le bas par **un secret réel poussé sur GitHub** (SEC-0
 ## 3. Constats (du plus grave au moins grave)
 
 ### [SEC-01] Mot de passe d'application SMTP réel dans `.env.example`, commité et poussé sur GitHub
-- **Suivi (21/11/2026, après l'audit)** : 🟡 Partiellement corrigé — valeurs SMTP retirées de `.env.example` (aucun fichier du dépôt ne contient plus la valeur). **Reste** : révoquer le mot de passe dans le compte Google ; la valeur reste dans l'historique git (commit `51e448d`).
+- **Suivi (21/11/2026, après l'audit)** : ✅ Corrigé — mot de passe d'application **révoqué** par l'équipe dans le compte Google, et valeurs SMTP retirées de `.env.example` (commit `2a9c664`, branche `assaman_suuf`). L'ancienne valeur reste lisible dans l'historique git (commit `51e448d`), mais elle ne fonctionne plus. **Recommandé** : vérifier l'activité récente du compte Google et nettoyer l'historique si le dépôt devient public.
 - Sévérité : 🔴 Critique   Statut : Constaté
 - Où : `.env.example:51-55` (`SMTP_HOST`, `SMTP_USER`, **`SMTP_PASSWORD=kk************`**, `AVIS_DESTINATAIRE`) ; ajouté par le commit `51e448d` (« fusion des deux branches », 21/11/2026) ; présent sur `origin/dev/all-recup`
 - Constat : la valeur a la forme d'un mot de passe d'application Gmail (16 lettres minuscules). Ce n'est pas un exemple. Elle diffère de celle du `.env` local, ce qui laisse penser qu'il s'agit d'un autre compte ou d'un ancien mot de passe encore valide. `detect-secrets` ne l'a pas détectée (entropie faible) : seule la recherche par motif dans l'historique l'a trouvée. La procédure de déploiement commence par `cp .env.example .env` (`deploy/README.md:23`) : la valeur se retrouve donc aussi sur tout serveur installé depuis ce commit.
@@ -50,6 +50,7 @@ La note est tirée vers le bas par **un secret réel poussé sur GitHub** (SEC-0
 - Effort : S
 
 ### [SEC-02] La CI dbt écrit dans les schémas de prod depuis n'importe quelle branche
+- **Suivi (21/11/2026, après l'audit)** : ✅ Corrigé dans le code — cible dbt `ci` dans `dbt/profiles.yml` ; `macros/generate_schema_name.sql` préfixe tous les schémas par `CI_` (vérifié par `dbt parse` : 56 modèles et seeds en `CI_STAGING`, `CI_INTERMEDIATE`, `CI_MARTS` ; la cible de production reste sur `STAGING`, `INTERMEDIATE`, `MARTS`). Le CI lance `dbt build --target ci` seulement sur les PR, `main`, `develop` ou à la main, et refuse de construire si un modèle vise un schéma hors `CI_*`. **Reste recommandé** : rôle Snowflake dédié au CI sans droit d'écriture sur la production (`SNOWFLAKE_CI_ROLE`), et vérifier dans `QUERY_HISTORY` ce que le CI a déjà écrit.
 - Sévérité : 🔴 Critique   Statut : Probable (voir DATA-01)
 - Où : `dbt/macros/generate_schema_name.sql:2-5` ; `.github/workflows/ci.yml` (push `dev/**`, `SNOWFLAKE_SCHEMA: CI` ignoré)
 - Constat : détaillé en DATA-01. Côté sécurité : **toute personne qui peut pousser une branche `dev/*`** (4 contributeurs aujourd'hui) modifie les marts de prod sans relecture, avec les identifiants Snowflake du CI, probablement `SYSADMIN` (SEC-03).

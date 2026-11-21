@@ -87,3 +87,12 @@ Pour reconstruire uniquement les vues staging ou un mart et ses dépendances :
 ```
 
 Le profil du projet utilise l'authentification Snowflake par mot de passe. Ne partagez et ne versionnez jamais le mot de passe ou le fichier local `.env`.
+
+## Cibles : production et CI
+
+| Cible | Commande | Schémas écrits | Usage |
+|---|---|---|---|
+| `snowflake` (par défaut) | `dbt build --target snowflake` | `STAGING`, `INTERMEDIATE`, `MARTS` (lus par l'API) | Mise à jour des données, à la main, depuis `main` |
+| `ci` | `dbt build --target ci` | `CI_STAGING`, `CI_INTERMEDIATE`, `CI_MARTS` | Le CI GitHub (`.github/workflows/ci.yml`) : PR, `main`, `develop` ou lancement manuel |
+
+La cible `ci` ne peut **jamais** écrire dans les schémas de la production : `macros/generate_schema_name.sql` préfixe tous les schémas par `CI_`, et le CI vérifie le manifeste avant de construire (étape « Garde-fou »). Les sources (`SALTIS.RAW`) sont seulement lues. Un rôle dédié au CI peut être donné par la variable `SNOWFLAKE_CI_ROLE` (sinon `SNOWFLAKE_ROLE`) : idéalement, il a le droit de créer les schémas `CI_*` et de lire `RAW`, mais aucun droit d'écriture sur `STAGING`, `INTERMEDIATE` et `MARTS`.

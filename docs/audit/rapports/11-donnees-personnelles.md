@@ -118,7 +118,7 @@ flowchart LR
 - Effort : S
 
 ### [PRIV-03] La boîte qui reçoit les avis est exposée par la fuite de son mot de passe
-- **Suivi (21/11/2026, après l'audit)** : 🟡 Partiellement corrigé — voir SEC-01 (révocation et consignation de l'incident à faire par l'équipe).
+- **Suivi (21/11/2026, après l'audit)** : ✅ Corrigé — mot de passe révoqué par l'équipe (voir SEC-01). **Recommandé** : vérifier l'activité récente du compte (connexions SMTP et IMAP inconnues) et consigner l'incident dans un registre des violations (PRIV-06).
 - Sévérité : 🔴 Critique   Statut : Constaté (voir SEC-01)
 - Texte : loi n° 2008-12 (obligation de sécurité du responsable)
 - Où : `.env.example:53-54` (commit `51e448d`, poussé)

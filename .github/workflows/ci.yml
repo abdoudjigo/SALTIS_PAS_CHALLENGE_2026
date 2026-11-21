@@ -5,6 +5,8 @@ on:
     branches: [main, develop, "dev/**"]
   pull_request:
     branches: [main, develop]
+  # Lancement à la main (onglet Actions), par exemple pour relancer dbt sur une branche
+  workflow_dispatch:
 
 # Si on repousse sur la même branche, on annule l'ancien run
 concurrency:
@@ -43,11 +45,16 @@ jobs:
         # code 5 = aucun test trouvé : on ne casse pas le CI pour ça
         run: pytest -q || [ $? -eq 5 ]
 
-  # 3. dbt : compile le projet, puis build + tests sur Snowflake (schéma CI isolé)
+  # 3. dbt : compile le projet, puis build + tests sur Snowflake, dans les schémas CI_* seulement
+  #    (cible « ci » : dbt/profiles.yml et dbt/macros/generate_schema_name.sql ; constat d'audit DATA-01).
+  #    Lancé sur les PR, sur main et develop, ou à la main ; pas à chaque push sur dev/** (crédits Snowflake).
   dbt:
     runs-on: ubuntu-latest
     # pas de secrets pour les PR venant de forks
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     defaults:
       run:
         working-directory: dbt
@@ -68,10 +75,21 @@ jobs:
       - run: pip install dbt-snowflake
       - name: Installer les packages dbt (si présents)
         run: '[ -f packages.yml ] && dbt deps || echo "pas de packages.yml"'
-      - name: Compiler le projet
-        run: dbt parse
-      - name: Build (run + test) sur Snowflake
-        run: dbt build
+      - name: Compiler le projet (cible ci)
+        run: dbt parse --target ci
+      - name: Garde-fou - aucun modèle ne doit viser un schéma de production
+        run: |
+          python - <<'PY'
+          import json, sys
+          noeuds = json.load(open("target/manifest.json"))["nodes"].values()
+          fautifs = sorted({n["schema"] for n in noeuds
+                            if n["resource_type"] in ("model", "seed", "snapshot") and not n["schema"].upper().startswith("CI_")})
+          if fautifs:
+              sys.exit(f"Schémas hors CI_* avec la cible ci : {fautifs}. Voir dbt/macros/generate_schema_name.sql")
+          print("OK : tous les modèles et seeds visent un schéma CI_*")
+          PY
+      - name: Build (run + test) sur Snowflake, schémas CI_*
+        run: dbt build --target ci
 
   # 4. Front (app/) : lint + build avec les données d'exemple (aucun secret)
   front:
@@ -101,6 +119,10 @@ jobs:
       - name: Vérifier le résultat des jobs
         run: |
           echo "lint=${{ needs.lint.result }} tests=${{ needs.tests.result }} dbt=${{ needs.dbt.result }} front=${{ needs.front.result }}"
-          if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.tests.result }}" != "success" ] || [ "${{ needs.dbt.result }}" != "success" ] || [ "${{ needs.front.result }}" != "success" ]; then
+          # dbt peut être « skipped » (push sur dev/**, PR venant d'un fork) : ce n'est pas un échec
+          if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.tests.result }}" != "success" ] || [ "${{ needs.front.result }}" != "success" ]; then
+            exit 1
+          fi
+          if [ "${{ needs.dbt.result }}" != "success" ] && [ "${{ needs.dbt.result }}" != "skipped" ]; then
             exit 1
           fi
