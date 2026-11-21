@@ -148,6 +148,10 @@ function plansDuSite(urlSite: string): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
+  // Vite préfère les variables du shell à celles des fichiers .env, même vides. `make front` exporte le .env
+  // racine, où VITE_MAPBOX_TOKEN= est vide (section déploiement) : il masquait le jeton de app/.env.local et la
+  // carte ne s'affichait pas. Une variable VITE_* vide dans le shell est donc ignorée.
+  for (const nom of Object.keys(process.env)) if (nom.startsWith('VITE_') && !process.env[nom]?.trim()) delete process.env[nom]
   const env = loadEnv(mode, process.cwd(), '')
   refuserLesSecrets(env)
   const apiUrl = env.VITE_API_URL || 'http://localhost:8080'

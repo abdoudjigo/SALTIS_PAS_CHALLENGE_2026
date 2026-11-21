@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useBesoins, useCarte, useChoixCultures, useTerritoires, useVulnerabilite } from '../../hooks/donnees'
 import { useActuelles, etatActuel, useRecolteFinMai, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
 import { libelle, mm, nombre, pct } from '../../lib/format'
-import { lireNombre } from '../../lib/saisie'
+import { lireSaisie } from '../../lib/saisie'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { NIVEAUX, teinteVulnerabilite, tendance } from '../couleurs'
 import { cleZone, trouverDepartement, ZONE_PAR_CLE, type LonLat } from '../geo'
@@ -24,8 +24,7 @@ import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, wo } from '../wolof'
 import { cycleDit, fenetreCulture, joursEau, laCulture, nombreSacs, sacsEngraisParHa, texteJoursEau } from '../conseil'
 import { aLire, puceAnnee, type LigneCheck } from '../fiche'
 import { FicheReponse } from '../FicheReponse'
-import { AFaire, Avis, Bouton, Cle, Cles, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../ui'
-import { Avis, Bouton, Cle, ErreurChamp, Detail, Groupe, Lien, Ligne, Lignes, Pastille, Rang, Reponse, Squelette } from '../ui'
+import { AFaire, Avis, Bouton, Cle, Cles, ErreurChamp, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../ui'
 
 const vide = (etat: EtatPrevision) => (etat === 'chargement' ? '…' : 'non disponible')
 
@@ -146,8 +145,8 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   // Coordonnées en degrés décimaux. Le Sénégal est vers 12 à 17° de latitude et -17,5 à -11° de longitude :
   // deux valeurs dans ces plages mais interverties sont signalées (erreur fréquente). Un point valide hors du pays
   // est accepté, puis signalé « hors du Sénégal » après recherche du département.
-  const lectureLat = lireNombre(saisie.lat, { min: -90, max: 90, negatif: true, unite: '°' })
-  const lectureLon = lireNombre(saisie.lon, { min: -180, max: 180, negatif: true, unite: '°' })
+  const lectureLat = lireSaisie(saisie.lat, { min: -90, max: 90, negatif: true, unite: '°' })
+  const lectureLon = lireSaisie(saisie.lon, { min: -180, max: 180, negatif: true, unite: '°' })
   const [lat, lon] = [lectureLat.valeur ?? NaN, lectureLon.valeur ?? NaN]
   const saisieValide = lectureLat.valeur !== null && lectureLon.valeur !== null
   const interverties = saisieValide && lat < -10 && lat > -18 && lon > 11 && lon < 17.5
@@ -235,37 +234,23 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
           <>
             <p className="mt-4 text-sm leading-relaxed text-white/70">Activez la localisation, ou touchez la carte à l’endroit du champ : elle descend jusqu’à la parcelle.</p>
             <Groupe titre="Ou saisir les coordonnées">
-              <form className="grid grid-cols-[1fr_1fr_auto] gap-2" onSubmit={(e) => { e.preventDefault(); if (saisieValide) definirPosition([lon, lat]) }}>
-                <input className="champ-scene" inputMode="decimal" placeholder="Lat. 14,15" aria-label="Latitude" value={saisie.lat} onChange={(e) => setSaisie((s) => ({ ...s, lat: e.target.value }))} />
-                <input className="champ-scene" inputMode="decimal" placeholder="Lon. -16,07" aria-label="Longitude" value={saisie.lon} onChange={(e) => setSaisie((s) => ({ ...s, lon: e.target.value }))} />
+              <form className="grid grid-cols-[1fr_1fr_auto] gap-2" noValidate onSubmit={(e) => { e.preventDefault(); if (saisieValide) definirPosition([lon, lat]) }}>
+                <input className="champ-scene" inputMode="decimal" placeholder="Lat. 14,15" aria-label="Latitude" value={saisie.lat} onChange={(e) => setSaisie((s) => ({ ...s, lat: e.target.value }))}
+                  aria-invalid={Boolean(lectureLat.erreur)} aria-describedby={erreurCoordonnees || interverties ? 'erreur-coordonnees' : undefined} />
+                <input className="champ-scene" inputMode="decimal" placeholder="Lon. -16,07" aria-label="Longitude" value={saisie.lon} onChange={(e) => setSaisie((s) => ({ ...s, lon: e.target.value }))}
+                  aria-invalid={Boolean(lectureLon.erreur)} aria-describedby={erreurCoordonnees || interverties ? 'erreur-coordonnees' : undefined} />
                 <Bouton disabled={!saisieValide} onClick={() => saisieValide && definirPosition([lon, lat])}>Aller</Bouton>
               </form>
+              {erreurCoordonnees && <ErreurChamp id="erreur-coordonnees">{erreurCoordonnees}</ErreurChamp>}
+              {!erreurCoordonnees && interverties && (
+                <ErreurChamp id="erreur-coordonnees">
+                  Latitude et longitude semblent interverties : au Sénégal, la latitude est positive (vers 14) et la longitude négative (vers -16).{' '}
+                  <button type="button" onClick={() => setSaisie((s) => ({ lat: s.lon, lon: s.lat }))} className="font-semibold text-white underline underline-offset-4">Les échanger</button>
+                </ErreurChamp>
+              )}
             </Groupe>
           </>
         } />
-      <div>
-        <Reponse titre="Où est votre champ ?" phrase="Activez la localisation, ou touchez la carte à l’endroit du champ : elle descend jusqu’à la parcelle." />
-        <Bouton plein className="mt-4 w-full" onClick={localiser} disabled={etat === 'recherche'}>
-          <LocateFixed className="size-4" aria-hidden />{etat === 'recherche' ? 'Recherche du signal…' : 'Me localiser'}
-        </Bouton>
-        {avis}
-        <Groupe titre="Ou saisir les coordonnées">
-          <form className="grid grid-cols-[1fr_1fr_auto] gap-2" noValidate onSubmit={(e) => { e.preventDefault(); if (saisieValide) definirPosition([lon, lat]) }}>
-            <input className="champ-scene" inputMode="decimal" placeholder="Lat. 14,15" aria-label="Latitude" value={saisie.lat} onChange={(e) => setSaisie((s) => ({ ...s, lat: e.target.value }))}
-              aria-invalid={Boolean(lectureLat.erreur)} aria-describedby={erreurCoordonnees || interverties ? 'erreur-coordonnees' : undefined} />
-            <input className="champ-scene" inputMode="decimal" placeholder="Lon. -16,07" aria-label="Longitude" value={saisie.lon} onChange={(e) => setSaisie((s) => ({ ...s, lon: e.target.value }))}
-              aria-invalid={Boolean(lectureLon.erreur)} aria-describedby={erreurCoordonnees || interverties ? 'erreur-coordonnees' : undefined} />
-            <Bouton disabled={!saisieValide} onClick={() => saisieValide && definirPosition([lon, lat])}>Aller</Bouton>
-          </form>
-          {erreurCoordonnees && <ErreurChamp id="erreur-coordonnees">{erreurCoordonnees}</ErreurChamp>}
-          {!erreurCoordonnees && interverties && (
-            <ErreurChamp id="erreur-coordonnees">
-              Latitude et longitude semblent interverties : au Sénégal, la latitude est positive (vers 14) et la longitude négative (vers -16).{' '}
-              <button type="button" onClick={() => setSaisie((s) => ({ lat: s.lon, lon: s.lat }))} className="font-semibold text-white underline underline-offset-4">Les échanger</button>
-            </ErreurChamp>
-          )}
-        </Groupe>
-      </div>
     )
 
   return (
@@ -282,26 +267,13 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
 
           <AFaire aller={allerAvecCulture} actions={actions} />
 
-      <Detail libelle="Voir les cultures, le sol et les risques">
-      <Groupe titre="Ce qu'on peut y cultiver">
-        {!choix ? <Squelette /> : adaptees.length ? (
-          <ol>
-            {adaptees.slice(0, 5).map((c) => <Rang key={c.culture} nom={`${libelle(c.culture)} · cycle ${c.option}`} part={c.proba_cycle_couvert_pct} couleur={NIVEAUX['adaptée'].couleur} valeur={pct(c.proba_cycle_couvert_pct)} />)}
-          </ol>
-        ) : <p className="text-sm text-white/70">Aucune culture pluviale classée « adaptée » dans ce département.</p>}
-        <div className="mt-2"><Lien onClick={() => cadre.aller('semer')}>Comparer toutes les cultures</Lien></div>
-      </Groupe>
+          <Cles>
+            <Cle valeur={choix ? n : '—'} libelle={n > 1 ? 'cultures qui réussissent' : 'culture qui réussit'} teinte={NIVEAUX['adaptée'].couleur} />
+            <Cle valeur={tAttendue ? libelle(tAttendue.classe) : '—'} libelle={`saison ${annee} attendue`} teinte={tAttendue?.couleur} />
+            <Cle valeur={jours === null ? '—' : jours === 0 ? '< 5' : jours} unite={jours === null ? undefined : 'j'} libelle="d’eau gardée par le sol" />
+          </Cles>
 
-      <Groupe titre="Le sol">
-        {sol ? (
-          <Lignes>
-            <Ligne libelle="Texture" valeur={sol.classe_texture ? libelle(sol.classe_texture) : 'non disponible'} />
-            <Ligne libelle="pH (eau)" valeur={nombre(sol.ph_eau, { decimales: 1 })} detail={lecturePh(sol.ph_eau)} />
-            <Ligne libelle="Réserve utile en eau" valeur={mm(sol.reserve_utile_mm)} />
-            <Ligne libelle="Carbone organique" valeur={nombre(sol.carbone_organique_g_kg, { decimales: 1, unite: 'g/kg' })} />
-          </Lignes>
-        ) : territoires ? <p className="text-sm text-white/70">Sol non disponible pour ce département.</p> : <Squelette lignes={4} />}
-      </Groupe>
+          <LigneFiabilite parties={['Valeurs du département, pas de votre champ au mètre près', natureAnnee(annee, a.aVenir, attendue)]} />
 
           <Groupe titre={`Campagne ${annee}, selon les modèles`}>
             {etats.every((e) => e === 'non-chargee') ? <Attente etat="non-chargee" /> : (

@@ -38,9 +38,8 @@ from ..schemas import (
     Vulnerabilite,
     ZoneRef,
 )
-from . import cles
 from ..schemas.cadre_harmonise import LIBELLES_PHASES
-from ..schemas.opportunites import CarteOpportunite
+from . import cles
 from .cles import SUFFIXE_GZIP, normaliser
 
 SEUIL_GZIP_OCTETS = 1024
@@ -303,7 +302,6 @@ def construire(
     prev_rendement: list[PrevisionRendement] = marts.get("prev_rendement", [])
     semis: list[RisqueSemis] = marts.get("semis", [])
     evaluation: list[EvaluationModele] = marts.get("evaluation", [])
-    opportunites: list[CarteOpportunite] = marts.get("opportunites", [])
 
     b = _Constructeur(version, genere_le, prefixe_source)
     t_carte, t_suivi, t_choix = MARTS["carte"].table, MARTS["suivi"].table, MARTS["cultures"].table
@@ -474,20 +472,12 @@ def construire(
             AV_VULNERABILITE,
         )
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     b.ajouter(cles.ref("intrants"), INTRANTS, IntrantRef, SOURCE_INTRANTS)
     b.ajouter(cles.ref("phases-cadre-harmonise"), PHASES_CH, PhaseCadreHarmonise, SOURCE_PHASES_CH)
     _construire_opportunites(b, opportunites)
     _construire_prix(b, prix)
     _construire_cadre_harmonise(b, cadre)
-    _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, semblables, prev_rendement, semis,
-=======
-=======
-    _construire_opportunites(b, opportunites)
->>>>>>> d305bb9 (feat(ml) : refactor des modeles utilisation et comparaison de differents modeles et modele agrodistrib)
     _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, prev_rendement, semis,
->>>>>>> be507b5 (feat(ml) : entrainement, evaluation et choix des modeles)
                            evaluation)
     return b.c
 
@@ -594,36 +584,6 @@ def _construire_previsions(
         b.ajouter(cles.evaluation(None), evaluation, EvaluationModele, source["evaluation"], None, AV_EVALUATION)
         for modele, lignes in _grouper(evaluation, lambda x: x.modele).items():
             b.ajouter(cles.evaluation(modele), lignes, EvaluationModele, source["evaluation"], {"modele": modele}, AV_EVALUATION)
-
-
-AV_OPPORTUNITES = [
-    "Indicateur de repérage, pas une étude de faisabilité : foncier, salinité, qualité de l'eau et accès à vérifier sur place.",
-    "Saison courte / longue : même calcul que /choix-cultures (cycle qui passe au moins 4 années sur 5).",
-    "Irrigation équipée : FAO GMIA, vers 2005. Nappes : BGS, échelle continentale (grille 5 km).",
-]
-AV_OPPORTUNITES_SANS_EAU = "Couche bleue non évaluée : les sources eau ne sont pas encore chargées (categorie_eau = « non évaluée »)."
-COULEURS = ("bleu", "jaune", "vert")
-
-
-
-def _construire_opportunites(b: _Constructeur, lignes: list[CarteOpportunite]) -> None:
-    """La carte entière, une couleur à la fois (bleu = classement des opportunités), et le détail d'un département."""
-    if not lignes:
-        return
-    table = MARTS["opportunites"].table
-    avertissements = list(AV_OPPORTUNITES)
-    if all(x.categorie_eau == "non évaluée" for x in lignes):
-        avertissements.insert(0, AV_OPPORTUNITES_SANS_EAU)
-    lignes = sorted(lignes, key=lambda x: x.code_departement)
-    b.ajouter(cles.opportunites(None), lignes, CarteOpportunite, table, None, avertissements)
-    for couleur in COULEURS:
-        membres = [x for x in lignes if x.couleur_carte == couleur]
-        if couleur == "bleu":
-            membres.sort(key=lambda x: (x.rang_opportunite_eau is None, x.rang_opportunite_eau or 0, x.code_departement))
-        b.ajouter(cles.opportunites(couleur), membres, CarteOpportunite, table, {"couleur": couleur}, avertissements)
-    for x in lignes:
-        b.ajouter(cles.opportunites_departement(x.code_departement), x, CarteOpportunite, table,
-                  {"code_departement": x.code_departement}, avertissements)
 
 
 # ---------------------------------------------------------------- référentiel des intrants, prix, Cadre harmonisé

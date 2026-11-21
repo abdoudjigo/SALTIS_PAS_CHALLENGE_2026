@@ -1,6 +1,6 @@
-// Lecture et contrôle des nombres tapés dans les formulaires (surface, doses, stock, coordonnées).
+// Lecture et contrôle des nombres tapés dans les formulaires (surface, doses, stock, coordonnées, prix).
 // Règles communes : virgule ou point décimal, espaces de milliers acceptées ; rien d'autre (pas de « 1e3 »,
-// pas de lettres) ; bornes min et max ; message en français, prêt à afficher sous le champ.
+// pas de lettres). Le texte reste tel quel dans le champ ; on ne convertit qu'au moment du calcul.
 
 export type Lecture = {
   /** La valeur lue, ou null si le champ est vide ou invalide */
@@ -11,12 +11,20 @@ export type Lecture = {
 }
 
 const FORME = /^-?\d+(?:[.,]\d+)?$/
+const ESPACES = /[\s\u00a0\u202f]/g
 
-export function lireNombre(
+/** Le nombre d'une saisie ; null si le champ est vide ou ne contient pas un nombre (sans bornes ni message). */
+export function lireNombre(texte: string | null | undefined): number | null {
+  const brut = String(texte ?? '').replace(ESPACES, '')
+  return FORME.test(brut) ? Number(brut.replace(',', '.')) : null
+}
+
+/** Saisie contrôlée : bornes min et max, message en français prêt à afficher sous le champ (`ErreurChamp`). */
+export function lireSaisie(
   texte: string,
   { min = 0, max, minExclu = false, unite = '', negatif = false }: { min?: number; max: number; minExclu?: boolean; unite?: string; negatif?: boolean },
 ): Lecture {
-  const brut = texte.replace(/[\s\u00a0\u202f]/g, '')
+  const brut = texte.replace(ESPACES, '')
   if (brut === '') return { valeur: null, erreur: null, vide: true }
   if (!FORME.test(brut) || (!negatif && brut.startsWith('-'))) {
     return { valeur: null, erreur: negatif ? 'Tapez un nombre, par exemple 14,5 ou -16,2.' : 'Tapez un nombre positif, par exemple 2 ou 2,5.', vide: false }

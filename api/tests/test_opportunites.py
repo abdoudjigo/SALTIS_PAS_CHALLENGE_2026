@@ -9,10 +9,6 @@ from api.cache.construction import ErreurContrat, valider
 from api.main import creer_app
 
 from .conftest import service_test
-from . import donnees_test
-from .donnees_test import GUEDIAWAYE, KOLDA, SAINT_LOUIS, ligne, marts_synthetiques
-
-COORDONNEES = getattr(donnees_test, "COORDONNEES", {})
 from .donnees_test import COORDONNEES, GUEDIAWAYE, KOLDA, SAINT_LOUIS, ligne, marts_synthetiques
 
 V1 = "/api/v1/opportunites"
@@ -20,7 +16,6 @@ V1 = "/api/v1/opportunites"
 
 def carte_opportunites(eau_chargee: bool = True) -> list[dict]:
     kolda = ligne(
-        "opportunites", **KOLDA, **COORDONNEES.get(KOLDA["code_departement"], {}), couleur_carte="bleu", couleur_fond="vert", couche_eau=True,
         "opportunites", **KOLDA, **COORDONNEES[KOLDA["code_departement"]], couleur_carte="bleu", couleur_fond="vert", couche_eau=True,
         classe_saison_pluie="longue", cycle_max_conseille_j=120.0, cultures_cycle_long="ARACHIDE, MAÏS",
         varietes_conseillees="MIL (SOUNA) : Sanio (120 j)", nb_varietes_conseillees=1, categorie_eau="eau de surface peu exploitée",
@@ -58,9 +53,6 @@ def test_carte_complete_et_par_couleur():
         assert corps["meta"]["nb_elements"] == 3
         assert "non évaluée" not in " ".join(corps["meta"]["avertissements"])
         kolda = next(d for d in corps["donnees"] if d["code_departement"] == KOLDA["code_departement"])
-        assert kolda["potentiel_contre_saison_ha"] == 6000.0
-        if COORDONNEES:
-            assert kolda["latitude"] == pytest.approx(12.8939)
         assert kolda["potentiel_contre_saison_ha"] == 6000.0 and kolda["latitude"] == pytest.approx(12.8939)
 
         bleu = c.get(V1, params={"couleur": "bleu"}).json()

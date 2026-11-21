@@ -58,12 +58,10 @@ MARTS: dict[str, DefinitionMart] = {
         DefinitionMart("vulnerabilite", "MART_VULNERABILITE_DEPARTEMENT", Vulnerabilite, "rang_vulnerabilite nulls last, code_departement"),
         # ---- carte des opportunités (pluie et eau), facultative : nouveau mart, déployable avant son premier dbt build
         DefinitionMart("opportunites", "MART_CARTE_OPPORTUNITES", CarteOpportunite, "code_departement", "marts", False),
-        # ---- modèles d'IA (ml/), facultatifs
-        # ---- carte des opportunités (pluie et eau), facultative
-        DefinitionMart("opportunites", "MART_CARTE_OPPORTUNITES", CarteOpportunite, "code_departement", "marts", False),
         # ---- prix des intrants et Cadre harmonisé, facultatifs (routes 404 tant que dbt ne les a pas construits)
         DefinitionMart("prix", "DIM_PRIX_INTRANT", PrixIntrant, "campagne, code_intrant", "marts", False),
         DefinitionMart("cadre_harmonise", "MART_CADRE_HARMONISE_DEPARTEMENT", CadreHarmonise, "code_departement", "marts", False),
+        # ---- modèles d'IA (ml/), facultatifs
         DefinitionMart("prev_saison", "PREVISION_SAISONNIERE", PrevisionSaison, "annee, code_departement", "ml", False),
         DefinitionMart("prev_rendement", "PREVISION_RENDEMENT", PrevisionRendement,
                        "code_departement, annee, culture, moment_prevision", "ml", False),

@@ -107,14 +107,6 @@ def evaluation(modele: str | None) -> str:
     return f"prev:evaluation:{modele or TOUTES}"
 
 
-def opportunites(couleur: str | None) -> str:
-    return f"opportunites:carte:{couleur or TOUTES}"
-
-
-def opportunites_departement(code: str) -> str:
-    return f"opportunites:departement:{code}"
-
-
 def prix_intrants(campagne: int | None) -> str:
     return f"prix:{campagne or TOUTES}"
 

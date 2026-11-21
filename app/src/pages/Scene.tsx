@@ -247,7 +247,6 @@ export default function Scene() {
             <p className="text-2xs text-white/60">{profil}
               {config.donneesDemo && <span className="ml-1.5 rounded-full border border-white/20 px-1.5 whitespace-nowrap text-white/70" title="Données de démonstration synthétiques : elles illustrent la plateforme et ne servent pas à décider.">Démo · données synthétiques</span>}
             </p>
-            <p className="text-2xs text-white/60">{profil}</p>
           </div>
           <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
             <LogOut className="size-4" />

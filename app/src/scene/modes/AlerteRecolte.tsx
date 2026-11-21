@@ -104,57 +104,6 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
               <Cle valeur={nombre(fiche.proba_chute_reference_pct)} unite="%" libelle="risque habituel" />
               <Cle valeur={classement.indexOf(fiche) + 1} unite={`/ ${classement.length}`} libelle="rang" />
             </Cles>
-    <div>
-      {fiche ? (
-        <Reponse cle={`${code}-${annee}-${moment}-${culture}`} titre={fiche.departement}
-          phrase={`${fiche.proba_chute_pct! >= SEUIL_ALERTE_PCT ? 'En alerte' : 'Pas en alerte'} · ${libelle(fiche.culture).toLowerCase()}, ${annee}, vu à ${nomMoment(moment)}.`}>
-          <Cle valeur={nombre(fiche.proba_chute_pct)} unite="%" libelle="risque de chute de récolte" teinte={teinteChute(fiche.proba_chute_pct)} />
-          <Cle valeur={nombre(fiche.proba_chute_reference_pct)} unite="%" libelle="risque habituel" />
-          <Cle valeur={classement.indexOf(fiche) + 1} unite={`/ ${classement.length}`} libelle="rang" />
-        </Reponse>
-      ) : (
-        <Reponse cle={`${annee}-${moment}-${culture}`} titre={etat === 'ok' ? `${n} département${n > 1 ? 's' : ''} en alerte` : 'Alerte récolte'}
-          phrase={`Récolte ${annee}, vu à ${nomMoment(moment)} : risque d'au moins ${SEUIL_ALERTE_PCT} % de chuter sous 80 % de l'habituel.`} />
-      )}
-      {fiche && <div className="mt-3"><MarquesRendement ligne={fiche} quoi="alerte" /></div>}
-      <Attente etat={etat} objet={`la récolte ${annee}`} lignes={5} />
-
-      {!fiche && etat === 'ok' && (
-        n > 0 ? (
-          <ul className="-mx-2 mt-4">
-            {alertes.map((l) => (
-              <li key={l.code_departement}>
-                <button type="button" onClick={() => cadre.choisir(l.code_departement)} className="flex min-h-12 w-full items-center gap-3 rounded-md px-2 text-left transition hover:bg-white/[0.06]">
-                  <span className="point-alerte size-2.5 shrink-0 rounded-full bg-alerte-500" aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-white">{l.departement}</span>
-                    <span className="block text-xs text-white/60">{libelle(l.culture)}</span>
-                  </span>
-                  {l.alerte_fiable && <Marque ton="ferme">Fiable</Marque>}
-                  <span className="text-lg font-semibold text-white tabular-nums">{nombre(l.proba_chute_pct)}<span className="ml-0.5 text-xs font-normal text-white/60">%</span></span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : <p className="mt-4 text-sm leading-relaxed text-white/80">Aucun département n'atteint le seuil d'alerte. Le plus exposé : {classement[0] ? `${classement[0].departement}, ${pct(classement[0].proba_chute_pct)}` : 'non disponible'}.</p>
-      )}
-      {!fiche && n > 0 && !alertes.some((l) => l.alerte_fiable) && <p className="mt-2 text-2xs leading-snug text-white/60">Vu à {nomMoment(moment)}, c'est le risque habituel de ces départements, pas encore une prévision de l'année.</p>}
-
-      <div className="mt-4 space-y-2">
-        {a.passee && <Segments libelle="Moment de la saison" options={MOMENTS.map((m) => ({ id: m.id, libelle: m.court }))} valeur={moment} onChange={setMoment} />}
-        <Champ libelle="Culture">
-          <select className="champ-scene" value={culture} onChange={(e) => setCulture(e.target.value)}>
-            <option value={TOUTES}>La plus exposée</option>
-            {CULTURES_RENDEMENT.map((c) => <option key={c} value={c}>{libelle(c)}</option>)}
-          </select>
-        </Champ>
-        <ChampAnnee cadre={cadre} a={a} className="" />
-      </div>
-      {etat === 'ok' && code && !fiche && <p className="mt-4 text-sm text-white/70">Pas de série de rendement dans ce département pour cette sélection.</p>}
-
-      {classement.length > 0 && (
-        <Detail libelle={fiche ? 'Voir le détail' : `Voir les ${classement.length} départements`}>
-          {fiche && (
             <Groupe titre={`Récolte attendue · ${libelle(fiche.culture).toLowerCase()}`}>
               <Fourchette bas={fiche.rendement_bas_kg_ha} haut={fiche.rendement_haut_kg_ha} valeur={fiche.rendement_median_kg_ha} repere={fiche.tendance_kg_ha} couleur="var(--color-soleil-500)"
                 description={`Rendement entre ${nombre(fiche.rendement_bas_kg_ha)} et ${nombre(fiche.rendement_haut_kg_ha, { unite: 'kg/ha' })} ; habituel ${nombre(fiche.tendance_kg_ha, { unite: 'kg/ha' })}`} />

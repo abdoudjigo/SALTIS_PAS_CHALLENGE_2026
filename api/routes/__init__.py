@@ -1,6 +1,5 @@
 from .avis import avis
 from .cadre_prix import cadre_harmonise, prix
-from .opportunites import opportunites
 from .donnees import ROUTEURS as _ROUTEURS_DONNEES
 from .opportunites import opportunites
 from .previsions import previsions

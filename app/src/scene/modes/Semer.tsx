@@ -259,39 +259,6 @@ export default function Semer({ cadre, publier }: PropsMode) {
               })}
             </ul>
           </Groupe>
-      <Groupe titre="Cultures et cycles">
-        {!choix && <Squelette lignes={6} />}
-        <ul className="-mx-2">
-          {cultures.map(({ culture: c, cycles, meilleur, varietes }) => {
-            const niveau = meilleur?.niveau_adequation ? NIVEAUX[meilleur.niveau_adequation] : null
-            const ouverte = c === culture
-            return (
-              <li key={c} className={clsx('rounded-md', ouverte && 'bg-white/[0.07] shadow-[inset_2px_0_0_var(--color-soleil-500)]')}>
-                <button type="button" onClick={() => setCulture(c)} aria-expanded={ouverte} className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-2 text-left transition hover:bg-white/[0.05]">
-                  <span className="size-2 shrink-0 rounded-full" style={{ background: niveau?.couleur ?? NON_DISPONIBLE }} aria-hidden />
-                  <span className="flex-1 truncate text-sm font-medium text-white">{libelle(c)}</span>
-                  <span className="text-xs text-white/70">{niveau?.libelle ?? 'Non évaluée'}</span>
-                </button>
-                {ouverte && (
-                  <div className="maj space-y-2 px-2 pt-1 pb-3">
-                    {cycles.map((o) => (
-                      <div key={o.option} className="grid grid-cols-[6.5rem_1fr_2.75rem] items-center gap-2.5 text-xs text-white/75">
-                        <span>{libelle(o.option)}{o.cycle_jours ? ` · ${o.cycle_jours} j` : ''}</span>
-                        <Barre part={o.proba_cycle_couvert_pct} couleur={o.niveau_adequation ? NIVEAUX[o.niveau_adequation].couleur : NON_DISPONIBLE} />
-                        <span className="text-right font-medium text-white tabular-nums">{pct(o.proba_cycle_couvert_pct)}</span>
-                      </div>
-                    ))}
-                    {varietes.map((v) => (
-                      <p key={v.option} className="text-xs text-white/60">Variété {v.option}{v.cycle_jours ? ` (${v.cycle_jours} j)` : ''} : {v.niveau_adequation ?? 'non évaluée'}</p>
-                    ))}
-                    {<Recolte etat={etatRecolte} annee={anneeRecolte} ligne={rendements.data?.donnees.find((r) => r.culture === c && r.moment_prevision === 'FIN_MAI')} />}
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      </Groupe>
 
           {(choisie || opportunite) && (
             <>

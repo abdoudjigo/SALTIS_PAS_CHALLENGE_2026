@@ -168,28 +168,6 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
               <Cle valeur={nombre(f.meilleure.risque_total_pct)} unite="%" libelle="de risque" />
             </Cles>
           )}
-    <div>
-      {f ? (
-        <Reponse cle={`${code}-${annee}-${culture}`} titre={sur ? `Semez ${article}${nomCulture} ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis)}` : `Le moins risqué : ${periodeDecades(f.meilleure.decade_semis)}`}
-          phrase={`${departement.departement} · ${annee}.${sur ? '' : ' Aucune période n’est vraiment sûre ici pour cette culture.'}`}>
-          <Cle large valeur={periodeDecades(f.meilleure.decade_semis, f.meilleure.decade_semis, true).replace('du ', '')} libelle="le meilleur moment" teinte="var(--color-vert-100)" />
-          <Cle valeur={nombre(f.meilleure.risque_total_pct)} unite="%" libelle="de risque" />
-        </Reponse>
-      ) : (
-        <Reponse cle={`${code}-${annee}-${culture}`} titre={departement.departement} phrase={`Quand semer ${article}${nomCulture}.`} />
-      )}
-      <Attente etat={etat} objet={`${departement.departement} en ${annee}`} />
-      {etat === 'ok' && !f && <p className="mt-4 text-sm text-white/70">Pas de période de semis calculée pour {article}{nomCulture} dans ce département.</p>}
-
-      {f && detail && (
-        <div className="mt-5">
-          <Frise decades={decades} de={f.de} a={f.a} choisie={detail.decade_semis} onChoisir={setDecade} />
-          <p className="mt-3 text-sm text-white/90" aria-live="polite">
-            <span className="font-medium text-white">{libelle(periodeDecades(detail.decade_semis))}</span> : {pct(detail.risque_total_pct)} de risque
-            {detail.decade_conseillee ? ', le plus bas.' : (detail.risque_faux_depart_pct ?? 0) >= (detail.risque_fin_trop_tot_pct ?? 0) ? ' (un sec après le semis).' : ' (pluies finies avant la récolte).'}
-          </p>
-        </div>
-      )}
 
           {f && detail && (
             <div className="mt-5">

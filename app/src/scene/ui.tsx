@@ -98,7 +98,6 @@ export function Groupe({ titre, children, replie, complement, id }: { titre: str
         </h3>
       ) : (
         <h3 id={id} className={ETIQUETTE}>{titre}{complement && <span className="ml-2 tracking-normal text-white/60 normal-case">{complement}</span>}</h3>
-        <h3 className={ETIQUETTE}>{titre}{complement && <span className="ml-2 tracking-normal text-white/60 normal-case">{complement}</span>}</h3>
       )}
       {ouvert && <div className="mt-3">{children}</div>}
     </section>
@@ -113,7 +112,6 @@ export function Ligne({ libelle, valeur, detail, teinte }: { libelle: string; va
       <dd className="text-right">
         {/* Une valeur absente se dit « non disponible », jamais 0 ni un tiret seul */}
         <span className="text-sm font-medium text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>{valeur === VIDE ? 'non disponible' : valeur}</span>
-        <span className="text-sm font-medium text-white tabular-nums" style={teinte ? { color: teinte } : undefined}>{valeur}</span>
         {detail && <span className="block text-2xs text-white/60">{detail}</span>}
       </dd>
     </div>
@@ -240,8 +238,7 @@ export function Segments<T extends string>({ libelle, options, valeur, onChange 
     <div role="radiogroup" aria-label={libelle} className="flex rounded-lg border border-white/12 p-0.5">
       {options.map((o) => (
         <button key={o.id} type="button" role="radio" aria-checked={o.id === valeur} onClick={() => onChange(o.id)}
-          className={clsx('min-h-11 flex-1 rounded-md px-1 text-xs font-medium transition', o.id === valeur ? 'bg-soleil-500 text-encre-nuit' : 'text-white/70 hover:bg-white/[0.07] hover:text-white')}>
-          className={clsx('min-h-10 flex-1 rounded-md px-1 text-xs font-medium transition', o.id === valeur ? 'bg-soleil-500 text-encre-nuit' : 'text-white/80 hover:bg-white/[0.07] hover:text-white')}>
+          className={clsx('min-h-11 flex-1 rounded-md px-1 text-xs font-medium transition', o.id === valeur ? 'bg-soleil-500 text-encre-nuit' : 'text-white/80 hover:bg-white/[0.07] hover:text-white')}>
           {o.libelle}
         </button>
       ))}
@@ -286,9 +283,7 @@ export function SaisieAnnee({ annee, onChange, passees, min, max, nature, classN
       </div>
       {horsPlage
         ? <p id={idNature} role="alert" className="mt-2 text-xs leading-relaxed text-soleil-500">Les prévisions vont de {min} à {max}. Tapez une année dans cette plage.</p>
-        : <p id={idNature} className="mt-2 text-xs leading-relaxed text-white/65">{nature}</p>}
-        ? <p role="alert" className="mt-2 text-xs leading-relaxed text-soleil-500">Les prévisions vont de {min} à {max}. Tapez une année dans cette plage.</p>
-        : <p id="annee-nature" className="mt-2 text-xs leading-relaxed text-white/75">{nature}</p>}
+        : <p id={idNature} className="mt-2 text-xs leading-relaxed text-white/75">{nature}</p>}
     </div>
   )
 }
@@ -338,7 +333,6 @@ export function Degrade({ titre, gauche, droite, degrade, note }: { titre: strin
     <div className="w-52">
       <p className={ETIQUETTE}>{titre}</p>
       <div className="mt-2 h-1.5 rounded-full" style={{ background: degrade }} />
-      <div className="mt-1.5 flex justify-between text-2xs text-white/60 tabular-nums"><span>{gauche}</span><span>{droite}</span></div>
       <div className="mt-1.5 flex justify-between text-2xs text-white/70 tabular-nums"><span>{gauche}</span><span>{droite}</span></div>
       {note && <p className="mt-1.5 text-2xs leading-snug text-white/60">{note}</p>}
     </div>

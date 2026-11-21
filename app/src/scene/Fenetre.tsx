@@ -139,12 +139,8 @@ export function Fenetre({ cle, titre, icone: Icone, resume, aEcouter, aEcouterWo
       <div onPointerDown={saisir} onPointerMove={deplacer} onPointerUp={lacher} onPointerCancel={lacher}
         className="flex h-11 shrink-0 cursor-grab touch-none items-center gap-2.5 border-b border-white/[0.09] pr-1 pl-4 select-none active:cursor-grabbing">
         <Icone className="size-4 shrink-0 text-soleil-500" aria-hidden />
-        <span className="flex-1 truncate text-2xs font-medium tracking-etiquette text-white/70 uppercase">{titre}</span>
-        {ecouteEnTete && <Mascottes fr={aEcouter} wo={aEcouterWo} />}
-        <GripHorizontal className="size-4 text-white/25" aria-hidden />
-        <button type="button" onClick={() => setReduitePour(cle)} aria-label="Réduire la fenêtre (Échap)" title="Réduire (Échap)" className="grid size-11 place-items-center rounded-lg text-white/60 transition hover:text-white">
         <span className="flex-1 truncate text-2xs font-medium tracking-etiquette text-white/80 uppercase">{titre}</span>
-        <Mascottes fr={aEcouter} wo={aEcouterWo} />
+        {ecouteEnTete && <Mascottes fr={aEcouter} wo={aEcouterWo} />}
         <GripHorizontal className="size-4 text-white/40" aria-hidden />
         <button type="button" onClick={() => setReduitePour(cle)} aria-label="Réduire la fenêtre (Échap)" title="Réduire (Échap)" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
           <Minus className="size-4" />

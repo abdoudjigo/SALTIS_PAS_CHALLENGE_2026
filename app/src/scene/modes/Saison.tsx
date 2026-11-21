@@ -217,25 +217,4 @@ export default function Saison({ cadre, publier }: PropsMode) {
           </>
         ) : undefined} />
     )
-      {ligne && (
-        <Detail>
-          <Groupe titre={`Pluie de la saison · ${ligne.departement}`}>
-            <Fourchette bas={ligne.pluie_basse_mm} haut={ligne.pluie_haute_mm} valeur={ligne.pluie_prevue_mm} repere={ligne.pluie_normale_mm} couleur={CLASSES3.humide.couleur}
-              description={`Pluie prévue ${mm(ligne.pluie_prevue_mm)}, entre ${mm(ligne.pluie_basse_mm)} et ${mm(ligne.pluie_haute_mm)} ; normale ${mm(ligne.pluie_normale_mm)}`} />
-            <p className="mt-1.5 mb-2 text-2xs text-white/60">Bande : fourchette · point : prévision · trait : normale</p>
-            <Lignes>
-              <Ligne libelle="Fourchette" valeur={ligne.pluie_basse_mm === null || ligne.pluie_haute_mm === null ? 'non disponible' : `${nombre(ligne.pluie_basse_mm)} – ${mm(ligne.pluie_haute_mm)}`} detail="8 chances sur 10" />
-              <Ligne libelle="Normale" valeur={mm(ligne.pluie_normale_mm)} detail="moyenne 1991-2020" />
-              {passee && <Ligne libelle="Réellement tombée" valeur={ligne.pluie_observee_mm === null ? 'non disponible' : mm(ligne.pluie_observee_mm)} />}
-            </Lignes>
-          </Groupe>
-        </Detail>
-      )}
-
-      <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }]} avertissements={requete.data?.avertissements}>
-        <p>Indicatif. « Plutôt » : c'est la classe la plus probable, pas une certitude ; les trois chances se lisent ensemble.</p>
-        <p>{passee ? 'Année passée rejouée : le modèle ne connaissait pas cette saison.' : a.tendance ? `${annee} : l'océan de mars à mai n'est pas encore connu.` : `Prévision ${annee} faite avec l'état des océans de mars à mai (NOAA). Aucune pluie ${annee} n'est encore observée.`} Les chances sont les mêmes dans tout le pays ; seule la pluie attendue change d'un département à l'autre.</p>
-      </MethodeModele>
-    </div>
-  )
 }

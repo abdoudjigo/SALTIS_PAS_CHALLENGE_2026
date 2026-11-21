@@ -4,7 +4,7 @@ import { libelle } from '../lib/format'
 import type { PrevisionSaison } from '../types/previsions'
 import type { Cadre, IdEtape, useAnnee } from './cadre'
 import { ChampAnnee } from './previsions'
-import { Champ, Options } from './ui'
+import { Champ, ErreurChamp, Options } from './ui'
 
 /** ok, attention, non : un verdict tiré d'un champ de l'API ou d'une règle du projet ; info : un fait, sans règle validée. */
 export type EtatLigne = 'ok' | 'attention' | 'non' | 'info'
@@ -66,14 +66,19 @@ export function puceChoix<T extends string>(id: string, nom: string, options: { 
 }
 
 /** La surface du champ (ha), saisie existante. */
-export function puceSurface(saisie: string, onChange: (texte: string) => void, libelleHa: string): Puce {
+/** `erreur` : message de `lireSaisie` ; la surface reste à corriger tant qu'il n'est pas levé (besoins non calculés). */
+export function puceSurface(saisie: string, onChange: (texte: string) => void, libelleHa: string, erreur?: string | null): Puce {
   return {
-    id: 'surface', nom: 'Surface', libelle: `${libelleHa} ha`,
+    id: 'surface', nom: 'Surface', libelle: erreur ? 'Surface : à corriger' : `${libelleHa} ha`,
     contenu: (fermer) => (
-      <Champ libelle="Surface (ha)">
-        <input className="champ-scene tabular-nums" inputMode="decimal" value={saisie} autoFocus onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fermer() } }} />
-      </Champ>
+      <>
+        <Champ libelle="Surface (ha)">
+          <input className="champ-scene tabular-nums" inputMode="decimal" value={saisie} autoFocus onChange={(e) => onChange(e.target.value)}
+            aria-invalid={Boolean(erreur)} aria-describedby={erreur ? 'erreur-surface' : undefined}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fermer() } }} />
+        </Champ>
+        {erreur && <ErreurChamp id="erreur-surface">Surface : {erreur}</ErreurChamp>}
+      </>
     ),
   }
 }

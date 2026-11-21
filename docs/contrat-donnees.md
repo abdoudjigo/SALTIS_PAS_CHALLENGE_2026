@@ -28,7 +28,6 @@ Référence pour l'API et le front : ce que chaque mart contient, à quel grain,
 | `MART_TERRITOIRES_AGRODISTRIB` | Critères de répartition (module D) | département × culture cultivée | 345 |
 | `MART_VULNERABILITE_DEPARTEMENT` | Détail de la vulnérabilité | département | 45 |
 | `MART_ML_PREVISION_PLUIE` | Jeu de données ML (équipe ML) | département × année | 2 025 |
-| `MART_CARTE_OPPORTUNITES` | Carte des opportunités | département | 45 |
 | `MART_CADRE_HARMONISE_DEPARTEMENT` | Cadre harmonisé, dernier cycle | département | 45 |
 | `DIM_PRIX_INTRANT` | Prix des engrais | intrant × campagne | 5 |
 | `MART_CARTE_OPPORTUNITES` | Carte des opportunités, pluie et eau (module E) | département | 45 |

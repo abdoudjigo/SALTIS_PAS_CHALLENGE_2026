@@ -6,22 +6,24 @@ Plateforme d'aide à la décision agricole au Sénégal — équipe **AKAI** (Al
 ## Le problème en une phrase
 Les agriculteurs doivent savoir **comment sera la pluie de la campagne** (courte/longue, abondante/faible) pour choisir culture, variété (cycle court ou long) et intrants. On croise climat, sol et rendements pour répondre à ça, département par département.
 
-## Les 4 modules
+## Les modules
 | Module | Question | Tables (dbt marts) |
 |---|---|---|
 | A. Suivi & anticipation agroclimatique | Quelle pluie, quelle saison ? | `mart_carte_agroclimat`, `mart_suivi_decadaire` |
 | B. Choix cultures & variétés | Que semer, avec quel cycle ? | `mart_choix_cultures` |
 | C. Besoins & rendements | Combien d'intrants, quels facteurs limitants ? | `mart_besoins` (et les faits `fact_rendement_departement`, `fact_facteurs_limitants`) |
-| D. AgroDistrib | Comment répartir les intrants ? | `mart_territoires_agrodistrib`, `mart_vulnerabilite_departement` |
+| D. AgroDistrib | Comment répartir les intrants ? | `mart_territoires_agrodistrib`, `mart_vulnerabilite_departement` (prix des intrants : `dim_prix_intrant`) |
+| E. Opportunités | Où semer court ou long, où produire en saison sèche ? | `mart_carte_opportunites` ([`docs/carte-opportunites.md`](./docs/carte-opportunites.md)) |
+| F. Cadre harmonisé | Où l'insécurité alimentaire est-elle forte ? | `mart_cadre_harmonise_departement` |
 
-Prévision de la pluie (ML) : `mart_ml_prevision_pluie`. Détail des colonnes : [`docs/contrat-donnees.md`](./docs/contrat-donnees.md).
+Modèles d'IA (`ml/`, entraînés sur `mart_ml_prevision_pluie` et les faits) : prévision de la saison (modèle 1), rendement et alerte récolte (modèle 3), date de semis (modèle 4) et moteur AgroDistrib ; résultats dans `SALTIS.ML`, fiabilité dans [`ml/MODELES.md`](./ml/MODELES.md), comparaison des algorithmes dans [`docs/rapport-comparaison-modeles.md`](./docs/rapport-comparaison-modeles.md). Détail des colonnes : [`docs/contrat-donnees.md`](./docs/contrat-donnees.md).
 
 ## Architecture
 ```
 sources (CHIRPS, NASA POWER, SoilGrids, DAPSA…)
    └─ CSV ──► Snowflake SALTIS.RAW
                  └─ dbt/ (staging → intermediate → faits, dimensions, marts) ──► Snowflake SALTIS.STAGING / INTERMEDIATE / MARTS
-                                                   ├─ ml/   (prévision pluie, rendement)
+                                                   ├─ ml/   (saison, rendement, semis, AgroDistrib) ──► SALTIS.ML
                                                    └─ api/  (FastAPI + cache Redis) ──► app/ (front carte Mapbox)
 ```
 L'API (`api/`) lit les marts de `SALTIS.MARTS` une seule fois, précalcule toutes ses réponses et les sert depuis un cache complet (en mémoire, ou **Redis** en option ; versionné, compressé) : Snowflake n'est jamais appelé pendant une requête. Détail : [`api/README.md`](./api/README.md). Le chargeur Python historique (`ingestion/`) utilise encore PostgreSQL.

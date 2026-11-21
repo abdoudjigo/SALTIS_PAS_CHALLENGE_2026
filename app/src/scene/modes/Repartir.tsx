@@ -6,13 +6,11 @@
 import { useId, useMemo, useState } from 'react'
 import { useCadreHarmonise, usePrixIntrants, useTerritoires } from '../../hooks/donnees'
 import { libelle, nombre, pct, tonnes } from '../../lib/format'
-import { lireNombre } from '../../lib/saisie'
+import { lireSaisie } from '../../lib/saisie'
 import type { LigneTerritoireAgrodistrib } from '../../types/marts'
 import { besoinsParDepartement, culturePrincipale } from '../besoinsPays'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { chCompte } from '../cadreHarmonise'
-import { besoinsParDepartement } from '../besoinsPays'
-import { cadrer, usePublier, type PropsMode, type Sortie } from '../cadre'
 import type { Arc } from '../Carte'
 import { couleurCouverture, NON_DISPONIBLE } from '../couleurs'
 import { useDossier } from '../dossier'
@@ -21,10 +19,7 @@ import { FicheReponse } from '../FicheReponse'
 import type { LonLat } from '../geo'
 import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes, tonnesDeSacs, useDatesLimites } from '../ong'
 import { enSacsEntiers, METHODE, ordonner, remplirDansLOrdre, repartir, SCENARIOS, VERSION, type Criteres } from '../repartition'
-import { Avis, Champ, Degrade, Groupe, Marque, Methode, Segments, Squelette } from '../ui'
-import { METHODE, repartir, VERSION } from '../repartition'
-import { dire } from '../lecture'
-import { Avis, Champ, Cle, Degrade, ErreurChamp, Groupe, Methode, Rang, Reponse, Squelette, Detail } from '../ui'
+import { Avis, Champ, Degrade, ErreurChamp, Groupe, Marque, Methode, Segments, Squelette } from '../ui'
 
 const DAKAR: LonLat = [-17.3, 14.74]
 const SAISIR = 'Saisissez votre stock pour voir la répartition'
@@ -75,9 +70,11 @@ export default function Repartir({ cadre, publier }: PropsMode) {
     }))
   }, [ch, demandes, lignesCulture, annee])
 
-  // Le stock saisi (tonnes ou sacs) ; sans saisie lisible et positive, aucune répartition n'est calculée
-  const lu = lireNombre(dossier.stock)
-  const stock_t = lu !== null && lu > 0 ? (sacs ? tonnesDeSacs(Math.floor(lu)) : lu) : null
+  // Le stock saisi (tonnes ou sacs) : plus de 0, au plus 1 000 000 t (20 000 000 sacs).
+  // Sans saisie valide, aucune répartition n'est calculée ; une saisie invalide affiche son message sous le champ.
+  const lectureStock = lireSaisie(dossier.stock, { min: 0, minExclu: true, max: sacs ? 20_000_000 : 1_000_000, unite: sacs ? 'sacs' : 't' })
+  const lu = lectureStock.valeur
+  const stock_t = lu !== null ? (sacs ? tonnesDeSacs(Math.floor(lu)) : lu) : null
   const resultat = useMemo(() => {
     if (stock_t === null) return null
     const r = scenario.id === 'proportionnel' ? repartir(stock_t, demandes, dossier.priorite / 100) : remplirDansLOrdre(stock_t, ordonner(demandes, criteres, scenario.id))
@@ -122,20 +119,6 @@ export default function Repartir({ cadre, publier }: PropsMode) {
         : premiere ? { etat: 'info', texte: `Première date limite : **${dates.get(premiere.code)!.date}** (${nomDep(premiere.code)})` } : { etat: 'info', texte: 'Date limite non disponible' },
   ]
   const cleLignes = lignes.map((l) => l.texte).join('|')
-  const besoinTotal = demandes.reduce((a, d) => a + d.besoin_t, 0)
-  const sansDose = besoins.reduce((a, b) => a + b.sansDose, 0)
-  // Sans saisie : un stock qui couvre le quart du besoin, pour que la carte parle tout de suite
-  // Stock tapé : plus de 0, au plus 1 000 000 t. Saisie invalide : rien n'est réparti et un message l'explique
-  const lectureStock = lireNombre(saisie, { min: 0, minExclu: true, max: 1_000_000, unite: 't' })
-  const stock = lectureStock.vide ? Math.round(besoinTotal * 0.25) : (lectureStock.valeur ?? 0)
-  const resultat = useMemo(() => repartir(stock, demandes, priorite / 100), [stock, demandes, priorite])
-  const parts = useMemo(() => [...resultat.parts].sort((a, b) => b.quantite_t - a.quantite_t), [resultat])
-  const reparti = parts.reduce((a, p) => a + p.quantite_t, 0)
-  const couverture = besoinTotal ? (100 * reparti) / besoinTotal : null
-  const servis = parts.filter((p) => p.quantite_t > 0).length
-  const nom = (code: string) => cadre.ref.departements.find((d) => d.code_departement === code)?.departement ?? code
-  const moinsCouverts = [...parts].sort((a, b) => a.couverture_pct - b.couverture_pct).slice(0, 4)
-  const maxPart = parts[0]?.quantite_t ?? 0
 
   const sortie = useMemo<Sortie>(() => {
     const parCode = new Map(resultat?.parts.map((p) => [p.code, p]))
@@ -171,48 +154,21 @@ export default function Repartir({ cadre, publier }: PropsMode) {
   usePublier(publier, sortie)
 
   const puceStock: Puce = {
-    id: 'stock', nom: 'Stock', libelle: stock_t === null ? 'Stock : à saisir' : `Stock : ${quantite(stock_t)}`,
+    id: 'stock', nom: 'Stock', libelle: lectureStock.erreur ? 'Stock : à corriger' : stock_t === null ? 'Stock : à saisir' : `Stock : ${quantite(stock_t)}`,
     contenu: (fermer) => (
       <div className="space-y-2">
         <Champ libelle={`Stock disponible (${sacs ? 'sacs de 50 kg' : 'tonnes'})`}>
           <input className="champ-scene tabular-nums" inputMode="decimal" autoFocus placeholder="à saisir"
-            value={dossier.stock} onChange={(e) => majDossier({ stock: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fermer() } }} />
-  return (
-    <div>
-      <Reponse titre="Du dépôt aux départements" phrase="Une proposition, à ajuster. Touchez la carte pour déplacer le dépôt.">
-        <Cle valeur={demandes.length ? nombre(reparti) : '—'} unite="t" libelle={`répartis sur ${tonnes(stock)}`} />
-        <Cle valeur={couverture === null ? '—' : nombre(couverture)} unite="%" libelle="du besoin connu couvert" teinte={couverture === null ? undefined : couleurCouverture(couverture)} />
-        <Cle valeur={demandes.length ? servis : '—'} unite="dép." libelle="servis" />
-      </Reponse>
-
-      <div className="mt-4 grid grid-cols-[1fr_6rem] gap-2">
-        <Champ libelle="Intrant">
-          <select className="champ-scene" value={codeIntrant} onChange={(e) => setIntrant(e.target.value)}>
-            {intrants.map((i) => <option key={i.code_intrant} value={i.code_intrant}>{i.nom_intrant}</option>)}
-          </select>
-        </Champ>
-        <Champ libelle="Stock (t)">
-          <input className="champ-scene tabular-nums" inputMode="decimal" placeholder={String(Math.round(besoinTotal * 0.25))} value={saisie} onChange={(e) => setSaisie(e.target.value)}
+            value={dossier.stock} onChange={(e) => majDossier({ stock: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fermer() } }}
             aria-invalid={Boolean(lectureStock.erreur)} aria-describedby={lectureStock.erreur ? 'erreur-stock' : undefined} />
         </Champ>
-        {lectureStock.erreur && <ErreurChamp id="erreur-stock" className="col-span-2 mt-0">Stock : {lectureStock.erreur}</ErreurChamp>}
-        <Champ libelle="Culture visée" className="col-span-2">
-          <select className="champ-scene" value={culture ?? ''} onChange={(e) => setCulture(e.target.value || null)}>
-            <option value="">Toutes les cultures</option>
-            {cultures.map((c) => <option key={c} value={c}>{libelle(c)}</option>)}
-          </select>
-        </Champ>
+        {lectureStock.erreur && <ErreurChamp id="erreur-stock" className="mt-0">Stock : {lectureStock.erreur}</ErreurChamp>}
         <Segments libelle="Unité" options={[{ id: 't', libelle: 'Tonnes' }, { id: 'sacs', libelle: 'Sacs' }]} valeur={dossier.unite} onChange={(u) => majDossier({ unite: u, stock: '' })} />
       </div>
     ),
   }
   const puces = [puceAnnee(cadre, a), puceCulture(cadre, cultures, culture, 'Toutes'), puceIntrant(cadre.ref, intrant, majDossier),
     puceChoix('scenario', 'Scénario', SCENARIOS.map((s) => ({ id: s.id, libelle: s.libelle })), scenario.id, (id) => majDossier({ scenario: id })), puceStock]
-      <label className="mt-3 block text-2xs text-white/60">
-        <span className="flex justify-between"><span>Priorité à la vulnérabilité</span><span className="text-sm font-medium text-white tabular-nums">{priorite} %</span></span>
-        <input type="range" className="glissiere mt-1 block h-6 w-full" min={0} max={100} step={5} value={priorite} onChange={(e) => setPriorite(Number(e.target.value))} />
-        <span className="flex justify-between text-white/60"><span>prorata des besoins</span><span>les plus vulnérables d'abord</span></span>
-      </label>
 
   return (
     <FicheReponse cadre={cadre} mode="repartir" cle={`${code}-${intrant?.code_intrant}-${culture}-${annee}-${scenario.id}`} titre={titre} lignes={lignes} puces={puces} aEcouter={sortie.aEcouter}

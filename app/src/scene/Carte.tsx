@@ -134,7 +134,6 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
   // Zones éteintes (chapitres suivants) : elles ne réagissent ni au survol ni au clic
   const zonesActives = useRef(Boolean(vue.zones))
   const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation, onCarte })
-  const rappels = useRef({ onDepartement, onZone, onPoint, onSurvol, onSurvolZone, onHorsZone, onManipulation })
   const [indisponible, setIndisponible] = useState(false)
   const vueRef = useRef(vue)
   const departRef = useRef(depart)
@@ -184,7 +183,9 @@ export default function Carte({ vue, contours, contoursZones, departements, depa
           },
         },
       })
-    } catch {
+    } catch (erreur) {
+      // Toujours journalisée : sans elle, une erreur de configuration passait pour une absence de WebGL
+      console.error('Création de la carte impossible :', erreur)
       // eslint-disable-next-line react-hooks/set-state-in-effect -- échec de création, signalé une seule fois
       setIndisponible(true)
       return

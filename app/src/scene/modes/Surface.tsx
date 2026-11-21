@@ -15,11 +15,8 @@ import { useMemo, useState } from 'react'
 import { useBesoins, useTerritoires } from '../../hooks/donnees'
 import { useActuelles, etatActuel, useRecolteFinMai, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
 import { libelle, mm, nombre, pct, STATUTS_DOSE, VIDE } from '../../lib/format'
+import { lireSaisie } from '../../lib/saisie'
 import type { ColonneBesoin, StatutDose } from '../../types/marts'
-import { etatPrevision, usePrevisionRendement, usePrevisionSaison, useRisqueSemis, type EtatPrevision } from '../../hooks/previsions'
-import { libelle, mm, nombre, STATUTS_DOSE, VIDE } from '../../lib/format'
-import { lireNombre } from '../../lib/saisie'
-import type { ColonneBesoin, LigneBesoin } from '../../types/marts'
 import { cadrer, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { couleurQuantite, NON_DISPONIBLE, tendance } from '../couleurs'
 import { debutDecade, natureAnnee, periodeDecades } from '../fiabilite'
@@ -28,8 +25,7 @@ import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, poidsWo, wo } from '../wolof'
 import { cultureRetenue, dose, enSacs, fenetreCulture, heuresPompage, nombreSacs, repliCulture, sacs } from '../conseil'
 import { aLire, CHOISIR, puceAnnee, puceCulture, puceSurface, type LigneCheck } from '../fiche'
 import { FicheReponse } from '../FicheReponse'
-import { AFaire, Avis, Cle, Cles, Degrade, Groupe, Ligne, Lignes, LigneFiabilite, Squelette, type Action } from '../ui'
-import { Avis, Champ, Cle, Degrade, Detail, ErreurChamp, Groupe, Ligne, Lignes, Reponse, Squelette } from '../ui'
+import { AFaire, Avis, Cle, Cles, Degrade, ErreurChamp, Groupe, Ligne, Lignes, LigneFiabilite, Squelette, type Action } from '../ui'
 
 /** `forme` : comment on le compte. Engrais en sacs de 50 kg, semences en kg, fumier en tonnes. */
 const INTRANTS: { colonne: ColonneBesoin; nom: string; forme: 'sacs' | 'kg' | 't'; dose: 'semis' | 'engrais' }[] = [
@@ -67,20 +63,18 @@ export default function Surface({ cadre, publier }: PropsMode) {
   const repli = lignes.length ? repliCulture(cadre.culture, culture) : null
   const ligne = lignes.find((l) => l.culture === culture)
   // Surface d'une exploitation : plus de 0, au plus 10 000 ha. Saisie invalide : besoins non calculés (surface 0) et message
-  const lectureSurface = lireNombre(saisie, { min: 0, minExclu: true, max: 10000, unite: 'ha' })
+  const lectureSurface = lireSaisie(saisie, { min: 0, minExclu: true, max: 10000, unite: 'ha' })
   const surface = lectureSurface.valeur ?? 0
 
   const intrants = ligne ? INTRANTS.map((i) => {
     const cle = `${culture}|${i.colonne}`
     const texte = dosesSaisies[cle] ?? ''
     const reference = dose(ligne, i.colonne)
-    const saisieKgHa = n !== null && Number.isFinite(n) && n >= 0 ? n : null
-    const statut = i.dose === 'semis' ? ligne.statut_validation_semis : ligne.statut_validation_engrais
-    return { ...i, cle, texte, reference, kgHa: reference ?? saisieKgHa, statut: reference === null ? null : marqueStatut(statut), validee: reference !== null && statut === 'VALIDEE', horsSujet: i.colonne === 'besoin_semences_retenu_t' && ligne.besoin_semences_applicable === false }
     // Dose tapée : de 0 à 2 000 kg/ha ; une saisie invalide n'est pas comptée et affiche son message
-    const lecture = lireNombre(texte, { max: 2000, unite: 'kg/ha' })
+    const lecture = lireSaisie(texte, { max: 2000, unite: 'kg/ha' })
     const saisieKgHa = lecture.valeur
-    return { ...i, cle, texte, erreur: lecture.erreur, reference, kgHa: reference ?? saisieKgHa, horsSujet: i.colonne === 'besoin_semences_retenu_t' && ligne.besoin_semences_applicable === false }
+    const statut = i.dose === 'semis' ? ligne.statut_validation_semis : ligne.statut_validation_engrais
+    return { ...i, cle, texte, erreur: lecture.erreur, reference, kgHa: reference ?? saisieKgHa, statut: reference === null ? null : marqueStatut(statut), validee: reference !== null && statut === 'VALIDEE', horsSujet: i.colonne === 'besoin_semences_retenu_t' && ligne.besoin_semences_applicable === false }
   }) : []
   const connus = intrants.filter((i) => i.reference !== null)
   // Les sacs d'engrais : NPK, urée et DAP dont la dose est connue (ou saisie), chacun arrondi au demi-sac supérieur
@@ -199,7 +193,7 @@ export default function Surface({ cadre, publier }: PropsMode) {
 
   if (!departement) return <FicheReponse cadre={cadre} mode="surface" cle="aucun" titre={titreFiche} lignes={lignesFiche} aEcouter={aEcouter} aEcouterWo={aEcouterWo} />
 
-  const puces = [puceAnnee(cadre, a, saison), ...(lignes.length ? [puceCulture(cadre, lignes.map((l) => l.culture!), culture), puceSurface(saisie, setSaisie, ha)] : [])]
+  const puces = [puceAnnee(cadre, a, saison), ...(lignes.length ? [puceCulture(cadre, lignes.map((l) => l.culture!), culture), puceSurface(saisie, setSaisie, ha, lectureSurface.erreur)] : [])]
   return (
     <FicheReponse cadre={cadre} mode="surface" cle={`${code}-${culture}-${annee}`} culture={culture} puces={puces} titre={titreFiche} lignes={lignesFiche}
       aEcouter={aEcouter} aEcouterWo={aEcouterWo}
@@ -212,19 +206,6 @@ export default function Surface({ cadre, publier }: PropsMode) {
         <>
           <p className="mt-4 text-sm leading-relaxed text-white/70">{`${departement.departement} · ${annee}. ${t ? `Saison ${t.texte} (prévision)` : 'Saison : prévision non disponible'}${semis ? `, à semer ${periodeDecades(semis.decade_semis)}` : ''}.`}</p>
           <AFaire aller={cadre.aller} actions={actions} />
-          <div className="mt-4 grid grid-cols-[1fr_6rem] gap-2">
-            <Champ libelle="Culture">
-              <select className="champ-scene" value={culture ?? ''} onChange={(e) => setCulture(e.target.value)}>
-                {lignes.map((l) => <option key={l.culture} value={l.culture!}>{libelle(l.culture)}</option>)}
-              </select>
-            </Champ>
-            <Champ libelle="Surface (ha)">
-              <input className="champ-scene tabular-nums" inputMode="decimal" value={saisie} onChange={(e) => setSaisie(e.target.value)}
-                aria-invalid={Boolean(lectureSurface.erreur)} aria-describedby={lectureSurface.erreur ? 'erreur-surface' : undefined} />
-            </Champ>
-          </div>
-          {lectureSurface.erreur && <ErreurChamp id="erreur-surface">Surface : {lectureSurface.erreur}</ErreurChamp>}
-          <ChampAnnee cadre={cadre} a={a} saison={saison} className="mt-2" />
 
           <Groupe titre="Ce qu'il vous faut" complement={`${connus.length} dose${connus.length > 1 ? 's' : ''} connue${connus.length > 1 ? 's' : ''} sur ${intrants.length}`}>
             <ul className="space-y-1.5">
@@ -235,17 +216,11 @@ export default function Surface({ cadre, publier }: PropsMode) {
                     {i.reference === null && <span className="block text-2xs text-soleil-500">{i.horsSujet ? 'riz pluvial : dose à saisir' : 'dose à saisir'}</span>}
                   </label>
                   <span className="flex items-center gap-2">
-                    {i.reference === null && <span className="block w-32"><input id={`dose-${i.colonne}`} className="champ-scene tabular-nums" inputMode="decimal" placeholder="kg pour 1 ha" aria-label={`${i.nom} : dose en kg pour 1 ha`} value={i.texte} onChange={(e) => setDosesSaisies((v) => ({ ...v, [i.cle]: e.target.value }))} /></span>}
+                    {i.reference === null && <span className="block w-32"><input id={`dose-${i.colonne}`} className="champ-scene tabular-nums" inputMode="decimal" placeholder="kg pour 1 ha" aria-label={`${i.nom} : dose en kg pour 1 ha`} value={i.texte} onChange={(e) => setDosesSaisies((v) => ({ ...v, [i.cle]: e.target.value }))}
+                      aria-invalid={Boolean(i.erreur)} aria-describedby={i.erreur ? `erreur-dose-${i.colonne}` : undefined} /></span>}
                     {i.kgHa !== null && Math.round(i.kgHa) === 0
                       ? <span className="max-w-32 text-right text-xs text-white/60">pas dans la formule de la zone</span>
                       : <span className="max-w-40 text-right text-sm font-semibold text-white tabular-nums">{i.kgHa === null ? VIDE : quantite(i.forme, i.kgHa * surface)}</span>}
-                  <label htmlFor={`dose-${i.colonne}`} className="text-sm text-white/85">{i.nom}
-                    {i.reference !== null && <span className="block text-2xs text-white/60">{nombre(i.reference, { decimales: 1 })} kg/ha</span>}
-                    {i.reference === null && <span className="block text-2xs text-soleil-500">{i.horsSujet ? 'riz pluvial : dose à saisir' : 'dose à saisir'}</span>}
-                  </label>
-                  <span className="flex items-center gap-2">
-                    {i.reference === null && <span className="block w-20"><input id={`dose-${i.colonne}`} className="champ-scene tabular-nums" inputMode="decimal" placeholder="kg/ha" value={i.texte} aria-invalid={Boolean(i.erreur)} aria-describedby={i.erreur ? `erreur-dose-${i.colonne}` : undefined} onChange={(e) => setDosesSaisies((v) => ({ ...v, [i.cle]: e.target.value }))} /></span>}
-                    <span className="min-w-16 text-right text-md font-semibold text-white tabular-nums">{i.kgHa === null ? VIDE : poids(i.kgHa * surface)}</span>
                   </span>
                   {i.erreur && <ErreurChamp id={`erreur-dose-${i.colonne}`} className="col-span-2 mt-0">{i.nom} : {i.erreur}</ErreurChamp>}
                 </li>
@@ -256,8 +231,6 @@ export default function Surface({ cadre, publier }: PropsMode) {
                   {ligne.volume_irrigation_m3_ha === null
                     ? <span className="text-right text-sm font-semibold text-white tabular-nums">non disponible</span>
                     : <span className="max-w-48 text-right text-xs leading-snug text-white/75 tabular-nums"><span className="text-sm font-semibold text-white">{nombre(ligne.volume_irrigation_m3_ha * surface, { unite: 'm³' })}</span> pour vos {nombre(surface, { decimales: surface % 1 ? 2 : 0 })} ha, soit {heuresPompage(ligne.volume_irrigation_m3_ha * surface)} de pompage à 1 L/s</span>}
-                  <span className="text-sm text-white/85">Eau d'irrigation<span className="block text-2xs text-white/60">culture irriguée · estimation, non mesurée</span></span>
-                  <span className="text-right text-md font-semibold text-white tabular-nums">{ligne.volume_irrigation_m3_ha === null ? 'non disponible' : nombre(ligne.volume_irrigation_m3_ha * surface, { unite: 'm³' })}</span>
                 </li>
               )}
             </ul>
