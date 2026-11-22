@@ -9,6 +9,10 @@ La compréhension et les phrases sont dans api/voix/ ; la reconnaissance et la s
 
 import asyncio
 import hashlib
+import json
+import logging
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -30,6 +34,7 @@ SYNTHESES_EN_ATTENTE_MAX = 6  # au-delà, on répond 503 plutôt que d'empiler d
 TEXTE_WO_MAX = 700
 # Une seule synthèse à la fois, locale OU par le Space : le processeur du serveur (ou le Space gratuit) n'en tient pas plus
 _synthese = asyncio.Semaphore(1)
+log = logging.getLogger(__name__)
 _en_attente = 0
 voix = APIRouter(prefix="/voix", tags=["IA · Voix"])
 
@@ -151,6 +156,20 @@ def _garder(fichier: Path, audio: str, maxi: int) -> None:
     fichier.write_text(audio)
 
 
+def _par_service(url: str, delai_s: float):
+    """La synthèse par le service « voix » (conteneur à part, audit ARC-02) : l'API attend, sans calculer."""
+    def produire(texte: str) -> str | None:
+        requete = urllib.request.Request(f"{url.rstrip('/')}/dire", data=json.dumps({"texte": texte}).encode(),
+                                         headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(requete, timeout=delai_s) as r:  # adresse interne, fixée par la configuration
+                return json.loads(r.read())["audio_wo_base64"]
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
+            log.warning("Service voix injoignable ou trop lent : %s", exc)
+            return None
+    return produire
+
+
 @voix.post("/parler", response_model=AudioWolof, responses=reponses_erreurs(429, 503), summary="Dire un texte wolof (mascotte « WLF »)")
 async def parler_wolof(request: Request, t: TexteWolof):
     """Le front envoie le texte wolof de la fonctionnalité affichée ; le Space « voix wolof » (Adia TTS) le dit."""
@@ -168,7 +187,9 @@ async def parler_wolof(request: Request, t: TexteWolof):
             raise ErreurApi(503, "voix_indisponible", f"{exc} Le texte wolof reste lisible à l'écran.",
                             "Voir voix/README.md.") from None
         audio = await _synthese_bornee(espace.parler, t.texte)
-    elif tts_local.disponible():  # sinon, voix produite par l'API elle-même, sur le processeur du serveur
+    elif (p := request.app.state.parametres).voix_service_url:  # production : service « voix », conteneur à part
+        audio = await _synthese_bornee(_par_service(p.voix_service_url, p.voix_service_delai_s), t.texte)
+    elif tts_local.disponible():  # développement : voix produite par l'API elle-même, sur le processeur
         audio = await _synthese_bornee(tts_local.parler, t.texte)
     else:
         raise ErreurApi(503, "voix_indisponible", "La voix wolof n'est pas installée sur ce serveur. Le texte wolof reste lisible.",

@@ -154,10 +154,11 @@ export const api = {
   carteSemis: (culture: string, annee: number | null) => previsions<RisqueSemis>('/semis/carte', { culture, annee }),
   fiabilite: (modele: CodeModele) => previsions<EvaluationModele>('/fiabilite', { modele }),
 
-  // Voix wolof de la mascotte « WLF » : texte wolof → audio (Space Hugging Face, voir voix/README.md)
+  // Voix wolof de la mascotte « WLF » : texte wolof → audio (service « voix » du serveur ou Space, voir voix/README.md)
   voixParler: (texte: string) =>
-    // 3 minutes au plus (la toute première voix charge le modèle) : au-delà, le texte wolof reste affiché
-    requete<{ audio_wo_base64: string }>('/api/v1/voix/parler', { method: 'POST', body: { texte }, sansJeton: true, timeout: 180000 }),
+    // 100 s au plus : l'API abandonne à 90 s (VOIX_SERVICE_DELAI_S) et le modèle est chargé dès le démarrage du
+    // service « voix » (audit ARC-02). Au-delà, le texte wolof reste affiché
+    requete<{ audio_wo_base64: string }>('/api/v1/voix/parler', { method: 'POST', body: { texte }, sansJeton: true, timeout: 100000 }),
 
   // Avis des ONG : envoyé à l'équipe par e-mail par l'API (rien n'est stocké)
   envoyerAvis: (avis: Record<string, string | number>) =>

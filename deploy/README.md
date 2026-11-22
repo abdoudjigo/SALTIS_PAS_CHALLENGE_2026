@@ -5,10 +5,11 @@ Tout tourne dans Docker, lancé par une seule commande. Trois conteneurs :
 | Conteneur | Rôle | Ouvert sur internet |
 |---|---|---|
 | `web` | Le site (construit avec Vite) servi par **Caddy**, qui obtient le certificat **HTTPS** tout seul et transmet `/api` à l'API | oui : ports 80 et 443 |
-| `api` | L'API : marts lus dans Snowflake, prévisions des modèles (`ml/sorties`), voix wolof (SpeechT5 sur processeur) | non |
+| `api` | L'API : marts lus dans Snowflake, prévisions des modèles (`ml/sorties`) | non |
+| `voix` | La voix wolof (SpeechT5 sur processeur), appelée par l'API seulement ; **un cœur et 3 Go au plus**, pour qu'une synthèse ne ralentisse jamais la carte | non |
 | `redis` | Le cache des réponses de l'API | non |
 
-Le KVM 2 (2 processeurs, 8 Go de mémoire) suffit : l'API et la voix wolof prennent environ 2 à 3 Go.
+Le KVM 2 (2 processeurs, 8 Go de mémoire) suffit : l'API prend 2 Go au plus, la voix wolof 3 Go au plus et un seul des deux processeurs.
 
 ## 1. Préparer le VPS (une fois)
 1. Dans le panneau Hostinger, choisir le modèle **Ubuntu 24.04 avec Docker** (ou installer Docker : https://docs.docker.com/engine/install/ubuntu/).
@@ -34,7 +35,7 @@ Dans `.env`, renseigner au minimum :
 | `UMAMI_DB_PASSWORD`, `UMAMI_APP_SECRET` | **obligatoires** : deux secrets pour la mesure d'audience (`openssl rand -hex 24` chacun) ; voir section 7 |
 | `UMAMI_WEBSITE_ID` | identifiant du site dans Umami, à renseigner après sa création (section 7) ; vide = aucune mesure |
 | `EMAIL_CONTACT` | facultatif : l'adresse affichée sur la page Contact, au clic seulement (anti-spam) ; l'ancien nom `VITE_EMAIL_CONTACT` reste accepté |
-| `VOIX_SPACE`, `HF_TOKEN` | laisser vides : la voix wolof est produite par l'API |
+| `VOIX_SPACE`, `HF_TOKEN` | laisser vides : la voix wolof est produite par le conteneur `voix` (`VOIX_SERVICE_URL` est déjà réglé dans `docker-compose.prod.yml`) |
 
 Le `.env` ne quitte jamais le serveur (il est ignoré par git et par Docker).
 
@@ -47,7 +48,7 @@ Première construction : 5 à 10 minutes (PyTorch processeur, dépendances du si
 - l'état de l'API : `https://<domaine>/api/v1/systeme/sante` (répond `ok` quand le cache est chargé, ~30 s après le démarrage) ;
 - les journaux de l'API : `docker compose -f docker-compose.prod.yml logs -f api`.
 
-**Voix wolof** : au premier appui sur la mascotte **WLF**, l'API télécharge le modèle (~600 Mo, environ une minute), puis chaque texte est dit en quelques secondes. Les voix produites sont gardées (volume `voix-cache`) : la rejouer est instantané.
+**Voix wolof** : au premier démarrage, le conteneur `voix` télécharge le modèle (~600 Mo, environ une minute, gardé dans le volume `api-donnees`) et le charge en mémoire ; ensuite chaque texte est dit en quelques secondes. Suivre le chargement : `docker compose -f docker-compose.prod.yml logs -f voix`. Si la voix n'est pas prête ou met plus de 90 s, l'API répond « voix indisponible » et le texte wolof reste affiché. Les voix produites sont gardées (volume `voix-cache`) : la rejouer est instantané.
 
 ## 4. Mettre à jour
 ```bash
@@ -105,7 +106,8 @@ Sauvegarde des statistiques : `docker compose -f docker-compose.prod.yml exec um
 | Fichier | Rôle |
 |---|---|
 | `docker-compose.prod.yml` | Les conteneurs (site, API, Redis, Umami et sa base), leurs volumes, les seuls ports ouverts (80, 443 ; 3001 sur le VPS seulement) |
-| `deploy/Dockerfile.api` | Image de l'API (Python 3.12, `requirements-api.txt` + `requirements-voix.txt`) |
+| `deploy/Dockerfile.api` | Image de l'API (Python 3.12, `requirements-api.txt`, sans torch) |
+| `deploy/Dockerfile.voix` | Image du service voix (`api/voix/service.py`, `requirements-voix.txt` : torch processeur, transformers) |
 | `deploy/Dockerfile.web` | Construction du site, puis Caddy |
 | `deploy/Caddyfile` | HTTPS automatique, `/api` vers l'API, `/stats/script.js` et `/stats/api/send` vers Umami, cache des fichiers du site, en-têtes de sécurité |
 | `.dockerignore` | Ce qui n'entre jamais dans les images (`.env`, données brutes, environnements locaux) |

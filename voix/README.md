@@ -70,7 +70,7 @@ Les cultures se disent aussi en wolof : gerte (arachide), dugub (mil), mboq (ma�
 > **À faire relire par un locuteur wolof de l'équipe** : les phrases types (`api/voix/repondre.py`), les mots-clés (`api/voix/comprendre.py`) et les nombres (`api/voix/nombres.py`).
 
 ## La voix wolof sur le serveur (gratuit, sans carte bancaire) — méthode retenue
-L'API produit elle-même la voix, sur le processeur du serveur (`api/voix/tts_local.py`) :
+La voix est produite sur le processeur du serveur (`api/voix/tts_local.py`). **En production, elle tourne dans son propre conteneur** `voix` (`api/voix/service.py`, `deploy/Dockerfile.voix`), limité à un cœur et 3 Go : l'API l'appelle (`VOIX_SERVICE_URL`) et abandonne au bout de 90 s (`VOIX_SERVICE_DELAI_S`). Une synthèse ne peut donc plus ralentir la carte et les fiches (audit, constat ARC-02). En développement, sans `VOIX_SERVICE_URL`, l'API produit la voix elle-même si `requirements-voix.txt` est installé.
 
 | | |
 |---|---|
@@ -79,13 +79,13 @@ L'API produit elle-même la voix, sur le processeur du serveur (`api/voix/tts_lo
 | Voix | voix féminine « slt » du jeu CMU Arctic (`api/voix/locuteur_wolof.npy`, 2 Ko), comme dans la fiche du modèle |
 | Vitesse | quelques secondes par phrase sur un processeur, sans carte graphique |
 
-Sur le serveur (VPS), une fois :
+Sur le serveur (VPS) : rien à installer, `docker compose -f docker-compose.prod.yml up -d --build` construit aussi le conteneur `voix` (voir `deploy/README.md`). En local, pour essayer la voix dans l'API :
 ```bash
 pip install -r requirements.txt -r requirements-voix.txt
 ```
-Laisser `VOIX_SPACE` vide dans `.env`. Les modèles sont téléchargés au premier appel (~1 minute), puis restent en mémoire. Chaque voix produite est gardée sur disque (`voix/cache/`) et dans le navigateur : la rejouer est instantané. Sans `requirements-voix.txt`, la fille WLF répond « voix wolof non installée » et le reste fonctionne.
+Laisser `VOIX_SPACE` vide dans `.env`. Le conteneur `voix` télécharge et charge les modèles dès son démarrage (~1 minute) ; l'API locale, au premier appel. Chaque voix produite est gardée sur disque (`voix/cache/`) et dans le navigateur : la rejouer est instantané. Sans `requirements-voix.txt`, la fille WLF répond « voix wolof non installée » et le reste fonctionne.
 
-Prévoir au moins 2 Go de mémoire libre sur le serveur pour la voix.
+Prévoir au moins 2 Go de mémoire libre sur le serveur pour la voix (le conteneur `voix` est plafonné à 3 Go).
 
 ## Variante : Space Hugging Face avec carte graphique (abonnement PRO, carte bancaire non prépayée)
 La voix tourne sur la carte graphique de Hugging Face (ZeroGPU) : quelques secondes par texte. Le serveur de la plateforme (VPS) n'a besoin ni de carte graphique ni de modèle : il appelle le Space. Héberger un Space Gradio demande l'abonnement **PRO** (9 $/mois : hébergement ZeroGPU, quota de carte graphique ×8, priorité).

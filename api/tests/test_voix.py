@@ -126,3 +126,50 @@ def test_alerte_seulement_si_fiable():
     avec_fiable = repondre([_ligne("Kolda", 62, True), _ligne("Kaolack", 45, False)])
     assert "1 département en alerte" in avec_fiable.texte_fr and "Kaolack" not in avec_fiable.texte_fr
     assert "fiable" in avec_fiable.nature
+
+
+def test_parler_par_le_service_voix(client_ml, monkeypatch, tmp_path):  # noqa: F811
+    """Audit ARC-02 : en production, l'API ne synthétise plus ; elle appelle le service « voix » et rend 503 s'il ne répond pas."""
+    import importlib
+    import io
+    import json
+    import urllib.request
+
+    from api.voix import tts_local
+
+    module_voix = importlib.import_module("api.routes.voix")
+    monkeypatch.setattr(module_voix, "CACHE_VOIX", tmp_path)
+    monkeypatch.setattr(tts_local, "parler", lambda texte: (_ for _ in ()).throw(AssertionError("synthèse dans l'API")))
+    p = client_ml.app.state.parametres
+    monkeypatch.setattr(p, "voix_service_url", "http://voix:8090")
+    appels = []
+
+    def urlopen(requete, timeout):
+        appels.append((requete.full_url, json.loads(requete.data), timeout))
+        return io.BytesIO(json.dumps({"audio_wo_base64": "UklGRg=="}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    assert client_ml.post(f"{V1}/parler", json={"texte": "Nawet bi."}).json() == {"audio_wo_base64": "UklGRg=="}
+    assert appels == [("http://voix:8090/dire", {"texte": "Nawet bi."}, p.voix_service_delai_s)]
+
+    def trop_lent(requete, timeout):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(urllib.request, "urlopen", trop_lent)
+    r = client_ml.post(f"{V1}/parler", json={"texte": "Beneen."})
+    assert r.status_code == 503 and r.json()["erreur"]["code"] == "voix_indisponible"
+
+
+def test_service_voix(monkeypatch):
+    """Le conteneur « voix » : une synthèse à la fois, texte borné, 503 en cas d'échec."""
+    from fastapi.testclient import TestClient
+
+    from api.voix import service, tts_local
+
+    monkeypatch.setenv("VOIX_PRECHARGER", "0")
+    monkeypatch.setattr(tts_local, "parler", lambda texte: "UklGRg==" if texte != "échec" else None)
+    with TestClient(service.app) as c:
+        assert c.get("/sante").json() == {"pret": False}
+        assert c.post("/dire", json={"texte": "Nawet bi."}).json() == {"audio_wo_base64": "UklGRg=="}
+        assert c.post("/dire", json={"texte": "échec"}).status_code == 503
+        assert c.post("/dire", json={"texte": "x" * 701}).status_code == 422

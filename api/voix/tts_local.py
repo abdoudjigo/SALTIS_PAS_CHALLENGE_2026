@@ -37,6 +37,19 @@ def disponible() -> bool:
     return True
 
 
+def charge() -> bool:
+    """Vrai si les modèles sont déjà en mémoire."""
+    return _modeles is not None
+
+
+def precharger() -> None:
+    """Charge les modèles tout de suite (service « voix », au démarrage) ; une erreur est journalisée, pas levée."""
+    try:
+        _charger()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Préchargement de la voix wolof impossible : %s", exc)
+
+
 def _charger():
     global _modeles
     with _verrou:
