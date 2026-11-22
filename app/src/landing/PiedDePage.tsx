@@ -33,17 +33,6 @@ const RUBRIQUES: { titre: string; liens: { libelle: string; to: string; ancre?: 
   },
 ]
 
-const SOURCES: [string, string][] = [
-  ['Pluie', 'CHIRPS'],
-  ['Climat', 'NASA POWER'],
-  ['Sols', 'SoilGrids (ISRIC)'],
-  ['Rendements et superficies', 'DAPSA, via HarvestStat et FEWS NET ; FAOSTAT'],
-  ['Températures des océans', 'NOAA'],
-  ['Contours des départements', 'GADM, version 4.1, https://gadm.org'],
-  ['Fond de carte', 'Mapbox, OpenStreetMap'],
-  ['Vent du globe', 'décor (prévisions GFS), pas une donnée du projet'],
-]
-
 function Linkedin({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
@@ -113,18 +102,6 @@ export function PiedDePage() {
             </nav>
           </div>
         </div>
-
-        <section aria-labelledby="sources" className="mt-14 border-t border-white/12 pt-8">
-          <h2 id="sources" className={ETIQUETTE}>Sources et crédits</h2>
-          <dl className="mt-4 grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-            {SOURCES.map(([quoi, source]) => (
-              <div key={quoi} className="flex flex-col border-l border-white/15 pl-3.5">
-                <dt className="text-xs text-white/60">{quoi}</dt>
-                <dd className="text-sm text-white/85">{source}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
 
         <div className="mt-10 flex flex-col gap-2 border-t border-white/12 pt-6 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between">
           <p><strong className="font-medium text-white/80">Estimations indicatives, pas des garanties.</strong> Doses et recommandations à valider avec l'ISRA et les conseillers agricoles.</p>
