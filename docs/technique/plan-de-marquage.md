@@ -18,7 +18,7 @@ Outil : **Umami**, auto-hébergé sur le VPS, sans cookie (`deploy/README.md`, s
 | `ecran_ouvert` | Clic sur un écran du dock | `ecran` (12 identifiants), `profil` : `PRODUCTEUR`, `ORGANISATION` | Quels écrans servent, lesquels retirer ? | `pages/Scene.tsx` |
 | `annee_choisie` | Changement d'année | `type` : `passee`, `ocean`, `tendance` | La prévision intéresse-t-elle ? | `pages/Scene.tsx` |
 | `parcelle_localisee` | « Me localiser » ou choix dans la liste | `resultat` : `ok`, `refus`, `indisponible`, `liste` (jamais la position) | Le GPS marche-t-il sur le terrain ? | `scene/modes/Parcelle.tsx` |
-| `voix_lue` | Lecture à voix haute | `langue` : `fr`, `wo` ; `resultat` : `ok`, `erreur`, `occupee` | Le wolof est-il utilisé et fiable ? | `scene/voix/lecture.ts` |
+| `voix_lue` | Lecture à voix haute (mascottes, message d'accueil) | `langue` : `fr`, `wo` ; `resultat` : `ok`, `erreur`, `occupee` ; `origine` (accueil seulement) : `accueil_fichier`, `accueil_synthese`, `accueil_navigateur` | Le wolof est-il utilisé et fiable ? L'accueil est-il entendu, et par quelle voix ? | `scene/voix/lecture.ts`, `scene/voix/accueil.ts` |
 | `export_pdf` | Téléchargement d'un PDF | `type` : `dossier`, `fiche`, `autre` | Les ONG et l'État exportent-ils ? | `export/pdf.ts` |
 | `scenario_choisi` | Changement de scénario de répartition | `scenario` : identifiant du scénario | Quels scénarios AgroDistrib servent ? | `scene/modes/Repartir.tsx` |
 | `avis_envoye` | Avis envoyé | `type_organisation` (liste du formulaire), `etape` | Qui donne son avis, depuis quel écran ? | `scene/ong/AvisOng.tsx` |

@@ -33,6 +33,26 @@ Comment c'est fait (`app/src/scene/voix/lecture.ts`) :
 
 Aucun serveur n'est nécessaire : la voix est celle du navigateur. Sa qualité dépend de l'appareil ; elle est la meilleure dans Edge (voix neuronales) et Chrome.
 
+## 1 bis. Le message vocal d'accueil
+
+Sans clic sur « Écouter », la voix lit le **résumé réel de l'écran ouvert**, avec ses vrais chiffres. C'est le même texte que les mascottes, encadré d'une phrase avant et d'une phrase après, la dernière disant quoi faire ensuite :
+
+| Profil | Quand | Ce qui est dit | Langue |
+|---|---|---|---|
+| Agriculteur | dès que le champ est localisé (« Me localiser », liste, carte), à chaque onglet ouvert et à chaque changement de lieu | le résumé de l'onglet ouvert : « Ma parcelle », « Va-t-il bien pleuvoir ? », « Que semer ? », « Quand semer ? », « Combien m'en faut-il ? », « Contre-saison » | Wolof (repli : français) |
+| Agriculteur | à l'entrée, champ pas encore localisé | message de secours : ce que montre la page, puis « appuyez sur Me localiser » | Wolof (repli : français) |
+| ONG et services de l'État | à l'entrée | « Où agir en priorité » : départements à surveiller, Cadre harmonisé, alerte récolte, saison | Français |
+
+Les sous-titres de la phrase en cours s'affichent sous l'en-tête (pendant la préparation de la voix wolof, tout le texte est déjà lisible). Commandes : Pause / Reprendre, Rejouer, Couper le son, et un bouton haut-parleur dans l'en-tête pour réentendre le résumé.
+
+- **Textes** : `app/src/scene/voix/voiceMessages.ts`. On y trouve les onglets lus seuls (`LIRE_CHAQUE_ONGLET` : tous pour l'agriculteur, le premier seulement pour l'ONG), l'encadrement du résumé par écran (`ENCADREMENT`) et les messages de secours (`MESSAGES`). Le résumé lui-même vient de l'écran (`aEcouter`, `aEcouterWo`). Le wolof est **à faire relire**.
+- **Ordre des voix** (`app/src/scene/voix/accueil.ts`) : fichier enregistré (message de secours seulement, le résumé changeant avec les données) → synthèse wolof du serveur (attendue 20 s au plus ; elle continue en arrière-plan et « Rejouer » sera en wolof) → voix française du navigateur (fr-FR, débit 0,9) → texte seul. Chaque source est un `Lecteur` (`demarrer`, `pause`, `reprendre`, `arreter`).
+- **Le résumé est complet avant d'être lu** : on attend qu'il ne change plus pendant 1,5 s (les données arrivent par morceaux), sans dépasser 8 s.
+- **Autoplay** : le clic sur la porte et le choix du lieu autorisent la voix. Si le navigateur la bloque quand même (page rechargée), le bandeau affiche « 🔊 Écouter ».
+- **Préférences** : « Couper le son » est mémorisé par profil (`localStorage`, `assaman.accueil.muet.<profil>`) et coupe aussi la lecture au changement de lieu ; le bouton haut-parleur la réactive. L'accueil d'entrée n'est joué qu'une fois par onglet, sauf nouveau passage par la porte. Une langue choisie (`localStorage`, `assaman.langue` = `fr` ou `wo`) remplace celle du profil.
+- **Une seule voix** : l'accueil coupe les mascottes ; une mascotte ou un changement d'écran coupe l'accueil.
+- **Durée** : le résumé wolof de « Ma parcelle » dépasse souvent 40 s (nombres dits en toutes lettres).
+
 ## 2. Poser une question (API seulement)
 
 Le bouton micro a été retiré de l'application (peu utile face aux mascottes). Les routes ci-dessous restent dans l'API pour un usage futur (serveur vocal, WhatsApp).
@@ -69,7 +89,24 @@ Les cultures se disent aussi en wolof : gerte (arachide), dugub (mil), mboq (ma�
 
 > **À faire relire par un locuteur wolof de l'équipe** : les phrases types (`api/voix/repondre.py`), les mots-clés (`api/voix/comprendre.py`) et les nombres (`api/voix/nombres.py`).
 
-## La voix wolof sur le serveur (gratuit, sans carte bancaire) — méthode retenue
+## Adia TTS sur un Space Hugging Face (la plus claire)
+
+> **Décision du 22/11/2026 : rester gratuit, pas d'abonnement PRO.** Le Space ZeroGPU décrit ici n'est donc pas retenu tel quel ; le code du Space reste prêt pour un Space gratuit sur processeur. Pistes gratuites et suite : `docs/technique/passation-voix-wolof.md`.
+
+| | |
+|---|---|
+| Modèle | [CONCREE/Adia_TTS](https://huggingface.co/CONCREE/Adia_TTS) : Parler-TTS affiné sur 40 h de wolof, 24 kHz, Apache 2.0 (créditer CONCREE) |
+| Voix | « A clear and educational voice, with a flow adapted to learning », réglages de la fiche du modèle (`temperature` 0,8, `top_k` 50, `repetition_penalty` 1,2) |
+| Vitesse | le texte est coupé en morceaux de 200 caractères au plus (aux fins de phrase, jamais au milieu d'un mot), **tous synthétisés en une seule passe** sur la carte graphique : un résumé entier prend à peu près le temps d'un morceau |
+| Poids | sortie **mp3** (5 à 10 fois plus léger que le wav), volume homogène ; le navigateur reconnaît mp3 ou wav à leurs premiers octets |
+| Débit | jusqu'à 3 synthèses en parallèle vers le Space (une seule à la fois pour le service « voix » du serveur) |
+| Secours | si le Space ne rend rien (endormi, quota épuisé), le service « voix » du serveur (SpeechT5, moins net) prend le relais ; le front passe au français au-delà de 20 s |
+
+Kiriku-Wolof-ASR (IA Hub Sénégal) ne convient pas pour la voix : c'est un modèle de **reconnaissance** (la parole en texte). Le Space utilise sa version M-Kiriku-ASR pour comprendre les questions parlées.
+
+**Mise en ligne** (une fois, puis après chaque modification de `voix/space/`) : suivre « Variante : Space Hugging Face » plus bas (abonnement PRO, `HF_TOKEN`, `venv/bin/python -m voix.deployer_space`), puis copier `VOIX_SPACE` et `HF_TOKEN` dans le `.env` du serveur et relancer l'API. Avec `VOIX_SPACE` renseigné, l'API passe par le Space en premier.
+
+## Voix de secours : SpeechT5 sur le serveur (gratuit, sans carte bancaire)
 La voix est produite sur le processeur du serveur (`api/voix/tts_local.py`). **En production, elle tourne dans son propre conteneur** `voix` (`api/voix/service.py`, `deploy/Dockerfile.voix`), limité à un cœur et 3 Go : l'API l'appelle (`VOIX_SERVICE_URL`) et abandonne au bout de 90 s (`VOIX_SERVICE_DELAI_S`). Une synthèse ne peut donc plus ralentir la carte et les fiches (audit, constat ARC-02). En développement, sans `VOIX_SERVICE_URL`, l'API produit la voix elle-même si `requirements-voix.txt` est installé.
 
 | | |

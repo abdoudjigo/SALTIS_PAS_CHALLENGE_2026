@@ -173,3 +173,31 @@ def test_service_voix(monkeypatch):
         assert c.post("/dire", json={"texte": "Nawet bi."}).json() == {"audio_wo_base64": "UklGRg=="}
         assert c.post("/dire", json={"texte": "échec"}).status_code == 503
         assert c.post("/dire", json={"texte": "x" * 701}).status_code == 422
+
+
+def test_parler_par_le_space_puis_repli_sur_le_service(client_ml, monkeypatch, tmp_path):  # noqa: F811
+    """Le Space (Adia TTS) passe en premier ; s'il ne rend rien (endormi, quota épuisé), le service « voix » prend le relais."""
+    import importlib
+    import io
+    import json
+    import urllib.request
+
+    from api.voix.espace import EspaceVoix
+
+    module_voix = importlib.import_module("api.routes.voix")
+    monkeypatch.setattr(module_voix, "CACHE_VOIX", tmp_path)
+    p = client_ml.app.state.parametres
+    monkeypatch.setattr(p, "voix_space", "compte/voix")
+    monkeypatch.setattr(p, "voix_service_url", "http://voix:8090")
+    monkeypatch.setattr(EspaceVoix, "_connecter", lambda self: object())
+    mp3 = base64.b64encode(b"ID3mp3").decode()
+    monkeypatch.setattr(EspaceVoix, "parler", lambda self, texte: mp3)
+    service = []
+    monkeypatch.setattr(urllib.request, "urlopen", lambda requete, timeout: service.append(1) or io.BytesIO(json.dumps({"audio_wo_base64": "UklGRg=="}).encode()))
+
+    assert client_ml.post(f"{V1}/parler", json={"texte": "Space bi."}).json() == {"audio_wo_base64": mp3}
+    assert service == []  # le Space a répondu : le serveur ne synthétise pas
+
+    monkeypatch.setattr(EspaceVoix, "parler", lambda self, texte: None)
+    assert client_ml.post(f"{V1}/parler", json={"texte": "Space bi nelaw na."}).json() == {"audio_wo_base64": "UklGRg=="}
+    assert service == [1]

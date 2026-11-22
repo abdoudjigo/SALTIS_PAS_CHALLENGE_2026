@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { MOT_DE_PASSE_DEMO } from '../api/mock/comptes'
 import { useAuth } from '../auth/AuthContext'
 import { suivre } from '../lib/mesure'
+import { armerAccueil } from '../scene/voix/accueil'
 
 export type Profil = 'agriculteur' | 'organisation'
 
@@ -20,6 +21,8 @@ export function useEntrer() {
     async (profil: Profil) => {
       setEnCours(profil)
       setErreur(null)
+      // Ce clic est l'interaction qui autorise la voix : le message d'accueil sera dit à l'arrivée sur la scène
+      armerAccueil(profil)
       try {
         await login(COMPTES[profil], MOT_DE_PASSE_DEMO)
         suivre('porte_entree', { profil })

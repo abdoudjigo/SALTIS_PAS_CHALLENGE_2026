@@ -46,7 +46,7 @@ if (lectureDisponible) window.speechSynthesis.addEventListener?.('voiceschanged'
 
 /** Découpe en phrases courtes, lues l'une après l'autre. */
 export function decouper(texte: string): string[] {
-  const phrases = texte.split(/(?<=[.!?;])\s+/).map((p) => p.trim()).filter(Boolean)
+  const phrases = texte.split(/(?<=[.!?;])\s+(?!»)/).map((p) => p.trim()).filter(Boolean)
   return phrases.flatMap((p) => {
     if (p.length <= LONGUEUR_MAX) return [p]
     const morceaux: string[] = []
@@ -84,10 +84,20 @@ export function lire(phrases: string[]) {
   notifier('fr')
 }
 
-/** Joue la voix wolof (wav en base64, synthétisée par le Space). */
+/** Adresse jouable d'une voix en base64 : mp3 (Space, Adia TTS) ou wav (service « voix » du serveur), reconnus à leurs
+ *  premiers octets (un mp3 annoncé comme wav ne se lit pas). */
+export function urlAudio(base64: string): string {
+  const type = base64.startsWith('UklGR') ? 'audio/wav' // « RIFF »
+    : base64.startsWith('SUQz') || base64.startsWith('//') ? 'audio/mpeg' // « ID3 », ou trame mp3 brute
+    : base64.startsWith('T2dnUw') ? 'audio/ogg' // « OggS »
+    : 'audio/wav'
+  return `data:${type};base64,${base64}`
+}
+
+/** Joue la voix wolof (base64, synthétisée par le Space ou le service « voix »). */
 export function lireAudio(base64: string) {
   arreter()
-  audio = new Audio(`data:audio/wav;base64,${base64}`)
+  audio = new Audio(urlAudio(base64))
   audio.onended = () => notifier(null)
   audio.onerror = () => notifier(null)
   void audio.play().catch(() => notifier(null))
@@ -97,26 +107,38 @@ export function lireAudio(base64: string) {
 // Voix wolof déjà synthétisées, par texte : rejouer ne refait pas l'appel (mascotte et pied de fenêtre partagent ce cache)
 const cacheWolof = new Map<string, string>()
 
+/** L'audio wolof d'un texte (wav en base64) : depuis le cache, sinon par le service « voix ». Rejette s'il ne répond pas. */
+export async function syntheseWolof(texte: string): Promise<string> {
+  const connu = cacheWolof.get(texte)
+  if (connu) return connu
+  const { audio_wo_base64 } = await api.voixParler(texte)
+  cacheWolof.set(texte, audio_wo_base64)
+  return audio_wo_base64
+}
+export const wolofEnCache = (texte: string) => cacheWolof.has(texte)
+
 /** Lit un texte en wolof : depuis le cache, sinon par le Space (`preparer` est appelé avant l'attente). Rejette si le Space ne répond pas. */
 export async function lireWolof(texte: string, preparer?: () => void) {
-  const connu = cacheWolof.get(texte)
-  if (connu) {
-    suivre('voix_lue', { langue: 'wo', resultat: 'ok' })
-    return lireAudio(connu)
-  }
-  preparer?.()
+  if (!wolofEnCache(texte)) preparer?.()
   try {
-    const { audio_wo_base64 } = await api.voixParler(texte)
-    cacheWolof.set(texte, audio_wo_base64)
+    const audioWo = await syntheseWolof(texte)
     suivre('voix_lue', { langue: 'wo', resultat: 'ok' })
-    lireAudio(audio_wo_base64)
+    lireAudio(audioWo)
   } catch (e) {
     suivre('voix_lue', { langue: 'wo', resultat: e instanceof ApiError && e.status === 503 ? 'occupee' : 'erreur' })
     throw e
   }
 }
 
+// Les autres voix de la plateforme (message d'accueil, voir accueil.ts) s'arrêtent aussi quand une lecture démarre
+const autresArrets = new Set<() => void>()
+export function surArret(f: () => void) {
+  autresArrets.add(f)
+  return () => void autresArrets.delete(f)
+}
+
 export function arreter() {
+  autresArrets.forEach((f) => f())
   if (lectureDisponible) window.speechSynthesis.cancel()
   audio?.pause()
   audio = null

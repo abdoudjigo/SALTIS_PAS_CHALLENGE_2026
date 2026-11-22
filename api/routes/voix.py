@@ -34,6 +34,10 @@ SYNTHESES_EN_ATTENTE_MAX = 6  # au-delà, on répond 503 plutôt que d'empiler d
 TEXTE_WO_MAX = 700
 # Une seule synthèse à la fois, locale OU par le Space : le processeur du serveur (ou le Space gratuit) n'en tient pas plus
 _synthese = asyncio.Semaphore(1)
+# Le Space (carte graphique, file d'attente de Hugging Face) en tient plusieurs : les agriculteurs n'attendent pas
+# les uns derrière les autres
+SYNTHESES_SPACE_SIMULTANEES = 3
+_synthese_space = asyncio.Semaphore(SYNTHESES_SPACE_SIMULTANEES)
 log = logging.getLogger(__name__)
 _en_attente = 0
 voix = APIRouter(prefix="/voix", tags=["IA · Voix"])
@@ -128,17 +132,17 @@ class TexteWolof(BaseModel):
 
 
 class AudioWolof(BaseModel):
-    audio_wo_base64: str = Field(description="Voix wolof (wav, base64)")
+    audio_wo_base64: str = Field(description="Voix wolof en base64 : mp3 (Space, Adia TTS) ou wav (service « voix » du serveur)")
 
 
-async def _synthese_bornee(produire, texte: str) -> str | None:
+async def _synthese_bornee(produire, texte: str, verrou: asyncio.Semaphore | None = None) -> str | None:
     """Une synthèse à la fois (locale ou Space), avec une file d'attente bornée : au-delà, 503 plutôt qu'empiler."""
     global _en_attente
     if _en_attente >= SYNTHESES_EN_ATTENTE_MAX:
         raise ErreurApi(503, "voix_occupee", "La voix wolof est très demandée. Réessayez dans un instant.", entetes={"Retry-After": "30"})
     _en_attente += 1
     try:
-        async with _synthese:
+        async with verrou or _synthese:
             return await asyncio.to_thread(produire, texte)
     finally:
         _en_attente -= 1
@@ -180,14 +184,21 @@ async def parler_wolof(request: Request, t: TexteWolof):
         fichier.touch()  # récemment utilisée : gardée en priorité
         return {"audio_wo_base64": fichier.read_text()}
     limiter(request, "voix_synthese")  # seules les voix à produire comptent : rejouer une voix gardée est gratuit
-    if request.app.state.parametres.voix_space:  # Space Hugging Face (carte graphique), si configuré
+    p = request.app.state.parametres
+    if p.voix_space:  # Space Hugging Face (Adia TTS sur carte graphique) : la voix la plus claire et la plus rapide
         try:
             espace._connecter()
+            audio = await _synthese_bornee(espace.parler, t.texte, _synthese_space)
         except VoixIndisponible as exc:
-            raise ErreurApi(503, "voix_indisponible", f"{exc} Le texte wolof reste lisible à l'écran.",
-                            "Voir voix/README.md.") from None
-        audio = await _synthese_bornee(espace.parler, t.texte)
-    elif (p := request.app.state.parametres).voix_service_url:  # production : service « voix », conteneur à part
+            if not p.voix_service_url:
+                raise ErreurApi(503, "voix_indisponible", f"{exc} Le texte wolof reste lisible à l'écran.",
+                                "Voir voix/README.md.") from None
+            audio = None
+        # Space endormi ou quota épuisé : le service « voix » du serveur prend le relais (voix moins nette)
+        if not audio and p.voix_service_url:
+            log.warning("Space voix sans réponse : repli sur le service « voix » du serveur")
+            audio = await _synthese_bornee(_par_service(p.voix_service_url, p.voix_service_delai_s), t.texte)
+    elif p.voix_service_url:  # production : service « voix », conteneur à part
         audio = await _synthese_bornee(_par_service(p.voix_service_url, p.voix_service_delai_s), t.texte)
     elif tts_local.disponible():  # développement : voix produite par l'API elle-même, sur le processeur
         audio = await _synthese_bornee(tts_local.parler, t.texte)
