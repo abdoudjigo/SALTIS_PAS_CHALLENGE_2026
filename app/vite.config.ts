@@ -154,7 +154,14 @@ export default defineConfig(({ mode }) => {
   for (const nom of Object.keys(process.env)) if (nom.startsWith('VITE_') && !process.env[nom]?.trim()) delete process.env[nom]
   const env = loadEnv(mode, process.cwd(), '')
   refuserLesSecrets(env)
-  const apiUrl = env.VITE_API_URL || 'http://localhost:8080'
+  // Adresse de l'API, comme src/config.ts : production = même origine si VITE_API_URL est vide ou absente.
+  const apiUrl = (env.VITE_API_URL || (mode === 'production' ? '' : 'http://localhost:8080')).replace(/\/$/, '')
+  // Cache hors ligne des données : la règle est une expression régulière calculée ici. Workbox recopie une fonction
+  // telle quelle dans sw.js, sans ses variables : `apiUrl` y était inconnue et aucune réponse n'était gardée (audit FE-01).
+  // Même origine : le chemin suffit. Autre origine (développement) : Workbox exige un motif ancré au début de l'URL.
+  // Exclus : la voix et l'avis (POST), l'état du système (toujours frais).
+  const echapper = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const motifApi = new RegExp(`${apiUrl ? `^${echapper(apiUrl)}` : ''}/api/v1/(?!voix/|avis|systeme/)`)
   const urlSite = (env.VITE_URL_SITE || '').replace(/\/$/, '')
   // Anti-spam : l'adresse de contact n'est pas écrite en clair dans le JavaScript (les robots ramasseurs
   // d'adresses lisent le code et les pages). Elle y est retournée puis codée en base64, et n'est reconstituée
@@ -212,9 +219,9 @@ export default defineConfig(({ mode }) => {
               options: { cacheName: 'mapbox-lib', expiration: { maxEntries: 6 } },
             },
             {
-              // Données de l'API : réseau d'abord, cache si hors ligne (terrain, connexion faible)
-              urlPattern: ({ url, request }) =>
-                request.method === 'GET' && url.href.startsWith(apiUrl) && !url.pathname.startsWith('/auth'),
+              // Données de l'API (GET) : réseau d'abord, cache si hors ligne ou au-delà de 6 s (terrain, connexion faible)
+              urlPattern: motifApi,
+              method: 'GET',
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'api-donnees',

@@ -11,6 +11,7 @@ import { etatPrevision, useAlerteRecolte, usePrevisionSaison } from '../../hooks
 import { libelle, mm, nombre, pct } from '../../lib/format'
 import type { LigneCadreHarmonise } from '../../types/marts'
 import { CULTURES_RENDEMENT, SEUIL_ALERTE_PCT, type PrevisionRendement, type PrevisionSaison } from '../../types/previsions'
+import { estAlerte, risqueHabituelEleve } from '../regles/alertes'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { chCompte, couleurPhase, enCrise, etatPhase, nomPhase, periodeCH, PHASE_CRISE } from '../regles/cadreHarmonise'
 import { ordonner } from '../regles/repartition'
@@ -94,7 +95,8 @@ export default function Campagne({ cadre, publier }: PropsMode) {
       const ecart = p && p.pluie_prevue_mm !== null && p.pluie_normale_mm ? (p.pluie_prevue_mm / p.pluie_normale_mm - 1) * 100 : null
       const niveaux: Dossier['niveaux'] = {
         pluie: ecart === null ? 'inconnu' : ecart <= -2 * ECART_PLUIE_PCT ? 'rouge' : ecart <= -ECART_PLUIE_PCT ? 'orange' : 'calme',
-        recolte: !r ? 'inconnu' : r.proba_chute_pct! >= SEUIL_ALERTE_PCT ? 'rouge' : r.proba_chute_reference_pct !== null && r.proba_chute_pct! > r.proba_chute_reference_pct ? 'orange' : 'calme',
+        // Rouge seulement pour une alerte fiable ; un risque habituel élevé, sans prévision de l'année, reste à l'orange
+        recolte: !r ? 'inconnu' : estAlerte(r) ? 'rouge' : risqueHabituelEleve(r) || (r.proba_chute_reference_pct !== null && r.proba_chute_pct! > r.proba_chute_reference_pct) ? 'orange' : 'calme',
         vulnerabilite: !v?.classe_vulnerabilite ? 'inconnu' : v.classe_vulnerabilite.startsWith('très élevée') ? 'rouge' : v.classe_vulnerabilite.startsWith('élevée') ? 'orange' : 'calme',
         ch: !chCompteAnnee || c?.phase_retenue == null ? 'inconnu' : ({ non: 'rouge', attention: 'orange', ok: 'calme', info: 'inconnu' } as const)[etatPhase(c.phase_retenue)],
       }
@@ -117,7 +119,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
   const tete = [...personnes].sort((x, y) => y.population_phase3_5_retenue! - x.population_phase3_5_retenue!).slice(0, 3)
   const pirePhase = (ch ?? []).reduce<number | null>((m, l) => (l.phase_retenue == null ? m : Math.max(m ?? 0, l.phase_retenue)), null)
   const periode = periodeCH(ch?.[0])
-  const nbAlertes = dossiers.filter((d) => d.recolte && d.recolte.proba_chute_pct! >= SEUIL_ALERTE_PCT).length
+  const nbAlertes = dossiers.filter((d) => d.recolte && estAlerte(d.recolte)).length
   const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
   const titre = fiche ? fiche.nom : etat === 'ok' ? `${pluriel(aSurveiller.length, 'département')} à surveiller en ${annee}` : `Campagne ${annee}`
@@ -132,7 +134,8 @@ export default function Campagne({ cadre, publier }: PropsMode) {
     !ch ? { etat: 'info', texte: 'Cadre harmonisé non disponible' }
       : { etat: etatPhase(pirePhase as LigneCadreHarmonise['phase_retenue']), texte: `**${pluriel(crises.length, 'département')}** en phase ${PHASE_CRISE} ou plus ; **${nombre(totalPersonnes)}** personnes en phases 3 à 5${tete.length ? `, surtout ${tete.map((l) => l.departement).join(', ')}` : ''}` },
     etatAlerte !== 'ok' ? { etat: 'info', texte: `Alerte récolte non disponible pour ${annee}` }
-      : { etat: nbAlertes ? 'attention' : 'ok', texte: `**${pluriel(nbAlertes, 'département')}** en alerte récolte (risque ≥ ${SEUIL_ALERTE_PCT} %)` },
+      : nbAlertes ? { etat: 'attention', texte: `**${pluriel(nbAlertes, 'département')}** en alerte récolte (prévision fiable, risque ≥ ${SEUIL_ALERTE_PCT} %)` }
+        : { etat: 'info', texte: `Aucune alerte récolte fiable pour ${annee} : risque habituel seulement` },
     !t ? { etat: 'info', texte: `Saison ${annee} non disponible` }
       : { etat: t.classe === 'sèche' ? 'attention' : 'ok', texte: `Saison la plus probable : **${t.classe}** (${pct(t.proba)} de chances)` },
   ]
@@ -269,7 +272,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
         {fiche && <div className="mt-3"><Lien onClick={() => cadre.choisir(null)}>Revenir à la liste du pays</Lien></div>}
         <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }, { modele: 'M3', moment: 'FIN_MAI', volet: 'alerte' }]} avertissements={[...(saison.data?.avertissements ?? []), ...(alerte.data?.avertissements ?? [])]}>
           <p>Indicatif, à valider avec les techniciens. Les signaux n'ont pas la même fiabilité : ils sont montrés côte à côte et jamais fondus en un seul chiffre. Le classement compte les signaux au rouge.</p>
-          <p>Au rouge : pluie attendue au moins {2 * ECART_PLUIE_PCT} % sous la normale ; risque de chute de récolte d'au moins {SEUIL_ALERTE_PCT} % (vu fin mai : risque habituel du département) ; vulnérabilité « très élevée » (relative) ; Cadre harmonisé en phase {PHASE_CRISE} ou plus, compté seulement pour l'année de son cycle. À l'orange : pluie {ECART_PLUIE_PCT} % sous la normale, risque de récolte au-dessus de l'habituel, vulnérabilité « élevée », phase 2 « sous pression ».</p>
+          <p>Au rouge : pluie attendue au moins {2 * ECART_PLUIE_PCT} % sous la normale ; risque de chute de récolte d'au moins {SEUIL_ALERTE_PCT} % avec une prévision fiable ; vulnérabilité « très élevée » (relative) ; Cadre harmonisé en phase {PHASE_CRISE} ou plus, compté seulement pour l'année de son cycle. À l'orange : pluie {ECART_PLUIE_PCT} % sous la normale, risque de récolte au-dessus de l'habituel ou d'au moins {SEUIL_ALERTE_PCT} % sans prévision fiable (vu fin mai, c'est le risque habituel du département), vulnérabilité « élevée », phase 2 « sous pression ».</p>
           <p>Vulnérabilité : score relatif et indicatif (méthode v1), aléa sécheresse 60 %, sensibilité des rendements 40 %.</p>
         </MethodeModele>
       </>} />

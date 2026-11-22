@@ -10,6 +10,8 @@ from api.main import creer_app
 
 from .conftest import JETON, parametres_test, service_test
 
+ADMIN = {"X-Admin-Token": JETON}
+
 V1 = "/api/v1"
 
 
@@ -94,7 +96,7 @@ def test_vulnerabilite(client):
 
 def test_systeme_sante_et_cache(client):
     assert client.get(f"{V1}/systeme/sante").json()["statut"] == "ok"
-    etat = client.get(f"{V1}/systeme/cache").json()
+    etat = client.get(f"{V1}/systeme/cache", headers=ADMIN).json()
     assert etat["statut"] == "pret" and etat["mode"] == "memoire"
     assert etat["info"]["nb_cles"] > 50 and etat["info"]["lignes_par_mart"]["suivi"] == 72
 
@@ -103,11 +105,11 @@ def test_administration(client, service):
     url = f"{V1}/systeme/cache/rafraichir"
     assert client.post(url).status_code == 401
     assert client.post(url, headers={"X-Admin-Token": "faux"}).json()["erreur"]["code"] == "jeton_invalide"
-    premiere = client.get(f"{V1}/systeme/cache").json()["version_active"]
+    premiere = client.get(f"{V1}/systeme/cache", headers=ADMIN).json()["version_active"]
     r = client.post(url, headers={"X-Admin-Token": JETON})
     assert r.status_code == 202
     for _ in range(100):  # la tâche de fond tourne dans la boucle du client de test
-        etat = client.get(f"{V1}/systeme/cache").json()
+        etat = client.get(f"{V1}/systeme/cache", headers=ADMIN).json()
         if etat["version_active"] != premiere:
             break
     assert etat["versions_conservees"] == [etat["version_active"], premiere]
@@ -150,7 +152,7 @@ def test_mode_simple_sans_redis_charge_avant_la_premiere_requete():
     with TestClient(creer_app(p, s)) as c:
         r = c.get(f"{V1}/referentiels/departements")  # pas de 503 : les marts sont chargés au démarrage
         assert r.status_code == 200 and r.headers["x-cache-mode"] == "memoire"
-        assert c.get(f"{V1}/systeme/cache").json()["info"]["declencheur"] == "demarrage"
+        assert c.get(f"{V1}/systeme/cache", headers=ADMIN).json()["info"]["declencheur"] == "demarrage"
 
 
 def test_detection_port_occupe():

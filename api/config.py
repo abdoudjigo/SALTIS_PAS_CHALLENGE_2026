@@ -24,6 +24,9 @@ class Parametres(BaseSettings):
     # IA vocale (wolof) : Space Hugging Face voix/space/ (ex. « akai/assaman-suuf-voix ») ; vide = voix wolof désactivée
     voix_space: str = ""
     hf_token: SecretStr = SecretStr("")
+    # Questions posées à la voix (POST /voix/texte, /voix/question) : aucun écran ne s'en sert encore. Coupées par défaut
+    # tant qu'aucun client (site, WhatsApp, serveur vocal) ne les utilise (audit, constat BE-02).
+    voix_questions: bool = False
 
     # Serveur (python -m api)
     api_host: str = "127.0.0.1"

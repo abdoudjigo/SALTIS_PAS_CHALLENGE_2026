@@ -23,6 +23,7 @@ import { Attente, MethodeModele, Morceau } from '../previsions'
 import { CLASSE_WO, cultureWo, decadeWo, FIN_WO, wo } from '../voix/wolof'
 import { cycleDit, fenetreCulture, joursEau, laCulture, nombreSacs, sacsEngraisParHa, texteJoursEau } from '../regles/conseil'
 import { aLire, puceAnnee, type LigneCheck } from '../interface/fiche'
+import { ChoixDepartement } from '../interface/ChoixDepartement'
 import { FicheReponse } from '../interface/FicheReponse'
 import { AFaire, Avis, Bouton, Cle, Cles, ErreurChamp, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../interface/ui'
 
@@ -72,8 +73,14 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   const { position, definirPosition, contours, ref, choisir } = cadre
   const [etat, setEtat] = useState<Etat>('repos')
   const [saisie, setSaisie] = useState({ lat: '', lon: '' })
+  // Département choisi dans la liste (sans carte ni GPS) ; une position (GPS, carte, coordonnées) reste prioritaire
+  const [choisi, setChoisi] = useState<string | null>(null)
+  const choisirDepartement = (c: string) => {
+    definirPosition(null)
+    setChoisi(c)
+  }
 
-  const code = useMemo(() => (position ? trouverDepartement(contours, position[0], position[1]) : null), [position, contours])
+  const code = useMemo(() => (position ? trouverDepartement(contours, position[0], position[1]) : choisi), [position, contours, choisi])
   useEffect(() => {
     if (code) choisir(code)
   }, [code, choisir])
@@ -181,22 +188,25 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   // Des chaînes, pas l'objet : le compilateur React sait qu'elles ne seront pas modifiées
   const [nomDep, regionDep, zoneDep] = [departement?.departement, departement?.region, departement?.zone_agroecologique]
   // La réponse en 1 à 3 lignes : l'eau gardée par le sol, la saison attendue, une alerte sol s'il y en a une
-  const lignesFiche: LigneCheck[] = !departement ? [{ etat: 'info', texte: 'Ou touchez votre champ sur la carte' }] : [
+  const lignesFiche: LigneCheck[] = !departement ? [{ etat: 'info', texte: 'Ou choisissez votre département dans la liste, ou touchez votre champ sur la carte' }] : [
     ...(sol && jours !== null ? [{ etat: 'info' as const, texte: jours === 0 ? 'Le sol garde l’eau **moins de 5 jours** sans pluie' : `Le sol garde l’eau **${jours} jours** sans pluie` }] : []),
     ...(tAttendue ? [{ etat: (tAttendue.classe === 'sèche' ? 'attention' : 'ok') as LigneCheck['etat'], texte: `Saison ${annee} : plutôt **${tAttendue.classe}**` }] : []),
     ...(sol?.amendement_ph_recommande ? [{ etat: 'attention' as const, texte: 'Sol : **amendement du pH** recommandé' }] : []),
   ]
   const titreFiche = departement ? titre : 'Où est votre champ ?'
   const texteEcoute = aLire(titreFiche, lignesFiche).join('\n')
-  const texteEcouteWo = useTexteParcelleWo({ position: position ? [position[0], position[1]] : null,
+  const texteEcouteWo = useTexteParcelleWo({ position: position ? [position[0], position[1]] : departement ? [departement.longitude, departement.latitude] : null,
     departement: nomDep && regionDep && zoneDep ? { departement: nomDep, region: regionDep, zone_agroecologique: zoneDep } : undefined, sol, choix, adaptees, attendue, annee: annee, semis, recolte, vulnerabilite })
 
   const sortie = useMemo<Sortie>(() => {
     const surPoint = (p: LonLat) => definirPosition(p)
-    if (!position) return { surPoint, resume: 'Où est votre champ ?', vue: { ambiance: 'jour', camera: cadrer.pays(cadre), zones: {}, departements: null, satellite: false, arcs: [], reperes: [], pluie: 0 } }
+    if (!position && !departement) return { surPoint, resume: 'Où est votre champ ?', vue: { ambiance: 'jour', camera: cadrer.pays(cadre), zones: {}, departements: null, satellite: false, arcs: [], reperes: [], pluie: 0 } }
+    const resume = departement ? (choix ? `${departement.departement} : ${n ? `${n} culture${n > 1 ? 's' : ''} qui réussi${n > 1 ? 'ssent' : 't'}` : 'aucune culture sûre'}` : departement.departement) : 'Point hors du Sénégal'
+    // Département choisi dans la liste, sans point : on cadre le département, sans repère de parcelle
+    if (!position) return { surPoint, resume, vue: { ambiance: 'jour', zones: null, departements: null, arcs: [], pluie: 0, satellite: false, selection: code, camera: cadrer.departement(cadre, code!, { inclinaison: 42, cap: -10 }), reperes: [] } }
     return {
       surPoint,
-      resume: departement ? (choix ? `${departement.departement} : ${n ? `${n} culture${n > 1 ? 's' : ''} qui réussi${n > 1 ? 'ssent' : 't'}` : 'aucune culture sûre'}` : departement.departement) : 'Point hors du Sénégal',
+      resume,
       vue: {
         ambiance: 'jour', zones: null, departements: null, arcs: [], pluie: 0, satellite: true,
         // Hors du Sénégal : on montre le point, sans descendre
@@ -215,8 +225,8 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   const zone = departement ? ZONE_PAR_CLE.get(cleZone(departement.zone_agroecologique)) : undefined
   const avis = (
     <>
-      {etat === 'refus' && <Avis>Localisation refusée. Touchez votre champ sur la carte, ou saisissez ses coordonnées.</Avis>}
-      {etat === 'indisponible' && <Avis>Position introuvable pour le moment. Touchez votre champ sur la carte, ou saisissez ses coordonnées.</Avis>}
+      {etat === 'refus' && <Avis>Localisation refusée. Choisissez votre département dans la liste, touchez votre champ sur la carte, ou saisissez ses coordonnées.</Avis>}
+      {etat === 'indisponible' && <Avis>Position introuvable pour le moment. Choisissez votre département dans la liste, touchez votre champ sur la carte, ou saisissez ses coordonnées.</Avis>}
       {position && !code && <Avis>Ce point est hors du Sénégal : les données couvrent les 45 départements du pays.</Avis>}
     </>
   )
@@ -225,9 +235,12 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
     return (
       <FicheReponse cadre={cadre} mode="parcelle" cle={`aucun-${etat}`} titre={titreFiche} lignes={lignesFiche} aEcouter={sortieEcoute.aEcouter} aEcouterWo={sortieEcoute.aEcouterWo}
         avant={
-          <Bouton plein className="mt-2 w-full" onClick={localiser} disabled={etat === 'recherche'}>
-            <LocateFixed className="size-4" aria-hidden />{etat === 'recherche' ? 'Recherche du signal…' : 'Me localiser'}
-          </Bouton>
+          <>
+            <Bouton plein className="mt-2 w-full" onClick={localiser} disabled={etat === 'recherche'}>
+              <LocateFixed className="size-4" aria-hidden />{etat === 'recherche' ? 'Recherche du signal…' : 'Me localiser'}
+            </Bouton>
+            <ChoixDepartement className="mt-3" libelle="Ou choisir mon département" departements={ref.departements} valeur={choisi} onChoisir={choisirDepartement} />
+          </>
         }
         etat={avis}
         detail={
@@ -327,15 +340,16 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
 
           <div className="mt-5 flex gap-2 border-t border-white/[0.09] pt-4">
             <Bouton onClick={localiser} disabled={etat === 'recherche'} className="flex-1"><LocateFixed className="size-4" aria-hidden />{etat === 'recherche' ? 'Recherche…' : 'Me relocaliser'}</Bouton>
-            <Bouton onClick={() => definirPosition(null)} className="flex-1">Revoir le pays</Bouton>
+            <Bouton onClick={() => { definirPosition(null); setChoisi(null) }} className="flex-1">Revoir le pays</Bouton>
           </div>
+          <ChoixDepartement className="mt-3" libelle="Un champ dans un autre département" departements={ref.departements} valeur={position ? null : choisi} onChoisir={choisirDepartement} />
 
           <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }, { modele: 'M4' }, { modele: 'M3', moment: 'FIN_MAI', culture: recolte?.culture, volet: 'rendement' }]}
             avertissements={[...(saisonDonnees?.avertissements ?? []), ...(semisDonnees?.avertissements ?? []), ...(recolteDonnees?.avertissements ?? [])]}>
             <p>Sol et risques sont des valeurs du département {departement.departement} (SoilGrids, CHIRPS) : elles ne décrivent pas votre parcelle au mètre près.</p>
             <p>Le pourcentage d'une culture est la part des années (1991-2020) où la saison des pluies couvre tout son cycle.</p>
             <p>La vulnérabilité est relative entre départements et indicative.</p>
-            <p>Position : {position![1].toFixed(4)}° N, {Math.abs(position![0]).toFixed(4)}° O.</p>
+            <p>{position ? `Position : ${position[1].toFixed(4)}° N, ${Math.abs(position[0]).toFixed(4)}° O.` : `Département choisi dans la liste (${departement.departement}), sans position précise du champ.`}</p>
             <p>Les trois lignes « selon les modèles » viennent de modèles différents, de fiabilité différente : elles se lisent séparément. Semis et récolte portent sur la culture conseillée (celle choisie, sinon la mieux adaptée). Récolte : année difficile à bonne année, 8 chances sur 10, vue fin mai.</p>
           </MethodeModele>
         </>

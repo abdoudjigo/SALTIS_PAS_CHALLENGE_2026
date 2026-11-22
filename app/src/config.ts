@@ -2,8 +2,10 @@
 const env = import.meta.env
 
 export const config = {
-  // Vide (production derrière le serveur web) : l'API est à la même adresse que le site. Absent : l'API locale.
-  apiUrl: (env.VITE_API_URL ?? 'http://localhost:8080').replace(/\/$/, ''),
+  // Production (site et API derrière le même Caddy) : vide ou absente = même adresse que le site. Une variable VITE_*
+  // vide est retirée par vite.config.ts : sans ce repli, le build de prod appelait http://localhost:8080.
+  // Développement : absente = l'API locale.
+  apiUrl: (env.VITE_API_URL ?? (env.PROD ? '' : 'http://localhost:8080')).replace(/\/$/, ''),
   /** Comptes de démonstration (le back d'authentification n'existe pas encore). Défaut : VITE_USE_MOCK */
   authDemo: String(env.VITE_AUTH_DEMO ?? env.VITE_USE_MOCK ?? 'true') === 'true',
   /** Données d'exemple intégrées au front, au lieu de l'API. Défaut : VITE_USE_MOCK */

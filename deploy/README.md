@@ -30,6 +30,7 @@ Dans `.env`, renseigner au minimum :
 | `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_DATABASE` | l'accès Snowflake (lecture des marts) |
 | `VITE_MAPBOX_TOKEN` | le jeton public Mapbox (`pk.…`) ; dans le compte Mapbox, autoriser le domaine du site |
 | `DOMAINE` | **obligatoire** : le nom de domaine (ex. `assaman-suuf.com`), sans `https://` ni `www.` ; sans lui, `docker compose` refuse de démarrer |
+| `API_ADMIN_TOKEN` | **obligatoire** : jeton des routes d'administration (relire les données, revenir à la version précédente, état du cache) : `openssl rand -hex 24` ; sans lui, `docker compose` refuse de démarrer |
 | `UMAMI_DB_PASSWORD`, `UMAMI_APP_SECRET` | **obligatoires** : deux secrets pour la mesure d'audience (`openssl rand -hex 24` chacun) ; voir section 7 |
 | `UMAMI_WEBSITE_ID` | identifiant du site dans Umami, à renseigner après sa création (section 7) ; vide = aucune mesure |
 | `EMAIL_CONTACT` | facultatif : l'adresse affichée sur la page Contact, au clic seulement (anti-spam) ; l'ancien nom `VITE_EMAIL_CONTACT` reste accepté |

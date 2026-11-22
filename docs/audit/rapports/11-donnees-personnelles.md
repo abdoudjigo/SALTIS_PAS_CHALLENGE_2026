@@ -107,6 +107,7 @@ flowchart LR
 - Effort : S (rédaction), délai d'instruction CDP à prévoir
 
 ### [PRIV-02] Deux flux absents de la page Confidentialité : avis des ONG par Gmail, et identifiant Mapbox dans le navigateur
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — la page Confidentialité mentionne l'avis des organisations (envoyé par e-mail via Gmail de Google, rien d'enregistré) et l'identifiant aléatoire et le signal de chargement de Mapbox ; Google et Hostinger sont ajoutés aux services tiers ; une mention d'information figure sous le formulaire d'avis (« envoyé par e-mail via Gmail de Google, n'indiquez ni nom de personne ni numéro de téléphone », lien vers la page). Vérifié dans le navigateur.
 - Sévérité : 🟠 Élevé   Statut : Constaté
 - Texte : loi n° 2008-12 (obligation d'information) ; principe de transparence
 - Où : `scene/AvisOng.tsx` (formulaire sans mention d'information) ; `api/routes/avis.py` (envoi SMTP) ; `.env.example:51-55` (Gmail) ; `node_modules/mapbox-gl/dist/mapbox-gl.js` (`mapbox.eventData`, `events.mapbox.com/events/v2`, `map.load`) ; `pages/site/Confidentialite.tsx` (tableau « Données traitées » et « Services tiers »)
@@ -136,6 +137,7 @@ flowchart LR
 - Effort : S
 
 ### [PRIV-05] Hébergeur, pays de stockage et transferts hors du Sénégal non documentés
+- **Suivi (22/11/2026, après l'audit)** : 🟡 Partiellement corrigé — l'hébergeur (Hostinger) est nommé dans les mentions légales et la page Confidentialité, et Mapbox est signalé aux États-Unis. **Reste** : pays du centre de données Hostinger, et encadrement des transferts hors du Sénégal à voir avec un juriste.
 - Sévérité : 🟡 Moyen   Statut : Constaté / À vérifier (pays du centre de données Hostinger)
 - Texte : loi n° 2008-12 (transfert vers un pays tiers : niveau de protection suffisant ou autorisation de la CDP, **à faire préciser par un juriste**)
 - Où : `MentionsLegales.tsx` (aucun hébergeur cité) ; registre (T1, T2, T4, T5, T6 vers des pays tiers)
@@ -160,13 +162,14 @@ flowchart LR
 - Effort : S
 
 ### [PRIV-08] Page Confidentialité seulement en français écrit, et petites inexactitudes
+- **Suivi (22/11/2026, après l'audit)** : 🟡 Partiellement corrigé — (a) le choix d'un département existe désormais (FE-02) ; (b) la voix wolof est décrite comme produite par le serveur, Hugging Face seulement si activé ; (c) le profil est décrit sans nom ni compte. **Reste** : un résumé oral en wolof de la page.
 - Sévérité : 🔵 Faible   Statut : Constaté
 - Texte : information compréhensible par les personnes concernées
 - Où : `pages/site/Confidentialite.tsx`
 - Constat :
   - Les agriculteurs visés lisent parfois peu le français, et aucune version orale ou wolof n'existe, alors que la mascotte sait lire en wolof.
   - Inexactitudes :
-    - (a) « vous pouvez […] choisir un département » : sans carte, ce n'est pas possible (FE-02) ;
+    - (a) « vous pouvez […] choisir un département » : sans carte, ce n'est pas possible (FE-02) ; *(corrigé le 22/11 : la liste existe désormais)*
     - (b) « Voix wolof : envoyé […] chez Hugging Face » : en prod, la synthèse est locale d'après `deploy/README.md` (à vérifier dans le `.env` de prod) ;
     - (c) « profil choisi » : c'est en réalité une fausse session avec jeton (ARC-06) ;
     - (d) la route audio n'est pas mentionnée. C'est acceptable tant qu'elle reste inutilisée (BE-02).

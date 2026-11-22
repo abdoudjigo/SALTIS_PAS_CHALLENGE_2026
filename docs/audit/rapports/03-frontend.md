@@ -46,6 +46,7 @@
 ## 3. Constats
 
 ### [FE-01] Le cache hors ligne des données d'API ne fonctionne pas (variable `apiUrl` absente du service worker)
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — la règle de cache est une expression régulière calculée au build (`motifApi`, `app/vite.config.ts`), sans variable extérieure : dans `sw.js` de prod, `/\/api\/v1\/(?!voix\/|avis|systeme\/)/` en `NetworkFirst` (7 jours, délai réseau 6 s), plus aucune occurrence de `apiUrl`. Testé avec une API locale (données des tests) : 9 réponses gardées en cache ; API arrêtée et page rechargée, `/referentiels/departements` et `/vulnerabilite` sont servis depuis le cache (200), une requête jamais vue et `/systeme/sante` échouent normalement ; plus de `ReferenceError`. **Reste** : afficher l'état hors ligne à l'écran (FE-03) ; activer les nouvelles versions (FE-05).
 - Sévérité : 🟠 Élevé   Statut : Constaté (dans le build du dépôt **et** dans `https://assaman-suuf.tech/sw.js`)
 - Où : `app/vite.config.ts:157` (`const apiUrl = …`) et `:216-217` (`url.href.startsWith(apiUrl)`)
 - Constat : la règle Workbox « données de l'API : réseau d'abord, cache si hors ligne » est une fonction recopiée telle quelle dans `sw.js`. La variable `apiUrl`, qui existe dans `vite.config.ts`, n'existe pas dans le service worker : la fonction lève `ReferenceError` à chaque requête GET qui l'atteint. Workbox n'attrape pas cette erreur (`node_modules/workbox-routing/Router.js:259-265`). Le navigateur passe alors directement au réseau, et **aucune réponse d'API n'est jamais mise en cache**. De plus, en prod, `VITE_API_URL` est vide : `apiUrl` vaudrait `http://localhost:8080`, ce qui ne correspondrait de toute façon jamais.
@@ -55,6 +56,7 @@
 - Effort : S
 
 ### [FE-02] Sans WebGL et sans GPS, l'agriculteur ne peut pas choisir son lieu autrement qu'en tapant latitude et longitude
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — nouveau composant `scene/interface/ChoixDepartement.tsx` : liste native région → département (14 régions, 45 départements), utilisable sur tout téléphone, au clavier et au lecteur d'écran. Visible dans « Ma parcelle » juste sous « Me localiser » (et pour changer de champ), et à la place de la carte quand WebGL manque (`GardeCarte`, prop `choix`), pour tous les autres écrans. Un département choisi sans GPS cadre le département, sans repère de parcelle ; « Revoir le pays » efface aussi ce choix. Vérifié à 375 px, dans un navigateur sans WebGL : Ma parcelle → Kolda (« 8 cultures y réussissent »), puis La saison qui vient → Podor, sans erreur. Un plantage trouvé pendant le test (lecture de `position[1]` sans position) a été corrigé.
 - Sévérité : 🟠 Élevé   Statut : Constaté (navigateur sans WebGL) / Probable (part des téléphones concernés)
 - Où : `app/src/scene/GardeCarte.tsx` (message « La carte 3D ne peut pas s'afficher sur cet appareil ») ; `app/src/scene/modes/Parcelle.tsx:133-153` (géolocalisation, sinon saisie de coordonnées en degrés décimaux)
 - Constat : quand WebGL manque, la carte est remplacée par un message. C'est bien géré, sans plantage. Mais le seul moyen de désigner son champ devient « Me localiser » (GPS) ou une saisie de latitude et longitude. Il n'existe aucune liste région → département dans les écrans (`grep "<select"` : seulement l'année et le formulaire d'avis).
@@ -64,6 +66,7 @@
 - Effort : S
 
 ### [FE-03] Aucun écran n'affiche d'erreur : une panne réseau ressemble à « donnée non disponible »
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — composant commun `scene/interface/EtatReseau.tsx`, en tête de la fenêtre de résultats de **tous** les écrans : « Vous êtes hors ligne » (les données déjà consultées restent affichées) ou « Le serveur ne répond pas » avec un bouton **Réessayer**, qui relance seulement les requêtes en échec. Une absence de donnée (404, 422) n'est pas comptée comme une panne. Précision sur le constat initial : les écrans qui lisent des **prévisions** affichaient déjà un message d'erreur, via `etatPrevision` et `Attente`. Ma recherche de `isError` ne pouvait pas le voir. Les 6 écrans fondés sur les marts (BesoinsPays, ContreSaison, Exporter, Potentiel, Repartir, une partie de Semer) n'avaient en revanche rien. Vérifié avec une API locale : API coupée → bandeau et « Réessayer » ; API relancée puis « Réessayer » → bandeau disparu et données rechargées ; hors ligne simulé → « Vous êtes hors ligne », puis disparition au retour du réseau.
 - Sévérité : 🟠 Élevé   Statut : Constaté
 - Où : `app/src/scene/modes/*.tsx` (12 écrans) ; `app/src/main.tsx:11-23` ; `app/src/api/client.ts:80-81`
 - Constat : aucun des 12 écrans ne lit `isError` ou `error` de TanStack Query (`grep -rlE "isError|\berror\b" scene/modes` → 0 fichier). Il n'y a ni `QueryCache.onError` global, ni `ErrorBoundary` en dehors de la carte (`GardeCarte.tsx:31`). Le client prépare pourtant de bons messages (« Vous êtes hors ligne. », « Le serveur ne répond pas. Réessayez dans un instant. »), mais ils ne sont jamais montrés. Après 2 tentatives, `data` reste `undefined` et les écrans affichent « — » ou « non disponible ».
@@ -123,6 +126,15 @@
 - Où : —
 - Constat : axe et Lighthouse n'ont pas pu être lancés (`npx` refusé par le contrôle des permissions ; pas de WebGL dans le navigateur d'audit). Contrôles manuels sur la landing de prod à 360 px : titres hiérarchisés (un `h1`, puis des `h2`), `lang="fr"`, `lang="wo"` sur le titre wolof (`Landing.tsx:262`), `alt` sur tous les logos (chargés en `lazy`), aucun bouton sans nom. Les dialogues ont `role="dialog"` et `aria-modal` (`Landing.tsx:429`, `AvisOng.tsx:79`). Le calcul de contraste par script a donné des faux positifs (textes sur fond dégradé) ; la capture d'écran ne montre pas de problème évident.
 - Recommandation : lancer `npx @axe-core/cli` et `npx lighthouse --form-factor=mobile` (profil 3G bridé) sur la landing et sur la carte, depuis un poste autorisé, et sur un Android d'entrée de gamme réel. Vérifier en priorité le piège du focus dans les dialogues et la navigation clavier sur la carte.
+- Effort : S
+
+### [FE-11] (Constat ajouté le 22/11/2026) Le build de prod du code actuel appelait l'API sur `http://localhost:8080`
+- Sévérité : 🔴 Critique (au prochain déploiement)   Statut : Constaté puis ✅ corrigé le 22/11/2026
+- Où : `app/vite.config.ts:154` (retire du shell toute variable `VITE_*` vide, boucle ajoutée par le commit `80d3d88`, après la version en prod `3922c9e`) ; `deploy/Dockerfile.web` (`ENV VITE_API_URL=""` = même origine) ; `app/src/config.ts:6` (repli `?? 'http://localhost:8080'`)
+- Constat : la boucle retire `VITE_API_URL=""`. Le front compilé n'a donc plus cette variable et retombe sur `http://localhost:8080`.
+- Preuve : build fait comme en prod, objet d'environnement compilé sans `VITE_API_URL`, et `apiUrl:(e.VITE_API_URL??"http://localhost:8080")`.
+- Impact : le site en ligne n'est pas touché aujourd'hui (il date d'avant la boucle). Mais au prochain déploiement de `main`, toutes les requêtes de données seraient parties vers la machine du visiteur (bloquées en plus par la CSP) : plus aucune donnée à l'écran.
+- Correction : en production, `VITE_API_URL` vide ou absente = même origine, dans `src/config.ts` (`env.PROD ? ''`) et dans `vite.config.ts`. Vérifié : le build de prod utilise la même origine.
 - Effort : S
 
 ---

@@ -13,7 +13,8 @@ import { Avis, Marque, Methode, SaisieAnnee, Squelette } from './interface/ui'
 export function Attente({ etat, objet = 'cette sélection', lignes = 4 }: { etat: EtatPrevision; objet?: string; lignes?: number }) {
   if (etat === 'ok') return null
   if (etat === 'chargement') return <Squelette lignes={lignes} />
-  if (etat === 'erreur') return <Avis>Les prévisions ne répondent pas pour le moment. Réessayez dans un instant.</Avis>
+  // Le bandeau commun (EtatReseau) propose « Réessayer » ; ici, on dit seulement ce qui manque
+  if (etat === 'erreur') return <Avis>Les prévisions ne répondent pas pour le moment : ce n’est pas qu’elles manquent.</Avis>
   if (etat === 'absente') return <p className="mt-4 text-sm leading-relaxed text-white/70">Pas de prévision pour {objet}.</p>
   return (
     <div className="mt-4 flex gap-3 border-l-2 border-white/20 pl-3" role="status">

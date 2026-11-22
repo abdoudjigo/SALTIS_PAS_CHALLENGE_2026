@@ -58,6 +58,9 @@ services:
       API_DOCS: ${API_DOCS:-false}
       # Caddy est le seul à joindre l'API : son X-Forwarded-For donne l'adresse du visiteur (limitation de débit)
       FORWARDED_ALLOW_IPS: "*"
+      # Obligatoire : sans jeton, impossible de relire les données après un dbt build (POST /systeme/cache/rafraichir).
+      # Générer avec : openssl rand -hex 24 (audit, constat ARC-03)
+      API_ADMIN_TOKEN: ${API_ADMIN_TOKEN:?API_ADMIN_TOKEN manquant dans .env - générer avec openssl rand -hex 24}
     volumes:
       - api-donnees:/donnees
       - voix-cache:/app/voix/cache

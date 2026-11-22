@@ -66,6 +66,7 @@ Aucune route n'exige d'authentification, à part l'administration : c'est voulu,
 ## 4. Constats
 
 ### [BE-01] `POST /voix/parler` synthétise n'importe quel texte : un seul visiteur peut bloquer la voix pour tous
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — texte limité à **700 caractères** (le plus long réellement envoyé par le front : 476, mesuré sur les 6 écrans). **Une seule synthèse à la fois, locale ou Space**, avec 6 demandes en attente au plus (`503 voix_occupee` ensuite). Délai vers le Space ramené de 900 à 120 s, attente du front de 15 à 3 minutes. Cache des voix en **LRU** : les moins récemment utilisées sont supprimées au-delà du plafond, il ne peut plus être bloqué. Tests : `x * 701` → 422, `test_cache_des_voix_supprime_les_plus_anciennes`. **Reste (option)** : n'accepter que des identifiants de phrases servis par l'API (ARC-05), et sortir la voix dans un service séparé (ARC-02).
 - Sévérité : 🟠 Élevé   Statut : Constaté (code) / Probable (effet en charge, non testé pour ne pas charger la prod)
 - Où : `api/routes/voix.py:112-160` (`TexteWolof.texte` jusqu'à 1 500 car.) ; `:24-29` (sémaphore 1, file de 6) ; `api/voix/espace.py:32,53-60` (délai de 900 s, pas de sémaphore) ; `api/routes/voix.py:152-155` (cache disque plafonné à 400 fichiers)
 - Constat : la route accepte un texte quelconque, pas seulement les phrases produites par la plateforme. Une voix nouvelle coûte plusieurs secondes à plusieurs minutes de processeur. Trois effets :
@@ -77,6 +78,7 @@ Aucune route n'exige d'authentification, à part l'administration : c'est voulu,
 - Effort : M
 
 ### [BE-02] Routes vocales publiques sans client : `/voix/question` (audio) et `/voix/texte`
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — réglage `VOIX_QUESTIONS` (faux par défaut) : `/voix/texte` et `/voix/question` répondent `404 fonction_inactive` tant qu'aucun client ne s'en sert. Test : `test_questions_a_la_voix_coupees_par_defaut`. Documenté dans `api/README.md` et `.env.example`.
 - Sévérité : 🟡 Moyen   Statut : Constaté
 - Où : `api/routes/voix.py:71-110` ; aucune référence dans `app/src` (module 01)
 - Constat : ces deux routes sont en ligne derrière Caddy, que seul `/api/*` filtre. `/voix/question` accepte 5 Mo d'audio et les transmet au Space Hugging Face. Aucun écran ne les appelle.
@@ -101,6 +103,7 @@ Aucune route n'exige d'authentification, à part l'administration : c'est voulu,
 - Effort : S
 
 ### [BE-05] `GET /systeme/cache` est public et détaille le fonctionnement interne
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — `GET /systeme/cache` exige l'en-tête `X-Admin-Token` (401 sans jeton) ; `/systeme/sante` reste public pour la supervision. Test : `test_etat_du_cache_reserve_a_l_administration`. Documentation mise à jour (`api/README.md`, `docs/technique/guide-api.md`).
 - Sévérité : 🟡 Moyen   Statut : Constaté (prod)
 - Où : `api/routes/systeme.py:50-54` ; `deploy/Caddyfile` (`handle /api/*`)
 - Constat : sans jeton, la route renvoie les versions conservées, le nombre de lignes par mart, les colonnes ignorées, les durées de lecture Snowflake, le déclencheur, la taille et la dernière erreur.
