@@ -171,10 +171,12 @@ export default function Scene() {
 
   const large = ecran.l >= 768
   const [cran, setCran] = useState<Cran>(1)
+  // Le tableau de bord de l'ONG occupe le bas de la carte : la carte se cadre au-dessus (hauteur du panneau ouvert)
+  const avecTableau = Boolean(sortie.tableauDeBord)
   const marge = useMemo(
     // La carte se cadre dans la place laissée libre par la fenêtre (à droite) ou par le tiroir (en bas)
-    () => (large ? { top: 70, bottom: 50, left: 70, right: LARGEUR_FENETRE_PX + 48 } : { top: 124, left: 10, right: 10, bottom: hauteurCran(cran === 2 ? 1 : cran, ecran.h) + 8 }),
-    [large, ecran.h, cran],
+    () => (large ? { top: 70, bottom: avecTableau ? 290 : 50, left: 70, right: LARGEUR_FENETRE_PX + 48 } : { top: 124, left: 10, right: 10, bottom: hauteurCran(cran === 2 ? 1 : cran, ecran.h) + 8 }),
+    [large, ecran.h, cran, avecTableau],
   )
   const ouvrir = useCallback((id: string) => {
     setIdMode(id)
@@ -301,7 +303,13 @@ export default function Scene() {
       <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} reponse={sortie.resume} />
 
 
-      {large && !sansCarte && sortie.legende && <div className="verre-scene absolute bottom-8 left-24 z-10 rounded-lg px-3.5 py-3">{sortie.legende}</div>}
+      {/* Bas de la carte, entre le dock et la fenêtre : la légende, puis le tableau de bord de l'écran (ONG) */}
+      {large && (sortie.tableauDeBord || (!sansCarte && sortie.legende)) && (
+        <div className="pointer-events-none absolute bottom-6 left-24 z-10 flex flex-col items-start gap-2" style={{ right: LARGEUR_FENETRE_PX + 40 }}>
+          {!sansCarte && sortie.legende && <div className="verre-scene pointer-events-auto rounded-lg px-3.5 py-3">{sortie.legende}</div>}
+          {sortie.tableauDeBord && <div className="w-full max-w-[64rem]">{sortie.tableauDeBord}</div>}
+        </div>
+      )}
 
       {/* La fonctionnalité s'ouvre dans une fenêtre flottante (pop-up), un tiroir sur téléphone */}
       {cadre && (

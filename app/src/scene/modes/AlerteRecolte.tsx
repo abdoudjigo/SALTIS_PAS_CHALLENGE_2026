@@ -12,6 +12,7 @@ import { nomMoment } from '../regles/fiabilite'
 import { Attente, MarquesRendement, MethodeModele } from '../previsions'
 import { aLire, puceAnnee, puceChoix, puceCulture, type LigneCheck } from '../interface/fiche'
 import { FicheReponse } from '../interface/FicheReponse'
+import { ColonnesDepartements, TableauDeBord } from '../interface/TableauDeBord'
 import { Cle, Cles, Degrade, Fourchette, Groupe, Lien, Ligne, Lignes, Marque, Rang } from '../interface/ui'
 
 const TOUTES = 'TOUTES'
@@ -79,6 +80,30 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
         },
       },
       resume: n ? `${pluriel(n)} en alerte · ${annee}` : `Pas d'alerte fiable · ${annee}`,
+      // Sur la scène : le risque de chute de chaque département, face au seuil d'alerte
+      tableauDeBord: requete.data ? (() => {
+        const sansSerie = cadre.ref.departements.filter((d) => !parCode.has(d.code_departement))
+        const haut = Math.max(SEUIL_ALERTE_PCT + 10, ...classement.map((l) => l.proba_chute_pct ?? 0))
+        return (
+          <TableauDeBord titre={`Récolte ${annee} · risque de chute, vu à ${nomMoment(moment)}`} tuiles={[
+            { valeur: n, libelle: `départements en alerte (prévision fiable, risque ≥ ${SEUIL_ALERTE_PCT} %)`, etat: n ? 'non' : 'ok' },
+            { valeur: ne, libelle: 'au risque habituel élevé, sans prévision de l’année', etat: ne ? 'attention' : 'ok' },
+            { valeur: premier ? pct(premier.proba_chute_pct) : '—', libelle: premier ? `risque le plus haut : ${premier.departement} (${libelle(premier.culture).toLowerCase()})` : 'aucun risque calculé', etat: premier && estAlerte(premier) ? 'non' : 'info' },
+            { valeur: classement.length, libelle: `départements avec une série de rendement (${sansSerie.length} sans)`, etat: 'info' },
+          ]}>
+            <ColonnesDepartements code={code} choisir={cadre.choisir} max={haut}
+              seuil={{ valeur: SEUIL_ALERTE_PCT, libelle: `seuil d'alerte (${SEUIL_ALERTE_PCT} %)` }}
+              echelle={{ haut: pct(haut), bas: '0 %' }}
+              consigne="Les plus exposés à gauche. Point blanc : alerte fiable. Survolez une barre pour lire un département ; cliquez pour le voir sur la carte."
+              legende={<span className="inline-flex items-center gap-1"><span className="h-2 w-6 rounded-[2px]" style={{ background: degrade(couleurChute, 5, 65) }} aria-hidden />risque de chute, faible à fort</span>}
+              elements={[
+                ...classement.map((l) => ({ code: l.code_departement, nom: l.departement, valeur: l.proba_chute_pct, couleur: couleurChute(l.proba_chute_pct), marque: estAlerte(l),
+                  detail: `${pct(l.proba_chute_pct)} de risque (${libelle(l.culture).toLowerCase()}), habituel ${pct(l.proba_chute_reference_pct)}${estAlerte(l) ? ' · ALERTE fiable' : risqueHabituelEleve(l) ? ' · risque habituel élevé' : ''}` })),
+                ...sansSerie.map((d) => ({ code: d.code_departement, nom: d.departement, valeur: null, couleur: NON_DISPONIBLE, detail: 'pas de série de rendement' })),
+              ]} />
+          </TableauDeBord>
+        )
+      })() : undefined,
       vue: {
         ambiance: 'crepuscule', camera: cadrer.pays(cadre, { inclinaison: 34, cap: 8 }), zones: null, relief: false, selection: code, satellite: false, arcs: [], reperes: [], pluie: 0,
         alertes: alertes.map((l) => l.code_departement),
@@ -94,7 +119,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` est résumé par `cleLignes`
-  }, [classement, alertes, eleves, requete.data, n, annee, code, cadre, fiche, moment, titre, cleLignes])
+  }, [classement, alertes, eleves, requete.data, n, ne, premier, annee, code, cadre, fiche, moment, titre, cleLignes])
   usePublier(publier, sortie)
 
   const puces = [

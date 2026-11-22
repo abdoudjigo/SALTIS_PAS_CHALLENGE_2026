@@ -13,9 +13,9 @@
 import { lazy, Suspense, useMemo } from 'react'
 import { useSuivi } from '../../hooks/donnees'
 import { useActuelles, etatActuel, etatPrevision, usePrevisionSaison } from '../../hooks/previsions'
-import { mm, nombre } from '../../lib/format'
+import { mm, nombre, pct } from '../../lib/format'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
-import { CLASSES3, couleurPluie, degrade, parts3, tendance } from '../carte/couleurs'
+import { CLASSES3, couleurAnomalie, couleurPluie, degrade, parts3, tendance } from '../carte/couleurs'
 import { datesDecade, MODELES, natureAnnee } from '../regles/fiabilite'
 import { Attente, MethodeModele } from '../previsions'
 import { dire } from '../voix/lecture'
@@ -23,6 +23,7 @@ import { CLASSE_WO, FIN_WO, pctWo, wo } from '../voix/wolof'
 import { anneeSecheARisque, SEUIL_SAISON_INCERTAINE_PCT } from '../regles/conseil'
 import { aLire, puceAnnee, type LigneCheck } from '../interface/fiche'
 import { FicheReponse } from '../interface/FicheReponse'
+import { ColonnesDepartements, TableauDeBord } from '../interface/TableauDeBord'
 import { AFaire, Cle, Cles, Degrade, Fourchette, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Parts, type Action } from '../interface/ui'
 
 const CourbeCumul = lazy(() => import('../interface/CourbeCumul'))
@@ -145,6 +146,32 @@ export default function Saison({ cadre, publier }: PropsMode) {
     return {
       aEcouter: agriculteur ? (t ? aLire(titre, lignesFiche) : undefined) : t && probas ? ecouterSaison(annee, t.classe, t.proba, probas, ligne, a.tendance, passee, [`${titre}.`, phrase, ...faire]) : undefined,
       etape: agriculteur ? undefined : { titre, question: questionOng('saison'), lignes: lignesFiche.slice(0, 3), legende: { titre: `Pluie prévue · saison ${annee}`, entrees: [200, 450, 750, 1050, 1350].map((v) => ({ couleur: couleurPluie(v), libelle: `${nombre(v)} mm` })) } },
+      // ONG, sur la scène : les trois chances et l'écart de pluie à la normale, département par département
+      tableauDeBord: agriculteur || !lignes ? undefined : (() => {
+        const ecartDe = (x: (typeof lignes)[number]) => (x.pluie_prevue_mm != null && x.pluie_normale_mm ? Math.round((x.pluie_prevue_mm / x.pluie_normale_mm - 1) * 100) : null)
+        const tries = [...lignes].sort((x, y) => (ecartDe(x) ?? 1e9) - (ecartDe(y) ?? 1e9))
+        const ecarts = tries.map(ecartDe).filter((e): e is number => e !== null)
+        const borne = Math.max(10, ...ecarts.map(Math.abs))
+        const sous = ecarts.filter((e) => e <= -5).length
+        return (
+          <TableauDeBord titre={`Saison ${annee} · pluie attendue face à la normale`} tuiles={[
+            { valeur: pct(probas?.proba_seche_pct ?? null), libelle: 'de chances d’une saison sèche', etat: probas?.proba_seche_pct != null && anneeSecheARisque(probas.proba_seche_pct) ? 'attention' : 'info' },
+            { valeur: pct(probas?.proba_normale_pct ?? null), libelle: 'de chances d’une saison normale', etat: 'info' },
+            { valeur: pct(probas?.proba_humide_pct ?? null), libelle: 'de chances d’une saison humide', etat: 'info' },
+            { valeur: ecarts.length ? sous : '—', libelle: 'départements au moins 5 % sous la normale', etat: !ecarts.length ? 'info' : sous ? 'attention' : 'ok' },
+          ]}>
+            <ColonnesDepartements code={code} choisir={cadre.choisir} min={-borne} max={borne}
+              echelle={{ haut: `+${nombre(borne)} %`, zero: 'normale', bas: `-${nombre(borne)} %` }}
+              consigne="Les plus secs à gauche. Survolez une barre pour lire un département ; cliquez pour le voir sur la carte."
+              legende={<><span className="inline-flex items-center gap-1"><span className="size-2 rounded-[2px]" style={{ background: couleurAnomalie(-25) }} aria-hidden />sous la normale</span><span className="inline-flex items-center gap-1"><span className="size-2 rounded-[2px]" style={{ background: couleurAnomalie(25) }} aria-hidden />au-dessus</span></>}
+              elements={tries.map((x) => {
+                const e = ecartDe(x)
+                return { code: x.code_departement, nom: x.departement, valeur: e, couleur: couleurAnomalie(((e ?? 0) / borne) * 40), // couleurs calées sur l'écart de l'année
+                  detail: e === null ? 'pluie attendue non disponible' : `${mm(x.pluie_prevue_mm)} attendus, normale ${mm(x.pluie_normale_mm)} (${nombre(e, { signe: true })} %)` }
+              })} />
+          </TableauDeBord>
+        )
+      })(),
       aEcouterWo: t ? ecouterSaisonWo(annee, t.classe, t.proba, ligne, a.tendance, passee) : undefined,
       resume,
       vue: {

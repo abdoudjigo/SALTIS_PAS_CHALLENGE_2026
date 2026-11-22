@@ -64,6 +64,7 @@ def creer_limites(p) -> dict[str, LimiteDebit]:
         "global": LimiteDebit(p.limite_requetes_par_minute),
         "voix_texte": LimiteDebit(p.limite_voix_texte_par_minute),
         "voix_synthese": LimiteDebit(p.limite_voix_synthese_par_minute),
+        "llm": LimiteDebit(p.limite_llm_par_minute),
         "admin": LimiteDebit(p.limite_admin_par_minute),
         "avis": LimiteDebit(5, 600),  # avis ONG : 5 envois par adresse et par 10 minutes
     }

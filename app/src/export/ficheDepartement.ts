@@ -3,6 +3,7 @@
 import { attendreRepos, capturerCarte } from './capture'
 import { CAPTURE_ECHOUEE, CARTE_ABSENTE } from './dossierNational'
 import { BAS, creerDocument, LARGEUR_UTILE, MARGE, Redacteur, terminer } from './pdf'
+import { redigerExplications } from './explication'
 import { dateHeureFr, ligneSource, NON_DISPONIBLE, pdfTexte, slug, sourcesCompletes, valeurTexte } from './texte'
 import type { CarteFiche, DonneesFiche, Legende, OptionsExport, ResultatExport, Valeur } from './types'
 
@@ -44,17 +45,33 @@ export async function exporterFicheDepartement(
     }
   }
 
-  const doc = await creerDocument()
   const { departement: dep } = donnees
+  const redaction = await redigerExplications([{
+    id: 'fiche',
+    titre: `Indicateurs de ${dep.nom}`,
+    contexte: [
+      `Phase du Cadre harmonisé : ${donnees.phaseCh.phase ?? NON_DISPONIBLE} ${donnees.phaseCh.nom ?? ''} ${donnees.phaseCh.periode ?? ''}`,
+      `Saison prévue : ${valeurTexte(donnees.saisonPrevue)} ; risque récolte : ${valeurTexte(donnees.risqueRecolte)} ; vulnérabilité : ${valeurTexte(donnees.vulnerabilite)}`,
+      `Besoins par culture et produit : ${donnees.besoins.slice(0, 5).map((b) => `${b.culture}, ${b.produit}, ${b.sacs ?? b.siAbsent ?? NON_DISPONIBLE} sacs`).join(' ; ')}`,
+      `Budget : ${valeurTexte(donnees.budget)} ; quantité proposée : ${valeurTexte(donnees.quantiteProposee)} ; date limite : ${valeurTexte(donnees.dateLimiteLivraison)}`,
+      `Contre-saison : ${valeurTexte(donnees.contreSaison)}.`,
+    ].join('. ').slice(0, 1_800),
+  }])
+
+  const doc = await creerDocument()
   const r = new Redacteur(doc, `Fiche département ${dep.nom} · ${donnees.annee}`)
   r.texte(`Fiche département : ${dep.nom}`, { taille: 17, style: 'bold', apres: 0.5 })
   const lieu = [dep.region && `région ${dep.region}`, dep.zone && `zone ${dep.zone}`].filter(Boolean).join(' · ')
   r.texte(`Campagne ${donnees.annee}${lieu ? ` · ${lieu}` : ''} · ${donnees.organisation} · ${dateHeureFr(date)}`, { taille: 9, gris: true, apres: 2.5 })
+  r.texte(
+    `${redaction.iaDisponible ? 'Lecture assistée par IA' : 'Repère de lecture · IA indisponible'} : ${redaction.textes.fiche}`,
+    { taille: 7.5, gris: true, apres: 1.5 },
+  )
 
   // Carte à gauche, indicateurs clés à droite
   const yHaut = r.y
   const largeurCarte = 92
-  r.carte(image, map ? CAPTURE_ECHOUEE : CARTE_ABSENTE, 70, largeurCarte)
+  r.carte(image, map ? CAPTURE_ECHOUEE : CARTE_ABSENTE, 58, largeurCarte)
   r.legende(donnees.legende ?? LEGENDE_CH, largeurCarte)
   const yApresCarte = r.y
 
@@ -129,5 +146,11 @@ export async function exporterFicheDepartement(
 
   const nbPages = r.finaliser(date)
   const nomFichier = nomFiche(dep.nom, donnees.annee)
-  return { nomFichier, octets: terminer(doc, nomFichier, telecharger), nbPages }
+  return {
+    nomFichier,
+    octets: terminer(doc, nomFichier, telecharger),
+    nbPages,
+    explicationsIA: redaction.iaDisponible,
+    avertissementIA: redaction.avertissement,
+  }
 }

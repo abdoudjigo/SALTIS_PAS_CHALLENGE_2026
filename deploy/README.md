@@ -36,8 +36,11 @@ Dans `.env`, renseigner au minimum :
 | `UMAMI_WEBSITE_ID` | identifiant du site dans Umami, à renseigner après sa création (section 7) ; vide = aucune mesure |
 | `EMAIL_CONTACT` | facultatif : l'adresse affichée sur la page Contact, au clic seulement (anti-spam) ; l'ancien nom `VITE_EMAIL_CONTACT` reste accepté |
 | `VOIX_SPACE`, `HF_TOKEN` | laisser vides : la voix wolof est produite par le conteneur `voix` (`VOIX_SERVICE_URL` est déjà réglé dans `docker-compose.prod.yml`) |
+| `LLM_API_KEY` | facultatif : clé Groq (gratuite, créée sur https://console.groq.com/keys) pour les explications IA des PDF de l'ONG ; vide = repères de lecture sans IA |
+| `LLM_BASE_URL`, `LLM_MODEL` | facultatifs : par défaut Groq (`https://api.groq.com/openai/v1`) et `openai/gpt-oss-120b` ; peuvent pointer vers un autre fournisseur compatible OpenAI |
 
 Le `.env` ne quitte jamais le serveur (il est ignoré par git et par Docker).
+Les résumés des sections du dossier (sans le nom de l'organisation) sont transmis au fournisseur LLM configuré. Vérifier ses conditions de traitement des données avant d'activer cette option. Groq (par défaut) : pas de conservation des requêtes par défaut, sauf journaux de 30 jours au plus pour la fiabilité et les abus (désactivables) ; serveurs aux États-Unis. Offre gratuite limitée en requêtes par minute et par jour : au-delà, le PDF sort avec les repères de lecture sans IA.
 
 ## 3. Lancer
 ```bash

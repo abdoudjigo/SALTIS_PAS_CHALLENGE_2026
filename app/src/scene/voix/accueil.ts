@@ -65,6 +65,8 @@ function lireStock(zone: 'local' | 'session', cle: string): string | null {
 
 /** Langue choisie par l'utilisateur (« fr » ou « wo »), sinon celle du profil. */
 export function langueDe(profil: ProfilAccueil): LangueAccueil {
+  // Le profil ONG / État doit toujours être lu en français : l'option wolof concerne uniquement l'agriculteur.
+  if (profil === 'organisation') return 'fr'
   const choix = lireStock('local', CLE_LANGUE)
   return choix === 'fr' || choix === 'wo' ? choix : LANGUE_PAR_DEFAUT[profil]
 }

@@ -24,10 +24,17 @@ Les identifiants Snowflake sont ceux du `.env`, les mêmes que pour dbt. Variabl
 | `SNOWFLAKE_SCHEMA_MARTS` | `MARTS` | Schéma des marts lus |
 | `PRECHARGEMENT_AU_DEMARRAGE` | `true` | Précharge au démarrage si le cache est vide |
 | `CORS_ORIGINES` | `["*"]` | Origines autorisées (liste JSON) |
+| `LLM_API_KEY` | vide | Clé secrète du service compatible OpenAI pour rédiger les explications des PDF (Groq, offre gratuite : console.groq.com) ; vide = textes de secours sans IA |
+| `LLM_BASE_URL` | `https://api.groq.com/openai/v1` | URL de base du fournisseur (Groq par défaut ; remplaçable par tout service compatible OpenAI) |
+| `LLM_MODEL` | `openai/gpt-oss-120b` | Modèle « production » de Groq (pas de modèle « preview » en production : il peut disparaître sans préavis) |
 
 ## Les routes expliquées
 
-Toutes les routes commencent par `/api/v1`. Chaque réponse a la même forme : `donnees` (le résultat) et `meta` (version, source, filtres, nombre d'éléments, `avertissements`).
+Toutes les routes commencent par `/api/v1`. Les routes de données répondent sous la forme `donnees` (le résultat) et `meta` (version, source, filtres, nombre d'éléments, `avertissements`). Les routes d'action ont leur propre format de réponse.
+
+### Explications des exports PDF
+
+`POST /api/v1/export/explications` rédige une courte explication par section pour le dossier national ou la fiche département. La clé reste côté API. Sans clé ou si le fournisseur échoue, l'export du navigateur continue avec des repères de lecture locaux et l'indique à l'utilisateur. Les éléments du dossier transmis pour cette rédaction sont envoyés au fournisseur LLM configuré ; ne configurez ce service qu'avec un fournisseur autorisé pour ces données.
 
 ### Le code GADM d'un département
 

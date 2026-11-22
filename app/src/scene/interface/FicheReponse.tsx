@@ -87,6 +87,8 @@ interface PropsFiche {
   etat?: ReactNode
   /** tout le reste ; absent : pas de bouton « Voir le détail » */
   detail?: ReactNode
+  /** ouvre le détail dès l'arrivée sur l'écran */
+  detailOuvertParDefaut?: boolean
   /** change avec le département, l'année ou la culture : le détail et les menus se referment */
   cle: string
   aEcouter?: string[]
@@ -95,7 +97,7 @@ interface PropsFiche {
   culture?: string | null
 }
 
-export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, avant, etat, detail, cle, aEcouter, aEcouterWo, culture }: PropsFiche) {
+export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, avant, etat, detail, detailOuvertParDefaut = false, cle, aEcouter, aEcouterWo, culture }: PropsFiche) {
   // Le parcours du profil : 6 questions de l'agriculteur, ou 7 étapes de l'ONG
   const parcours = parcoursDe(cadre)
   const i = parcours.findIndex((p) => p.id === mode)
@@ -103,8 +105,8 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
   const suivant = parcours[i + 1]
   const agriculteur = cadre.user.role === 'PRODUCTEUR'
   // Ouvert pour une clé donnée : changer de département, d'année ou de culture le referme
-  const [detailPour, setDetailPour] = useState<string | null>(null)
-  const ouvert = detailPour === cle
+  const [etatDetail, setEtatDetail] = useState<{ cle: string; ouvert: boolean } | null>(null)
+  const ouvert = etatDetail?.cle === cle ? etatDetail.ouvert : detailOuvertParDefaut
   // Un seul menu ouvert à la fois ; il se ferme par Échap, un clic à côté ou un choix fait
   const [menuOuvert, setMenu] = useState<string | null>(null)
   const entete = useRef<HTMLDivElement>(null)
@@ -195,7 +197,7 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
 
       {detail && (
         <div className="mt-4">
-          <button type="button" onClick={() => setDetailPour(ouvert ? null : cle)} aria-expanded={ouvert} aria-controls={idDetail}
+          <button type="button" onClick={() => setEtatDetail({ cle, ouvert: !ouvert })} aria-expanded={ouvert} aria-controls={idDetail}
             className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-white/20 bg-white/[0.04] px-3.5 text-sm font-medium text-white transition hover:border-white/45 hover:bg-white/[0.08]">
             {ouvert ? 'Masquer le détail' : 'Voir le détail'}
             <ChevronDown className={clsx('size-4 shrink-0 transition-transform duration-300', ouvert && 'rotate-180')} aria-hidden />
