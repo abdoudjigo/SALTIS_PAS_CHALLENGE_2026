@@ -6,7 +6,7 @@ export
 VENV := venv
 PY   := $(VENV)/bin/python
 
-.PHONY: install up down load dbt-run api api-prod cache-warm cache-check test test-api test-ml lint \
+.PHONY: install up down load demo-data dbt-run api api-prod cache-warm cache-check test test-api test-ml lint \
         front-install front front-build front-preview verifier
 
 # --- Python : API, dbt, ML ---
@@ -18,6 +18,8 @@ down:
 	docker compose down
 load:
 	$(PY) ingestion/load_modules.py
+demo-data:
+	python3 ingestion/generer_donnees_demo.py
 dbt-run:
 	cd dbt && ../$(VENV)/bin/dbt run --profiles-dir . && ../$(VENV)/bin/dbt test --profiles-dir .
 api:

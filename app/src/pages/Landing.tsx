@@ -15,6 +15,7 @@ import { useContours, useContoursZones } from '../scene/carte/fonds'
 import { cleZone, SENEGAL, ZONES } from '../scene/carte/geo'
 import type { NiveauAdequation } from '../types/marts'
 import { useModeRendu } from '../lib/modeRendu'
+import { config } from '../config'
 
 const Carte = lazy(() => import('../scene/carte/Carte'))
 
@@ -407,7 +408,10 @@ export default function Landing() {
               <div>
                 <h3 className="font-titre text-3xl leading-tight font-semibold tracking-tight">Ce que nous ne savons pas, nous l'écrivons.</h3>
                 <p className="mt-4 max-w-lg leading-relaxed text-encre-douce">
-                  Une valeur absente s'affiche « non disponible », jamais zéro. Une dose qui n'a pas été validée porte la mention « à confirmer ».
+                  Une valeur absente s'affiche « non disponible », jamais zéro.
+                  {config.donneesDemo
+                    ? ' Les doses et les prix visibles sont synthétiques et explicitement identifiés pour cette démonstration.'
+                    : ' Une dose qui n\'a pas été validée porte la mention « à confirmer ».'}
                   La vulnérabilité d'un département est relative et indicative, et c'est écrit à côté du chiffre.
                 </p>
               </div>

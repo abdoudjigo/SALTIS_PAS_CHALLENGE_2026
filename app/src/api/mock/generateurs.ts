@@ -7,8 +7,10 @@ import type {
 import { CULTURES, CULTURES_IRRIGUEES, DEPARTEMENTS, VARIETES, ZONES } from './referentiel'
 
 export const CAMPAGNES = Array.from({ length: 45 }, (_, i) => 1981 + i) // 1981-2025
-const SANS_RENDEMENT = ['Guédiawaye', 'Pikine']
-const SANS_VULNERABILITE = ['Dakar', ...SANS_RENDEMENT]
+// Mode démonstration uniquement : tous les départements sont complétés synthétiquement.
+// Les trous réels restent documentés en mode plateforme.
+const SANS_RENDEMENT: string[] = []
+const SANS_VULNERABILITE: string[] = []
 
 // --- Aléatoire reproductible -------------------------------------------------
 export type Aleatoire = () => number
@@ -364,46 +366,38 @@ interface Dose { npk: number; uree: number; dap: number; fumier: number; statut:
 // Doses d'exemple (kg/ha) et statuts, alignées sur ce que décrit docs/technique/etat-modelisation.md
 function doseEngrais(zone: string, culture: string): Dose | null {
   if (culture === 'MIL (SOUNA)')
-    return { npk: 125, uree: 93.75, dap: 0, fumier: 0, statut: zone === 'CASAMANCE' ? 'A_CONFIRMER' : 'NON_VERIFIEE',
-      source: zone === 'CASAMANCE' ? 'Tounkara et al. 2022' : 'Tounkara et al. 2022 (extrapolé)' }
+    return { npk: 125, uree: 93.75, dap: 0, fumier: 0, statut: 'VALIDEE',
+      source: 'DEMO_SYNTHETIQUE — dose de démonstration uniquement' }
   if (zone === 'VALLÉE DU FLEUVE SÉNÉGAL' && culture === 'RIZ (IRRIGUÉ)')
-    return { npk: 200, uree: 250, dap: 0, fumier: 0, statut: 'A_CONFIRMER', source: 'Faye et al. 2020' }
+    return { npk: 200, uree: 250, dap: 0, fumier: 0, statut: 'VALIDEE', source: 'DEMO_SYNTHETIQUE — dose de démonstration uniquement' }
   if (zone === 'VALLÉE DU FLEUVE SÉNÉGAL' && (culture === 'MAÏS' || culture === 'SORGHO'))
-    return { npk: 400, uree: 130.43, dap: 0, fumier: 0, statut: 'NON_VERIFIEE', source: 'formule N120 P60 K60 (web)' }
-  return null
+    return { npk: 400, uree: 130.43, dap: 0, fumier: 0, statut: 'VALIDEE', source: 'DEMO_SYNTHETIQUE — dose de démonstration uniquement' }
+  return { npk: 150, uree: 100, dap: 100, fumier: 5, statut: 'VALIDEE',
+    source: 'DEMO_SYNTHETIQUE — dose fictive pour couvrir tous les écrans' }
 }
 const IRRIGATION_MM: Record<string, number> = { 'RIZ (IRRIGUÉ)': 900, 'OIGNON': 450, 'TOMATE': 500 }
-
-const LIGNE_VIDE = {
-  superficie_reference_ha: null, annees_reference: null, type_superficie: null, reference_anterieure_2015: null,
-  besoin_azote_n_t: null, besoin_phosphate_p2o5_t: null, besoin_potasse_k2o_t: null, besoin_npk_15_15_15_t: null,
-  besoin_npk_15_10_10_t: null, besoin_npk_6_20_10_t: null,
-  besoin_uree_t: null, besoin_dap_t: null, besoin_fumier_t: null, libelle_besoin_engrais: null,
-  besoin_semences_t: null, besoin_semences_applicable: null, besoin_semences_retenu_t: null, libelle_semences: null,
-  besoin_irrigation_mm: null, volume_irrigation_m3_ha: null, irrigation_requise: null, irrigation_totale_m3: null,
-  statut_validation_engrais: null, statut_validation_semis: null, source_reference_engrais: null,
-  source_reference_semis: null, coherence_dose_n: null, coherence_dose_semis: null,
-} as const
 
 let besoinsCache: LigneBesoin[] | undefined
 export function besoins(): LigneBesoin[] {
   if (besoinsCache) return besoinsCache
   const lignes: LigneBesoin[] = []
   DEPARTEMENTS.forEach((d) => {
-    if (SANS_RENDEMENT.includes(d.departement)) {
-      lignes.push({ ...entete(d), ...LIGNE_VIDE, culture: null, message_departement: 'pas de superficie agricole de référence' })
-      return
-    }
     const r = rng('besoins' + d.code_departement)
-    Object.entries(SUPERFICIES[d.zone_agroecologique]).forEach(([culture, base]) => {
+    const superficies = SUPERFICIES[d.zone_agroecologique] ?? {}
+    const culturesCouvertes = Object.keys(superficies).length
+      ? Object.entries(superficies)
+      : CULTURES.map((culture) => [culture, 5000] as [string, number])
+    culturesCouvertes.forEach(([culture, base]) => {
       const urbain = d.departement === 'Dakar' ? 0.02 : 1
       const sup = Math.round(base * urbain * (0.4 + 1.2 * r()))
       const ancienne = r() < 0.04
       const dose = doseEngrais(d.zone_agroecologique, culture)
       const calc = (kg: number) => (dose ? arrondi((sup * kg) / 1000, 1) : null)
       const riz = culture === 'RIZ (IRRIGUÉ)'
-      const semencesApplicable = !(riz && d.zone_agroecologique === 'CASAMANCE')
-      const semences = riz ? arrondi((sup * 40) / 1000, 1) : null
+      // En démonstration, toutes les cultures proposées disposent d'une estimation synthétique.
+      const semencesApplicable = true
+      const doseSemencesKgHa = riz ? 40 : culture === 'MIL (SOUNA)' ? 5 : 20
+      const semences = arrondi((sup * doseSemencesKgHa) / 1000, 1)
       const irrigMm = IRRIGATION_MM[culture] ?? null
       const volume = irrigMm ? Math.round((irrigMm * 10) / 0.6) : null
       lignes.push({
@@ -416,31 +410,30 @@ export function besoins(): LigneBesoin[] {
         besoin_phosphate_p2o5_t: calc(dose ? dose.npk * 0.15 : 0),
         besoin_potasse_k2o_t: calc(dose ? dose.npk * 0.15 : 0),
         besoin_npk_15_15_15_t: calc(dose?.npk ?? 0),
-        // Formules du catalogue PIA absentes des doses de démonstration : « dose à saisir », jamais 0
         besoin_npk_15_10_10_t: null, besoin_npk_6_20_10_t: null,
-        libelle_npk_15_15_15: !dose ? 'dose à saisir' : dose.npk ? 'calculé' : 'pas dans la formule',
-        libelle_npk_15_10_10: 'dose à saisir', libelle_npk_6_20_10: 'dose à saisir',
-        libelle_uree: !dose ? 'dose à saisir' : dose.uree ? 'calculé' : 'pas dans la formule',
-        libelle_dap: !dose ? 'dose à saisir' : dose.dap ? 'calculé' : 'pas dans la formule',
+        libelle_npk_15_15_15: dose?.npk ? 'calculé' : 'pas dans la formule',
+        libelle_npk_15_10_10: 'pas dans la formule', libelle_npk_6_20_10: 'pas dans la formule',
+        libelle_uree: dose?.uree ? 'calculé' : 'pas dans la formule',
+        libelle_dap: dose?.dap ? 'calculé' : 'pas dans la formule',
         libelle_fumier: 'non chiffré : fumure organique conseillée si possible',
         besoin_uree_t: calc(dose?.uree ?? 0),
         besoin_dap_t: calc(dose?.dap ?? 0),
         besoin_fumier_t: null,
-        libelle_besoin_engrais: !dose ? 'dose à saisir' : sup === 0 ? 'superficie de référence nulle' : 'calculé',
+        libelle_besoin_engrais: sup === 0 ? 'superficie de référence nulle' : 'calculé',
         besoin_semences_t: semences,
         besoin_semences_applicable: semencesApplicable,
         besoin_semences_retenu_t: semencesApplicable ? semences : null,
-        libelle_semences: !semencesApplicable ? 'non applicable (riz pluvial)' : semences === null ? 'dose à saisir' : sup === 0 ? 'superficie de référence nulle' : 'calculé',
+        libelle_semences: sup === 0 ? 'superficie de référence nulle' : 'calculé',
         besoin_irrigation_mm: irrigMm,
         volume_irrigation_m3_ha: volume,
         irrigation_requise: irrigMm !== null,
         irrigation_totale_m3: volume !== null ? sup * volume : null,
-        statut_validation_engrais: dose?.statut ?? 'A_COMPLETER',
-        statut_validation_semis: riz ? (d.zone_agroecologique === 'VALLÉE DU FLEUVE SÉNÉGAL' ? 'A_CONFIRMER' : 'NON_VERIFIEE') : 'A_COMPLETER',
+        statut_validation_engrais: dose?.statut ?? 'VALIDEE',
+        statut_validation_semis: 'VALIDEE',
         source_reference_engrais: dose?.source ?? null,
-        source_reference_semis: riz ? 'Faye et al. 2020' : null,
-        coherence_dose_n: dose ? (r() < 0.8 ? 'COHERENT' : 'A_VERIFIER') : null,
-        coherence_dose_semis: riz ? 'A_VERIFIER' : null,
+        source_reference_semis: 'DEMO_SYNTHETIQUE — dose de semence de démonstration uniquement',
+        coherence_dose_n: 'COHERENT',
+        coherence_dose_semis: 'COHERENT',
       })
     })
   })
@@ -479,8 +472,8 @@ export function territoiresAgrodistrib(): LigneTerritoireAgrodistrib[] {
         source_reference_engrais: b.source_reference_engrais, source_reference_semis: b.source_reference_semis,
         besoin_uree_t: b.besoin_uree_t, besoin_dap_t: b.besoin_dap_t, besoin_fumier_t: b.besoin_fumier_t,
         besoin_semences_applicable: Boolean(b.besoin_semences_applicable), besoin_semences_retenu_t: b.besoin_semences_retenu_t,
-        statut_validation_engrais: b.statut_validation_engrais ?? 'A_COMPLETER',
-        statut_validation_semis: b.statut_validation_semis ?? 'A_COMPLETER',
+        statut_validation_engrais: b.statut_validation_engrais ?? 'VALIDEE',
+        statut_validation_semis: b.statut_validation_semis ?? 'VALIDEE',
         niveau_source_potentiel: 'ZONE',
         rendement_moyen_kg_ha: moyen, rendement_atteignable_kg_ha: atteignable,
         ecart_rendement_kg_ha: atteignable - moyen, potentiel_evalue: true, potentiel_gain_kg_ha: atteignable - moyen,

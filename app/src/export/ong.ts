@@ -17,6 +17,7 @@ import { exporterFicheDepartement } from './ficheDepartement'
 import { ouvrirBarre } from './progression'
 import { estFumier, nomLisible, SOURCES_MINIMALES } from './texte'
 import type { BesoinFiche, CarteExport, Etape, Legende, Mention, Source, Tableau, Valeur } from './types'
+import { config } from '../config'
 
 // --- État partagé (l'étape 7 se démonte pendant l'export : elle le relit à son retour) ---------------------
 export type FormatExport = 'dossier' | 'fiche'
@@ -113,7 +114,7 @@ function sources(x: ContexteExport): Source[] {
   const prixIntrant = x.prix?.filter((p) => p.code_intrant === x.intrant?.code_intrant).sort((a, b) => b.campagne - a.campagne)[0]
   return [
     { ...minimale('cadre_harmonise'), date: ch?.libelle_cycle ?? null, detail: ch ? `période retenue : ${periodeCH(ch)}${ch.source && !minimale('cadre_harmonise').nom.includes(ch.source) ? ` ; ${ch.source}` : ''}` : 'non disponible' },
-    { ...minimale('doses_pia'), detail: 'catalogue IFDC-CORAF, à confirmer' },
+    { ...minimale('doses_pia'), detail: config.donneesDemo ? 'doses synthétiques de démonstration, sans portée de validation réelle' : 'catalogue IFDC-CORAF, à confirmer' },
     { ...minimale('prix'), detail: prixIntrant?.source ? `${prixIntrant.nom_intrant ?? x.intrant?.nom_intrant ?? ''} ${prixIntrant.campagne} : ${prixIntrant.source}` : undefined },
     { id: 'besoins', nom: 'mart_territoires_agrodistrib (besoins de référence historiques : superficie de référence × dose de la zone)' },
     { id: 'vulnerabilite', nom: 'mart_vulnerabilite_departement (score relatif et indicatif, méthode v1)', detail: 'pluie 1991-2020, rendements 1991-2015' },
@@ -123,8 +124,10 @@ function sources(x: ContexteExport): Source[] {
 }
 
 function mentions(x: ContexteExport, textes: string[]): Mention[] {
-  const m: Mention[] = [{ nature: 'à confirmer', texte: 'Doses IFDC-CORAF PIA (catalogue) : à confirmer' }]
-  for (const p of x.prix ?? []) if (p.statut_validation === 'A_CONFIRMER' && intrantsChiffres(x.cadre.ref).some((i) => i.code_intrant === p.code_intrant))
+  const m: Mention[] = config.donneesDemo
+    ? [{ nature: 'repérage indicatif', texte: 'Données synthétiques : doses, prix et stocks sont utilisés uniquement pour démontrer la plateforme' }]
+    : [{ nature: 'à confirmer', texte: 'Doses IFDC-CORAF PIA (catalogue) : à confirmer' }]
+  for (const p of x.prix ?? []) if (!config.donneesDemo && p.statut_validation === 'A_CONFIRMER' && intrantsChiffres(x.cadre.ref).some((i) => i.code_intrant === p.code_intrant))
     m.push({ nature: 'à confirmer', texte: `Prix ${p.nom_intrant ?? p.code_intrant} (${p.campagne}) : ${p.source ?? 'source non disponible'}` })
   for (const [code, texte] of Object.entries(x.dossier.prix)) {
     const n = lireNombre(texte)
@@ -134,7 +137,7 @@ function mentions(x: ContexteExport, textes: string[]): Mention[] {
   if (stock !== null && stock > 0) m.push({ nature: 'saisi par vous', texte: `Stock à répartir : ${stock.toLocaleString('fr-FR')} ${x.dossier.unite === 'sacs' ? 'sacs' : 't'}` })
   if (x.scenario.id === 'proportionnel') m.push({ nature: 'saisi par vous', texte: `Arbitrage vulnérabilité ↔ rendement : ${nomArbitrage(x.dossier.arbitrage)}` })
   for (const t of new Set(textes.map(sansGras))) {
-    if (/à confirmer/i.test(t)) m.push({ nature: 'à confirmer', texte: t })
+    if (!config.donneesDemo && /à confirmer/i.test(t)) m.push({ nature: 'à confirmer', texte: t })
     if (/repérages? indicatifs?/i.test(t)) m.push({ nature: 'repérage indicatif', texte: t })
   }
   if (!m.some((e) => e.nature === 'repérage indicatif')) m.push({ nature: 'repérage indicatif', texte: 'Étape 6, zones à fort potentiel : repérages indicatifs, à vérifier sur le terrain' })
@@ -180,7 +183,7 @@ export async function exporterDossierOng(x: ContexteExport) {
           const p = x.prix?.filter((l) => l.code_intrant === i.code_intrant).sort((a, b) => (a.campagne === cadre.annee ? -1 : b.campagne === cadre.annee ? 1 : b.campagne - a.campagne))[0]
           return tape !== null && tape > 0
             ? { produit: i.nom_intrant, prix: fcfa(tape), unite: 'sac de 50 kg', origine: 'saisi par vous' }
-            : { produit: i.nom_intrant, prix: p?.prix_cession_sac_50kg_fcfa == null ? null : fcfa(p.prix_cession_sac_50kg_fcfa), unite: 'sac de 50 kg', origine: p ? `prix de cession ${p.campagne} (${p.statut_validation === 'A_CONFIRMER' ? 'à confirmer' : p.statut_validation === 'VALIDEE' ? 'validé' : 'à saisir'})` : 'non disponible' }
+            : { produit: i.nom_intrant, prix: p?.prix_cession_sac_50kg_fcfa == null ? null : fcfa(p.prix_cession_sac_50kg_fcfa), unite: 'sac de 50 kg', origine: p ? `prix de cession ${p.campagne} (${config.donneesDemo ? 'synthétique' : p.statut_validation === 'A_CONFIRMER' ? 'à confirmer' : p.statut_validation === 'VALIDEE' ? 'validé' : 'à saisir'})` : 'non disponible' }
         }),
         etapes,
         get repartition() { return tableauEtape(cadre, 'repartir', false)! },
