@@ -61,6 +61,7 @@ export default function Confidentialite() {
             </p>
             <ul className="list-disc space-y-2 pl-5">
               <li>Ce qui est enregistré : la page vue (sans les paramètres de l'adresse), le site d'où vous venez, le type d'appareil, la taille d'écran, le navigateur, le système, la langue, et le pays et la ville approximative (déduits de l'adresse IP au moment de la visite).</li>
+              <li>Quelques actions, sans aucune saisie : le profil choisi à l'entrée, l'écran ouvert, le type d'année choisie, la réussite ou non de la localisation (jamais la position), la lecture à voix haute, le téléchargement d'un PDF, le scénario de répartition choisi, l'envoi d'un avis. La liste complète est disponible sur demande.</li>
               <li>Ce qui ne l'est pas : aucun cookie, aucun identifiant durable, ni votre adresse IP elle-même ni vos saisies (position, surface, doses, stocks).</li>
               <li>Le réglage « Ne pas me suivre » de votre navigateur est respecté.</li>
             </ul>

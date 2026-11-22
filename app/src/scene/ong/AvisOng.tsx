@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { api, ApiError } from '../../api'
 import { PARCOURS_ONG } from '../cadre'
+import { suivre } from '../../lib/mesure'
 
 const TYPES = ['ONG nationale', 'ONG internationale', "Agence de l'ONU", "Service de l'État", 'Organisation de producteurs', 'Autre']
 const USAGE = ['Oui', 'Peut-être', 'Non']
@@ -59,8 +60,10 @@ export function AvisOng({ annee, etape }: { annee: number | null; etape: string 
     try {
       await api.envoyerAvis({ ...champs, annee: annee ?? '', etape })
       setEtat('envoye')
+      suivre('avis_envoye', { type_organisation: champs["Type d'organisation"] || 'non précisé', etape: etape ?? 'aucune' })
     } catch (err) {
       setEtat(err instanceof ApiError && err.status === 429 ? 'trop' : 'echec')
+      suivre('avis_erreur', { code: err instanceof ApiError ? err.status : 0 })
     }
   }
 

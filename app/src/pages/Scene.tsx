@@ -23,6 +23,9 @@ import { useContours, useContoursZones } from '../scene/carte/fonds'
 import type { LonLat } from '../scene/carte/geo'
 import type { Utilisateur } from '../types/auth'
 import { anneeAVenir } from '../types/previsions'
+import { suivre } from '../lib/mesure'
+import { BandeauAccueil, BoutonAccueil } from '../scene/voix/BandeauAccueil'
+import { lireEcran, type ResumeEcran } from '../scene/voix/accueil'
 
 // La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
 // données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
@@ -122,6 +125,7 @@ export default function Scene() {
   const { data: contours } = useContours()
   const { data: contoursZones } = useContoursZones()
 
+  const profilAccueil = user?.role === 'PRODUCTEUR' ? 'agriculteur' : 'organisation'
   const { profil, liste } = useMemo(() => {
     const f = fonctionnalitesDe(user!)
     // La première fonctionnalité se télécharge en même temps que les données, pas après
@@ -138,7 +142,18 @@ export default function Scene() {
   const [culture, setCulture] = useState<string | null>(null)
   // Sans carte (pas de WebGL), pas de légende : elle décrirait une carte absente
   const [sansCarte, setSansCarte] = useState(false)
+  // Une seule mesure « carte indisponible » par visite (React monte deux fois les composants en développement)
+  const carteSignalee = useRef(false)
+  const signalerSansCarte = useCallback(() => {
+    setSansCarte(true)
+    if (!carteSignalee.current) {
+      carteSignalee.current = true
+      suivre('carte_indisponible', { raison: 'webgl_ou_erreur' })
+    }
+  }, [])
   const [sortie, setSortie] = useState<Sortie>({ vue: {} })
+  // L'écran qui a publié la sortie : juste après un changement d'onglet, la sortie est encore celle de l'ancien
+  const [ecranSortie, setEcranSortie] = useState<string | null>(null)
   // Les choix de l'ONG, gardés pour la session de l'onglet, propres à l'utilisateur (vidés à la déconnexion)
   const cleDossier = `${CLE_DOSSIER}.${user?.id ?? 'anonyme'}`
   const [dossier, setDossier] = useState<DossierOng>(() => lireDossier(cleDossier))
@@ -164,7 +179,16 @@ export default function Scene() {
   const ouvrir = useCallback((id: string) => {
     setIdMode(id)
     setCran(1)
-  }, [])
+    suivre('ecran_ouvert', { ecran: id, profil: user?.role ?? 'inconnu' })
+  }, [user?.role])
+  // L'année choisie : on ne mesure que son type (passée, prévision océan, tendance), jamais rien de personnel
+  const choisirAnnee = useCallback((a: number | null) => {
+    setAnnee(a)
+    if (a !== null && ref) {
+      const aVenir = anneeAVenir(ref.campagnes)
+      suivre('annee_choisie', { type: a < aVenir ? 'passee' : a === aVenir ? 'ocean' : 'tendance' })
+    }
+  }, [ref])
   const aller = ouvrir
   const exporter = useMemo<AccesExport>(() => ({
     carte: () => registre.carte,
@@ -196,12 +220,13 @@ export default function Scene() {
     }),
   }), [ouvrir])
   const cadre = useMemo<Cadre | null>(
-    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee: setAnnee, culture, choisirCulture: setCulture, aller, marge, exporter } : null),
-    [ref, contours, user, selection, position, anneeChoisie, culture, aller, marge, exporter],
+    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee, culture, choisirCulture: setCulture, aller, marge, exporter } : null),
+    [ref, contours, user, selection, position, anneeChoisie, choisirAnnee, culture, aller, marge, exporter],
   )
   // La sortie de l'étape ouverte, gardée pour l'export
   const publier = useCallback((s: Sortie) => {
     setSortie(s)
+    setEcranSortie(idMode)
     if (s.etape) registre.etapes[idMode as ModeOng] = s.etape
   }, [idMode])
   // Les autres fonctionnalités du profil se téléchargent pendant que la première s'affiche
@@ -220,12 +245,19 @@ export default function Scene() {
       </Suspense>
     </DossierContext.Provider>
   ), [Composant, actif.id, cadre, publier, valeurDossier])
+  // La voix lit seule le résumé de l'écran ouvert (texte des mascottes), une fois que cet écran l'a publié
+  const resumeAccueil = useMemo<ResumeEcran | null>(
+    () => (ecranSortie === actif.id && lireEcran(profilAccueil, actif.id, liste[0].id)
+      ? { ecran: actif.id, fr: sortie.aEcouter, wo: sortie.aEcouterWo, lieu: profilAccueil === 'organisation' ? 'pays' : selection }
+      : null),
+    [ecranSortie, actif.id, liste, sortie.aEcouter, sortie.aEcouterWo, profilAccueil, selection],
+  )
   const vue = useMemo<VueCarte | null>(() => (cadre ? { ambiance: 'jour', camera: cadrer.pays(cadre), ...sortie.vue } : null), [cadre, sortie.vue])
 
   return (
     <div ref={racine} className="scene relative h-dvh overflow-hidden bg-encre-nuit text-white">
       {vue && cadre ? (
-        <GardeCarte large={large} onEchec={() => setSansCarte(true)}
+        <GardeCarte large={large} onEchec={signalerSansCarte}
           // « Ma parcelle » a sa propre liste (le département y suit la position du champ)
           choix={actif.id === 'parcelle' ? undefined : <ChoixDepartement departements={cadre.ref.departements} valeur={selection} onChoisir={setSelection} />}>
         <Suspense fallback={null}>
@@ -253,6 +285,7 @@ export default function Scene() {
               {config.donneesDemo && <span className="ml-1.5 rounded-full border border-white/20 px-1.5 whitespace-nowrap text-white/70" title="Données de démonstration synthétiques : elles illustrent la plateforme et ne servent pas à décider.">Démo · données synthétiques</span>}
             </p>
           </div>
+          <BoutonAccueil profil={profilAccueil} />
           <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
             <LogOut className="size-4" />
           </button>
@@ -260,6 +293,10 @@ export default function Scene() {
         {/* Avis ONG : en haut au milieu sur ordinateur, à droite sur téléphone */}
         {user && user.role !== 'PRODUCTEUR' && <div className="pointer-events-auto md:absolute md:top-4 md:left-1/2 md:-translate-x-1/2"><AvisOng annee={cadre?.annee ?? null} etape={actif.titre} /></div>}
       </header>
+
+      {/* Message vocal d'accueil et ses sous-titres : sous l'en-tête, dans la place laissée par la fenêtre */}
+      <BandeauAccueil profil={profilAccueil} resume={resumeAccueil}
+        className="absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+7.25rem)] z-40 md:inset-x-auto md:z-30 md:top-24 md:left-24 md:w-[min(32rem,calc(100vw-336px-10rem))]" />
 
       <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} reponse={sortie.resume} />
 

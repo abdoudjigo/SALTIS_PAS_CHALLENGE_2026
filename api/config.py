@@ -24,6 +24,11 @@ class Parametres(BaseSettings):
     # IA vocale (wolof) : Space Hugging Face voix/space/ (ex. « akai/assaman-suuf-voix ») ; vide = voix wolof désactivée
     voix_space: str = ""
     hf_token: SecretStr = SecretStr("")
+    # Service « voix » séparé (deploy/Dockerfile.voix), ex. http://voix:8090 ; vide = synthèse dans l'API si torch est
+    # installé (développement). En production, la voix ne tourne plus dans l'API (audit, constat ARC-02).
+    voix_service_url: str = ""
+    # Délai d'attente d'une synthèse par le service (s) : au-delà, 503 et le texte wolof reste affiché
+    voix_service_delai_s: float = Field(90, gt=0, le=170)
     # Questions posées à la voix (POST /voix/texte, /voix/question) : aucun écran ne s'en sert encore. Coupées par défaut
     # tant qu'aucun client (site, WhatsApp, serveur vocal) ne les utilise (audit, constat BE-02).
     voix_questions: bool = False

@@ -69,6 +69,7 @@ Mais elle **ne mesure rien d'utile aujourd'hui** :
 ## 3. Constats
 
 ### [ANA-01] La mesure d'audience n'est pas active en prod
+- **Suivi (22/11/2026, après l'audit)** : 🟡 Partiellement corrigé — le code est prêt et la mise en route est documentée (`deploy/README.md`, section 7). **Reste (action de l'équipe)** : créer le site dans Umami et renseigner `UMAMI_WEBSITE_ID` dans le `.env` du VPS, puis reconstruire `web`.
 - Sévérité : 🟡 Moyen   Statut : Constaté
 - Où : prod (`/stats/script.js` → page HTML, pas de bandeau) ; `docker-compose.prod.yml` (`VITE_UMAMI_ID: ${UMAMI_WEBSITE_ID:-}`) ; `deploy/README.md` section 7 (création du site dans Umami)
 - Constat : le code est prêt, mais l'identifiant du site n'est pas renseigné, ou la version en ligne est antérieure. Aucune visite n'est comptée.
@@ -77,6 +78,7 @@ Mais elle **ne mesure rien d'utile aujourd'hui** :
 - Effort : S
 
 ### [ANA-02] Aucun événement ; les 12 écrans de la scène sont invisibles dans les statistiques
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — module unique `app/src/lib/mesure.ts` (`suivre()`) : rien sans accord, liste fermée de 11 événements, clés personnelles refusées. Branchés : `porte_entree`, `ecran_ouvert`, `annee_choisie`, `parcelle_localisee` (jamais la position), `voix_lue`, `export_pdf`, `scenario_choisi`, `avis_envoye`/`avis_erreur`, `carte_indisponible` (une fois par visite), `hors_ligne`. Vérifié dans le navigateur avec un enregistreur à la place d'Umami : événements et propriétés attendus, aucun doublon. La page Confidentialité décrit ces actions.
 - Sévérité : 🟠 Élevé   Statut : Constaté
 - Où : `app/src` (0 appel `umami.track`, 0 attribut `data-umami-event`) ; `App.tsx:26-29` (scène sous `/`) ; `scene/modes/*.tsx`
 - Constat : même une fois Umami actif, il ne verra qu'une page vue sur `/`, pour la landing comme pour la carte. Impossible de savoir combien de visiteurs entrent par « Agriculteur » ou par « ONG », quels écrans ils ouvrent, s'ils écoutent la voix wolof, exportent un PDF, utilisent la géolocalisation ou envoient un avis.
@@ -85,12 +87,14 @@ Mais elle **ne mesure rien d'utile aujourd'hui** :
 - Effort : S
 
 ### [ANA-03] Aucun objectif, KPI ni plan de marquage écrit
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — plan de marquage écrit : `docs/technique/plan-de-marquage.md` (règles, 11 événements, indicateurs mensuels). Il ne manque qu'un responsable de la lecture mensuelle, à désigner par l'équipe.
 - Sévérité : 🟡 Moyen   Statut : Constaté
 - Où : aucun `docs/analytics/` ; le `docs/business-model-canvas.md` cite des revenus (abonnements) sans indicateur d'usage associé
 - Recommandation : `docs/analytics/plan-de-marquage.md` (section 4) et une liste de 8 KPI (section 6), avec un responsable qui les lit chaque mois. **Une donnée que personne ne regarde ne doit pas être collectée** : ne brancher que les événements du plan.
 - Effort : S
 
 ### [ANA-04] Le trafic de l'équipe et des démos va fausser les chiffres
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — lien caché `?equipe=1` (annulé par `?equipe=0`) : l'appareil n'est plus mesuré, et le script Umami n'y est même pas chargé. Vérifié : aucun événement, aucun script. Documenté dans `deploy/README.md`.
 - Sévérité : 🟡 Moyen   Statut : Probable
 - Où : aucun filtrage dans `audience.ts` ; pas d'environnement de test séparé (OPS-02) ; trafic de développement et de démonstration sur le même site
 - Constat : 4 développeurs, les répétitions de pitch, le jury et les ateliers ONG vont générer une grande part des premières visites. Les mêmes salles passent par une seule adresse IP (BE-03).

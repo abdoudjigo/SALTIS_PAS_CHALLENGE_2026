@@ -10,7 +10,7 @@ import { periodeCH } from '../scene/regles/cadreHarmonise'
 import type { DossierOng } from '../scene/ong/dossier'
 import { MODELES } from '../scene/regles/fiabilite'
 import { fcfa, intrantsChiffres, sacsDeTonnes } from '../scene/ong/ong'
-import { METHODE, VERSION } from '../scene/regles/repartition'
+import { METHODE, nomArbitrage, VERSION } from '../scene/regles/repartition'
 import type { Intrant, LigneCadreHarmonise, LigneTerritoireAgrodistrib, PhaseCadreHarmonise, PrixIntrant } from '../types/marts'
 import { exporterDossierNational } from './dossierNational'
 import { exporterFicheDepartement } from './ficheDepartement'
@@ -87,7 +87,7 @@ function tableauEtape(c: Cadre, id: ModeOng, court: boolean): Tableau | undefine
   if (!court || lignes.length <= 5) return { colonnes: e.tableau.colonnes, lignes, largeurs, source: SOURCE_REPARTITION }
   return { colonnes: e.tableau.colonnes, lignes: [...lignes.slice(0, 4), lignes[lignes.length - 1]], largeurs, note: `4 premières lignes sur ${lignes.length - 1}, puis le total : tableau complet en fin de dossier.` }
 }
-const SOURCE_REPARTITION = `proposition calculée dans le navigateur (${METHODE}, version ${VERSION}, ou remplissage dans l'ordre du scénario), besoins de référence de mart_territoires_agrodistrib`
+const SOURCE_REPARTITION = `proposition calculée dans le navigateur (${METHODE}, version ${VERSION}, méthode du moteur AgroDistrib ; ou remplissage dans l'ordre du scénario), besoins de référence de mart_territoires_agrodistrib`
 
 function etape(c: Cadre, id: ModeOng, rang: number): Etape {
   return {
@@ -132,7 +132,7 @@ function mentions(x: ContexteExport, textes: string[]): Mention[] {
   }
   const stock = lireNombre(x.dossier.stock)
   if (stock !== null && stock > 0) m.push({ nature: 'saisi par vous', texte: `Stock à répartir : ${stock.toLocaleString('fr-FR')} ${x.dossier.unite === 'sacs' ? 'sacs' : 't'}` })
-  if (x.scenario.id === 'proportionnel' && x.dossier.priorite) m.push({ nature: 'saisi par vous', texte: `Priorité à la vulnérabilité : ${x.dossier.priorite} %` })
+  if (x.scenario.id === 'proportionnel') m.push({ nature: 'saisi par vous', texte: `Arbitrage vulnérabilité ↔ rendement : ${nomArbitrage(x.dossier.arbitrage)}` })
   for (const t of new Set(textes.map(sansGras))) {
     if (/à confirmer/i.test(t)) m.push({ nature: 'à confirmer', texte: t })
     if (/repérages? indicatifs?/i.test(t)) m.push({ nature: 'repérage indicatif', texte: t })

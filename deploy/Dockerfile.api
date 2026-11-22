@@ -1,22 +1,22 @@
-# API Assaman & Suuf : marts (Snowflake), prévisions des modèles (ml/sorties), voix wolof (SpeechT5, processeur).
+# API Assaman & Suuf : marts (Snowflake), prévisions des modèles (ml/sorties). La voix wolof est produite par le
+# service « voix » (deploy/Dockerfile.voix), dans un autre conteneur (audit, constat ARC-02) : ni torch ni modèle ici.
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/donnees/huggingface
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
-COPY requirements-api.txt requirements-voix.txt ./
-RUN pip install -r requirements-api.txt -r requirements-voix.txt
+COPY requirements-api.txt ./
+RUN pip install -r requirements-api.txt
 
 COPY api ./api
 COPY ml/sorties ./ml/sorties
 
-# Utilisateur sans droits ; /donnees garde les modèles de voix et les voix déjà produites
-RUN useradd --create-home saltis && mkdir -p /donnees /app/voix/cache && chown -R saltis /donnees /app/voix
+# Utilisateur sans droits ; /app/voix/cache garde les voix déjà produites (les rejouer ne demande pas de synthèse)
+RUN useradd --create-home saltis && mkdir -p /app/voix/cache && chown -R saltis /app/voix
 USER saltis
 
 EXPOSE 8080
-# Un seul worker : la voix wolof est chargée une fois en mémoire
+# Un seul worker : le cache des données est chargé une fois en mémoire
 # --proxy-headers : l'adresse du visiteur vient de Caddy (FORWARDED_ALLOW_IPS dans docker-compose.prod.yml)
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", \
      "--proxy-headers", "--no-server-header", "--timeout-keep-alive", "15"]

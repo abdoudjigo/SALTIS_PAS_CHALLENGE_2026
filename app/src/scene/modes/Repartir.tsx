@@ -18,8 +18,9 @@ import { aLire, puceAnnee, puceChoix, puceCulture, type LigneCheck, type Puce } 
 import { FicheReponse } from '../interface/FicheReponse'
 import type { LonLat } from '../carte/geo'
 import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes, tonnesDeSacs, useDatesLimites } from '../ong/ong'
-import { enSacsEntiers, METHODE, ordonner, remplirDansLOrdre, repartir, SCENARIOS, VERSION, type Criteres } from '../regles/repartition'
+import { ARBITRAGES_NOMMES, enSacsEntiers, lignesMulticritere, METHODE, nomArbitrage, ordonner, prorataMulticritere, remplirDansLOrdre, SCENARIOS, VERSION, type Criteres } from '../regles/repartition'
 import { Avis, Champ, Degrade, ErreurChamp, Groupe, Marque, Methode, Segments, Squelette } from '../interface/ui'
+import { suivre } from '../../lib/mesure'
 
 const DAKAR: LonLat = [-17.3, 14.74]
 const SAISIR = 'Saisissez votre stock pour voir la répartition'
@@ -47,6 +48,8 @@ export default function Repartir({ cadre, publier }: PropsMode) {
   const besoins = useMemo(() => (territoires && intrant ? besoinsParDepartement(territoires, intrant.colonne_besoin, culture) : []), [territoires, intrant, culture])
   const demandes = useMemo(() => besoins.filter((b) => b.besoin_t !== null && b.besoin_t > 0).map((b) => ({ code: b.code, besoin_t: b.besoin_t!, vulnerabilite: b.vulnerabilite })), [besoins])
   const besoinTotal = demandes.reduce((s, d) => s + d.besoin_t, 0)
+  // Scénario Multicritère : couples département × culture, comme le moteur ml/agrodistrib
+  const lignesMulti = useMemo(() => (territoires && intrant ? lignesMulticritere(territoires, intrant.colonne_besoin, culture) : []), [territoires, intrant, culture])
   const sansDose = besoins.reduce((s, b) => s + b.sansDose, 0)
 
   // La culture de chaque département : la culture choisie, sinon celle de plus grande superficie (besoin connu > 0)
@@ -77,9 +80,9 @@ export default function Repartir({ cadre, publier }: PropsMode) {
   const stock_t = lu !== null ? (sacs ? tonnesDeSacs(Math.floor(lu)) : lu) : null
   const resultat = useMemo(() => {
     if (stock_t === null) return null
-    const r = scenario.id === 'proportionnel' ? repartir(stock_t, demandes, dossier.priorite / 100) : remplirDansLOrdre(stock_t, ordonner(demandes, criteres, scenario.id))
+    const r = scenario.id === 'proportionnel' ? prorataMulticritere(lignesMulti, stock_t, dossier.arbitrage) : remplirDansLOrdre(stock_t, ordonner(demandes, criteres, scenario.id))
     return sacs ? enSacsEntiers(r, stock_t) : r
-  }, [scenario.id, stock_t, demandes, dossier.priorite, criteres, sacs])
+  }, [scenario.id, stock_t, demandes, lignesMulti, dossier.arbitrage, criteres, sacs])
   const parts = useMemo(() => (!resultat ? [] : scenario.id === 'proportionnel' ? [...resultat.parts].sort((x, y) => y.quantite_t - x.quantite_t) : resultat.parts), [resultat, scenario.id])
   const reparti = parts.reduce((s, p) => s + p.quantite_t, 0)
   const couverture = resultat && besoinTotal ? (100 * reparti) / besoinTotal : null
@@ -96,7 +99,7 @@ export default function Repartir({ cadre, publier }: PropsMode) {
     const k = criteres.get(c)
     if (scenario.id === 'urgence') return [`CH ${k?.phase == null ? 'non compté' : `phase ${k.phase}`}`, k?.personnes_phase3_5 == null ? null : `${nombre(k.personnes_phase3_5)} pers. phases 3-5`, `vulnérabilité ${k?.vulnerabilite == null ? 'non notée' : nombre(k.vulnerabilite)}`].filter(Boolean).join(' · ')
     if (scenario.id === 'production') return k?.potentiel_adapte == null ? 'culture non « adaptée » ou potentiel non évalué : servi par besoin' : `potentiel +${nombre(k.potentiel_adapte)} kg/ha (${libelle(cultureParDep.get(c)).toLowerCase()}, valeur de zone)`
-    return `prorata du besoin${dossier.priorite ? ` · vulnérabilité ${k?.vulnerabilite == null ? 'non notée' : nombre(k.vulnerabilite)}` : ''}`
+    return `prorata multicritère · vulnérabilité ${k?.vulnerabilite == null ? 'non notée (médiane)' : nombre(k.vulnerabilite)}`
   }
   // Sacs par département : entiers en unité « sacs », sinon au demi-sac supérieur (arrondi par département)
   const sacsDe = (t: number) => (sacs ? Math.round(t * 20) : sacsDeTonnes(t))
@@ -107,12 +110,14 @@ export default function Repartir({ cadre, publier }: PropsMode) {
   // Le total = la somme des lignes affichées
   const totalSacs = parts.reduce((s, p) => s + (p.quantite_t > 0 ? sacsDe(p.quantite_t) : 0), 0)
   const totalBudget = prixSac === null ? null : parts.reduce((s, p) => s + (budgetDe(p.quantite_t) ?? 0), 0)
-  const totaux = ['Total', quantite(besoinTotal), quantite(reparti), pct(couverture), nombre(totalSacs), totalBudget === null ? 'prix à saisir' : fcfa(totalBudget), '', '']
+  // Couverture affichée arrondie vers le bas partout : on ne surestime jamais ce que le stock couvre (38,7 % → 38 %)
+  const couvertureAffichee = couverture === null ? null : couverture >= 100 ? 100 : Math.floor(couverture)
+  const totaux = ['Total', quantite(besoinTotal), quantite(reparti), pct(couvertureAffichee), nombre(totalSacs), totalBudget === null ? 'prix à saisir' : fcfa(totalBudget), '', '']
   const cleTableau = tableau.map((l) => l.join(';')).join('|') + totaux.join(';')
 
   const titre = !territoires ? 'Répartir le stock' : !demandes.length ? `Rien à répartir en ${nom}` : !resultat ? SAISIR : `${quantite(reparti)} ${deIntrant(intrant)} pour ${servis} département${servis > 1 ? 's' : ''}`
   const lignes: LigneCheck[] = !demandes.length ? [] : !resultat ? [{ etat: 'info', texte: SAISIR }] : [
-    { etat: (couverture ?? 0) >= 100 ? 'ok' : 'attention', texte: `Le stock couvre **${pct(couverture === null ? null : couverture >= 100 ? 100 : Math.floor(couverture))}** du besoin` },
+    { etat: (couverture ?? 0) >= 100 ? 'ok' : 'attention', texte: `Le stock couvre **${pct(couvertureAffichee)}** du besoin` },
     { etat: 'info', texte: `**${entiers}** département${entiers > 1 ? 's' : ''} servi${entiers > 1 ? 's' : ''} entièrement, ${partiels} partiellement` },
     !couverte ? { etat: 'info', texte: `Date limite non disponible pour ${annee}` }
       : !pret ? { etat: 'info', texte: 'Date limite : chargement' }
@@ -128,7 +133,7 @@ export default function Repartir({ cadre, publier }: PropsMode) {
     return {
       aEcouter: territoires ? aLire(titre, lignes) : undefined,
       surPoint: setDepot,
-      resume: resultat && demandes.length ? `${quantite(reparti)} répartis · ${pct(couverture)} du besoin` : demandes.length ? 'Stock à saisir' : 'Rien à répartir',
+      resume: resultat && demandes.length ? `${quantite(reparti)} répartis · ${pct(couvertureAffichee)} du besoin` : demandes.length ? 'Stock à saisir' : 'Rien à répartir',
       vue: {
         ambiance: 'nuit', camera: cadrer.pays(cadre, { inclinaison: 60, cap: -24 }), zones: null, relief: true, selection: code, satellite: false, pluie: 0, arcs, alertes: [],
         reperes: [{ id: 'depot', position: depot, genre: 'depot', libelle: 'Dépôt du stock' }],
@@ -168,7 +173,7 @@ export default function Repartir({ cadre, publier }: PropsMode) {
     ),
   }
   const puces = [puceAnnee(cadre, a), puceCulture(cadre, cultures, culture, 'Toutes'), puceIntrant(cadre.ref, intrant, majDossier),
-    puceChoix('scenario', 'Scénario', SCENARIOS.map((s) => ({ id: s.id, libelle: s.libelle })), scenario.id, (id) => majDossier({ scenario: id })), puceStock]
+    puceChoix('scenario', 'Scénario', SCENARIOS.map((s) => ({ id: s.id, libelle: s.libelle })), scenario.id, (id) => { majDossier({ scenario: id }); suivre('scenario_choisi', { scenario: id }) }), puceStock]
 
   return (
     <FicheReponse cadre={cadre} mode="repartir" cle={`${code}-${intrant?.code_intrant}-${culture}-${annee}-${scenario.id}`} titre={titre} lignes={lignes} puces={puces} aEcouter={sortie.aEcouter}
@@ -184,9 +189,9 @@ export default function Repartir({ cadre, publier }: PropsMode) {
           <p className="text-sm leading-relaxed text-white/75">{scenario.regle}</p>
           {scenario.id === 'proportionnel' && (
             <label className="mt-3 block text-2xs text-white/60">
-              <span className="flex justify-between"><span>Réglage avancé : priorité à la vulnérabilité</span><span className="text-sm font-medium text-white tabular-nums">{dossier.priorite ? `${dossier.priorite} %` : 'aucune (prorata pur)'}</span></span>
-              <input type="range" className="glissiere mt-1 block h-11 w-full" min={0} max={100} step={5} value={dossier.priorite} onChange={(e) => majDossier({ priorite: Number(e.target.value) })} />
-              <span className="flex justify-between text-white/60"><span>prorata des besoins</span><span>les plus vulnérables d'abord</span></span>
+              <span className="flex justify-between"><span>Arbitrage : vulnérabilité ↔ rendement attendu</span><span className="text-sm font-medium text-white tabular-nums">{nomArbitrage(dossier.arbitrage)}</span></span>
+              <input type="range" className="glissiere mt-1 block h-11 w-full" min={0} max={100} step={5} value={dossier.arbitrage} onChange={(e) => majDossier({ arbitrage: Number(e.target.value) })} />
+              <span className="flex justify-between text-white/60">{ARBITRAGES_NOMMES.map((a) => <button key={a.valeur} type="button" className="min-h-11 underline-offset-4 hover:underline" onClick={() => majDossier({ arbitrage: a.valeur })}>{a.libelle}</button>)}</span>
             </label>
           )}
           {scenario.id === 'urgence' && !ch && <p className="mt-2 text-xs text-white/60">Cadre harmonisé non disponible : l'ordre suit la vulnérabilité.</p>}

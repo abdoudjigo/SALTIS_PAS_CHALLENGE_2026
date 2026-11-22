@@ -14,5 +14,6 @@ Points d'entrée les plus utiles :
 - Savoir ce qui est décidé, fait et ouvert : [`technique/etat-modelisation.md`](technique/etat-modelisation.md)
 - Fiabilité des modèles : [`../ml/MODELES.md`](../ml/MODELES.md) et [`technique/rapport-comparaison-modeles.md`](technique/rapport-comparaison-modeles.md)
 - Ce que la V1 doit faire : [`projet/v1-cahier-des-charges.md`](projet/v1-cahier-des-charges.md)
+- Ce que mesure la plateforme (audience, sans donnée personnelle) : [`technique/plan-de-marquage.md`](technique/plan-de-marquage.md)
 
 Chaque dossier du code a aussi son propre `README.md` : `api/`, `app/`, `dbt/`, `ml/`, `ingestion/collecte/`, `voix/`, `deploy/`.

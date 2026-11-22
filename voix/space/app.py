@@ -10,10 +10,13 @@ Aucune voix n'est conservée : l'audio est traité puis oublié.
 """
 
 import os
+import re
+import tempfile
 
 import gradio as gr
 import librosa
 import numpy as np
+import soundfile as sf
 import torch
 from parler_tts import ParlerTTSForConditionalGeneration
 from transformers import (
@@ -34,7 +37,12 @@ except ImportError:
 JETON = os.environ.get("HF_TOKEN")
 ASR_ID = "AIHubSN/M-Kiriku-ASR"
 TTS_ID = "CONCREE/Adia_TTS"
-VOIX = "A warm and natural voice, with a conversational flow"  # description de voix (Adia TTS)
+# Description de voix (Adia TTS) : la plus nette des exemples de la fiche du modèle, pour des conseils à suivre
+VOIX = "A clear and educational voice, with a flow adapted to learning"
+# Réglages de génération recommandés par la fiche d'Adia TTS (CONCREE)
+GENERATION = {"do_sample": True, "temperature": 0.8, "top_k": 50, "repetition_penalty": 1.2}
+LIMITE_MORCEAU = 200  # Adia TTS lit 200 caractères au plus par passe
+PAUSE_S = 0.25  # silence entre deux morceaux
 DUREE_MAX_S = 30  # Whisper traite 30 s d'un coup : une question tient largement dedans
 
 # ZeroGPU (carte graphique partagée) si le Space en a une, sinon processeur (gratuit, plus lent).
@@ -73,38 +81,78 @@ def transcrire(chemin_audio: str) -> str:
     return processeur.tokenizer.decode(sortie[0], skip_special_tokens=True).strip()
 
 
-@spaces.GPU(duration=60)  # un texte complet (plusieurs phrases) : quelques secondes sur carte graphique
-def parler(texte: str):
-    """Texte wolof (200 caractères au plus par phrase) → (fréquence, signal)."""
-    texte = (texte or "").strip()
-    if not texte:
-        return None
-    morceaux, signaux = decouper(texte), []
+def decouper(texte: str, limite: int = LIMITE_MORCEAU) -> list[str]:
+    """Morceaux de `limite` caractères au plus, coupés aux fins de phrase, sinon aux virgules, sinon entre deux mots
+    (jamais au milieu d'un mot) ; les phrases courtes voisines sont regroupées (moins de passes, voix plus liée)."""
+    phrases = [p.strip() for p in re.split(r"(?<=[.!?;])\s+", texte.strip()) if p.strip()]
+    pieces: list[str] = []
+    for phrase in phrases:
+        while len(phrase) > limite:
+            coupe = phrase.rfind(",", 0, limite)
+            coupe = coupe + 1 if coupe > limite // 3 else phrase.rfind(" ", 0, limite)
+            if coupe <= 0:
+                coupe = limite
+            pieces.append(phrase[:coupe].strip())
+            phrase = phrase[coupe:].strip()
+        if phrase:
+            pieces.append(phrase)
+    morceaux: list[str] = []
+    for piece in pieces:
+        if morceaux and len(morceaux[-1]) + 1 + len(piece) <= limite:
+            morceaux[-1] = f"{morceaux[-1]} {piece}"
+        else:
+            morceaux.append(piece)
+    return morceaux
+
+
+def _generer(morceaux: list[str]) -> list[np.ndarray]:
+    """Tous les morceaux en UNE passe (lot) sur la carte graphique : le texte entier prend à peu près le temps d'un
+    seul morceau. En cas d'échec du lot, morceau par morceau."""
+    try:
+        description = tts_tok([VOIX] * len(morceaux), return_tensors="pt", padding=True).to(APPAREIL)
+        invites = tts_tok(morceaux, return_tensors="pt", padding=True).to(APPAREIL)
+        with torch.no_grad():
+            sortie = tts.generate(input_ids=description.input_ids, attention_mask=description.attention_mask,
+                                  prompt_input_ids=invites.input_ids, prompt_attention_mask=invites.attention_mask,
+                                  return_dict_in_generate=True, **GENERATION)
+        return [sortie.sequences[i, : sortie.audios_length[i]].float().cpu().numpy() for i in range(len(morceaux))]
+    except Exception as exc:  # noqa: BLE001 — version de parler-tts sans génération par lot
+        print(f"Génération par lot impossible, morceau par morceau : {exc}")
     description = tts_tok(VOIX, return_tensors="pt").input_ids.to(APPAREIL)
+    signaux = []
     for morceau in morceaux:
         invite = tts_tok(morceau, return_tensors="pt").input_ids.to(APPAREIL)
         with torch.no_grad():
-            audio = tts.generate(input_ids=description, prompt_input_ids=invite, do_sample=True, temperature=0.8)
-        signaux.append(audio.cpu().numpy().squeeze())
-        signaux.append(np.zeros(int(0.25 * tts.config.sampling_rate), dtype=np.float32))  # courte pause
-    return tts.config.sampling_rate, np.concatenate(signaux)
+            audio = tts.generate(input_ids=description, prompt_input_ids=invite, **GENERATION)
+        signaux.append(audio.float().cpu().numpy().squeeze())
+    return signaux
 
 
-def decouper(texte: str, limite: int = 200) -> list[str]:
-    """Adia TTS lit 200 caractères au plus : on coupe aux fins de phrase."""
-    phrases, courant = [], ""
-    for phrase in texte.replace("!", ".").replace("?", ".").split("."):
-        phrase = phrase.strip()
-        if not phrase:
-            continue
-        if len(courant) + len(phrase) + 2 > limite and courant:
-            phrases.append(courant)
-            courant = phrase
-        else:
-            courant = f"{courant}. {phrase}" if courant else phrase
-    if courant:
-        phrases.append(courant)
-    return [p[:limite] for p in phrases]
+def _fichier(signal: np.ndarray, frequence: int) -> str:
+    """mp3 (5 à 10 fois plus léger que le wav : vite téléchargé sur un réseau mobile), sinon wav."""
+    signal = signal / max(1e-6, float(np.abs(signal).max())) * 0.9  # volume homogène, sans saturation
+    for suffixe, options in ((".mp3", {"format": "MP3", "subtype": "MPEG_LAYER_III"}), (".wav", {"subtype": "PCM_16"})):
+        descripteur, chemin = tempfile.mkstemp(suffix=suffixe)
+        os.close(descripteur)
+        try:
+            sf.write(chemin, signal, frequence, **options)
+            return chemin
+        except Exception as exc:  # noqa: BLE001 — libsndfile sans mp3 : on garde le wav
+            print(f"Écriture {suffixe} impossible : {exc}")
+    raise RuntimeError("Écriture audio impossible")
+
+
+@spaces.GPU(duration=30)  # un résumé entier en un lot : quelques secondes sur carte graphique ; durée courte = priorité
+def parler(texte: str):
+    """Texte wolof → fichier audio (mp3, sinon wav)."""
+    texte = (texte or "").strip()
+    if not texte:
+        return None
+    signaux = _generer(decouper(texte))
+    frequence = tts.config.sampling_rate
+    pause = np.zeros(int(PAUSE_S * frequence), dtype=np.float32)
+    morceaux = [x for signal in signaux for x in (signal.astype(np.float32), pause)][:-1]
+    return _fichier(np.concatenate(morceaux), frequence)
 
 
 with gr.Blocks(title="Assaman & Suuf — voix wolof") as demo:
@@ -115,7 +163,7 @@ with gr.Blocks(title="Assaman & Suuf — voix wolof") as demo:
     gr.Button("Transcrire").click(transcrire, micro, texte, api_name="transcrire")
     with gr.Row():
         a_dire = gr.Textbox(label="Texte wolof à dire")
-        voix = gr.Audio(label="Voix", type="numpy")
+        voix = gr.Audio(label="Voix", type="filepath", format="mp3")
     gr.Button("Parler").click(parler, a_dire, voix, api_name="parler")
 
 # En local (voix/README.md) : http://127.0.0.1:7860, jamais exposé au réseau

@@ -1,9 +1,27 @@
 // Répartition d'un stock entre les départements (proposition de la solution, que l'organisation ajuste puis valide).
-// Méthode « prorata des besoins, priorité à la vulnérabilité », version front-0.1 : indicative, calculée dans le navigateur.
+// Scénario « Multicritère » : la méthode du moteur ml/agrodistrib (« prorata multicritère », agrodistrib-v1, validée le
+// 18/11/2026, docs/technique/rapport-comparaison-modeles.md section 5), portée à l'identique : une seule formule dans
+// tout le projet (audit, constat ARC-01). Équivalence vérifiée par repartition.test.ts sur ml/sorties.
+import type { ColonneBesoin, LigneTerritoireAgrodistrib } from '../../types/marts'
 import type { ScenarioRepartition } from '../cadre'
 
-export const METHODE = 'Prorata des besoins, priorité à la vulnérabilité'
-export const VERSION = 'front-0.1'
+export const METHODE = 'Prorata multicritère'
+export const VERSION = 'agrodistrib-v1'
+/** Part du poids indépendante des critères : tout couple avec un besoin est servi (ml : PLANCHER_POIDS) */
+export const PLANCHER_POIDS = 0.5
+/** Arbitrage du décideur, en % : 0 = équité (vulnérabilité seule), 100 = rendement (valeur indicative seule) */
+export const ARBITRAGE_DEFAUT = 50
+export const ARBITRAGES_NOMMES: { valeur: number; libelle: string }[] = [
+  { valeur: 0, libelle: 'Équité' },
+  { valeur: 50, libelle: 'Équilibré' },
+  { valeur: 100, libelle: 'Rendement' },
+]
+
+/** « Équilibré (50 %) », ou la valeur seule. */
+export const nomArbitrage = (v: number) => {
+  const nomme = ARBITRAGES_NOMMES.find((a) => a.valeur === v)
+  return nomme ? `${nomme.libelle} (${v} % rendement)` : `${v} % rendement, ${100 - v} % vulnérabilité`
+}
 
 export interface Demande {
   code: string
@@ -19,47 +37,105 @@ export interface Part {
   couverture_pct: number
 }
 
+/** Une ligne à servir : un couple département × culture, comme dans ml/agrodistrib/moteur.py. */
+export interface LigneMulticritere {
+  code: string
+  culture: string
+  besoin_t: number
+  /** vulnérabilité relative, 0 à 1 (score / 100) ; null avant imputation */
+  vulnerabilite: number | null
+  /** valeur indicative d'une tonne, 0 à 1 ; null avant imputation */
+  valeur_indicative: number | null
+}
+
+const mediane = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b)
+  const m = Math.floor(s.length / 2)
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+}
+
 /**
- * Chaque département reçoit une part proportionnelle à son besoin, majorée selon sa vulnérabilité
- * (`priorite` de 0 à 1). Une part ne dépasse jamais le besoin : le surplus est redistribué aux autres.
- * Un département non noté prend la vulnérabilité moyenne (ni favorisé, ni pénalisé).
+ * Prépare les lignes (ml : `preparer`, sans doses saisies) : couples avec un besoin connu > 0 ; vulnérabilité = score / 100 ;
+ * valeur indicative = potentiel de gain (ramené entre 0 et 1 dans chaque culture) × probabilité que le cycle soit couvert
+ * × (1 − probabilité de saison sèche). Un critère vide prend la médiane des autres lignes (jamais 0).
  */
-export function repartir(stock_t: number, demandes: Demande[], priorite: number): { parts: Part[]; reste_t: number } {
-  const notes = demandes.map((d) => d.vulnerabilite).filter((v): v is number => v !== null)
-  const moyenne = notes.length ? notes.reduce((a, b) => a + b, 0) / notes.length : 50
-  const poids = new Map(demandes.map((d) => [d.code, d.besoin_t * (1 + 3 * priorite * ((d.vulnerabilite ?? moyenne) / 100))]))
-  const quantites = new Map(demandes.map((d) => [d.code, 0]))
-
-  let reste = Math.max(stock_t, 0)
-  let ouverts = demandes.filter((d) => d.besoin_t > 0)
-  while (reste > 1e-6 && ouverts.length) {
-    const total = ouverts.reduce((a, d) => a + poids.get(d.code)!, 0)
-    let distribue = 0
-    const suivants: Demande[] = []
-    for (const d of ouverts) {
-      const deja = quantites.get(d.code)!
-      const part = Math.min((reste * poids.get(d.code)!) / total, d.besoin_t - deja)
-      quantites.set(d.code, deja + part)
-      distribue += part
-      if (d.besoin_t - deja - part > 1e-6) suivants.push(d)
+export function lignesMulticritere(territoires: LigneTerritoireAgrodistrib[], colonne: ColonneBesoin, culture: string | null): LigneMulticritere[] {
+  const t = territoires.filter((l) => {
+    if (culture && l.culture !== culture) return false
+    const b = colonne === 'besoin_semences_retenu_t' && !l.besoin_semences_applicable ? null : l[colonne]
+    return b !== null && b > 0
+  })
+  const potentiel = (l: LigneTerritoireAgrodistrib) => (l.potentiel_evalue && l.potentiel_gain_kg_ha !== null ? Math.max(l.potentiel_gain_kg_ha, 0) : null)
+  const maxParCulture = new Map<string, number>()
+  t.forEach((l) => {
+    const p = potentiel(l)
+    if (p !== null) maxParCulture.set(l.culture, Math.max(maxParCulture.get(l.culture) ?? 0, p))
+  })
+  const lignes: LigneMulticritere[] = t.map((l) => {
+    const p = potentiel(l)
+    const max = maxParCulture.get(l.culture) ?? 0
+    const norm = p === null ? null : max > 0 ? p / max : 0
+    const capacite = l.proba_cycle_couvert_moyen_pct === null || l.proba_saison_seche_pct === null ? null : (l.proba_cycle_couvert_moyen_pct / 100) * (1 - l.proba_saison_seche_pct / 100)
+    return {
+      code: l.code_departement, culture: l.culture, besoin_t: l[colonne] as number,
+      vulnerabilite: l.score_vulnerabilite === null ? null : l.score_vulnerabilite / 100,
+      valeur_indicative: norm === null || capacite === null ? null : norm * capacite,
     }
-    reste -= distribue
-    if (suivants.length === ouverts.length) break
-    ouverts = suivants
+  })
+  for (const critere of ['vulnerabilite', 'valeur_indicative'] as const) {
+    const connus = lignes.map((l) => l[critere]).filter((v): v is number => v !== null)
+    const m = connus.length ? mediane(connus) : 0
+    lignes.forEach((l) => { if (l[critere] === null) l[critere] = m })
   }
+  return lignes
+}
 
-  return {
-    reste_t: Math.max(reste, 0),
-    parts: demandes.map((d) => {
-      const q = quantites.get(d.code)!
-      return { code: d.code, besoin_t: d.besoin_t, quantite_t: q, couverture_pct: d.besoin_t > 0 ? (100 * q) / d.besoin_t : 0 }
-    }),
+/** Répartit `stock` en proportion de `poids`, sans jamais dépasser le besoin (ml : `au_prorata`). */
+export function auProrata(besoins: number[], poids: number[], stock: number): number[] {
+  const total = besoins.reduce((s, b) => s + b, 0)
+  if (stock >= total) return [...besoins]
+  // Remplissage par niveau : les lignes au plus petit rapport besoin / poids sont servies en entier d'abord
+  const ordre = besoins.map((_, i) => i).filter((i) => poids[i] > 0).sort((i, j) => besoins[i] / poids[i] - besoins[j] / poids[j])
+  const x = besoins.map(() => 0)
+  let reste = Math.max(stock, 0)
+  let poidsRestant = ordre.reduce((s, i) => s + poids[i], 0)
+  let k = 0
+  for (const [rang, i] of ordre.entries()) {
+    k = reste / poidsRestant
+    if (besoins[i] <= k * poids[i]) {
+      x[i] = besoins[i]
+      reste -= besoins[i]
+      poidsRestant -= poids[i]
+    } else {
+      ordre.slice(rang).forEach((j) => { x[j] = k * poids[j] })
+      break
+    }
   }
+  return x
+}
+
+/** Poids d'une ligne (ml : `poids`) : besoin × (0,5 + α × valeur indicative + (1 − α) × vulnérabilité). */
+export const poidsMulticritere = (l: LigneMulticritere, alpha: number) =>
+  l.besoin_t * (PLANCHER_POIDS + alpha * (l.valeur_indicative ?? 0) + (1 - alpha) * (l.vulnerabilite ?? 0))
+
+/** Scénario Multicritère : répartition par couple département × culture, puis somme par département. */
+export function prorataMulticritere(lignes: LigneMulticritere[], stock_t: number, arbitragePct: number): { parts: Part[]; reste_t: number } {
+  const alpha = Math.min(Math.max(arbitragePct, 0), 100) / 100
+  const x = auProrata(lignes.map((l) => l.besoin_t), lignes.map((l) => poidsMulticritere(l, alpha)), stock_t)
+  const parDep = new Map<string, Part>()
+  lignes.forEach((l, i) => {
+    const p = parDep.get(l.code) ?? { code: l.code, besoin_t: 0, quantite_t: 0, couverture_pct: 0 }
+    p.besoin_t += l.besoin_t
+    p.quantite_t += x[i]
+    parDep.set(l.code, p)
+  })
+  const parts = [...parDep.values()].map((p) => ({ ...p, couverture_pct: p.besoin_t > 0 ? (100 * p.quantite_t) / p.besoin_t : 0 }))
+  return { parts, reste_t: Math.max(stock_t - x.reduce((s, q) => s + q, 0), 0) }
 }
 
 // --- Scénarios nommés (étape 5 de l'ONG) -----------------------------------------------------------
 export const SCENARIOS: { id: ScenarioRepartition; libelle: string; regle: string }[] = [
-  { id: 'proportionnel', libelle: 'Proportionnel', regle: 'Chaque département reçoit une part au prorata de son besoin connu (règle du projet, d_scenarios_repartition), majorée selon le réglage avancé « priorité à la vulnérabilité ».' },
+  { id: 'proportionnel', libelle: 'Multicritère', regle: 'Chaque département et chaque culture reçoivent une part du stock proportionnelle à leur besoin, majorée selon la vulnérabilité du département et la valeur indicative d’une tonne (potentiel de gain, chances que le cycle soit couvert, risque de saison sèche). Le réglage arbitre entre les deux : équité (vulnérabilité seule), équilibré, rendement (valeur indicative seule). Une part ne dépasse jamais le besoin. Méthode du moteur AgroDistrib (prorata multicritère, version agrodistrib-v1).' },
   { id: 'urgence', libelle: 'Urgence', regle: 'Les départements sont servis dans l’ordre de la phase du Cadre harmonisé (période retenue, la plus grave d’abord), puis du nombre de personnes en phases 3 à 5, puis du score de vulnérabilité ; chacun reçoit son besoin complet tant qu’il reste du stock. Le Cadre harmonisé ne compte que pour l’année de son cycle : une autre année, l’ordre suit la vulnérabilité.' },
   { id: 'production', libelle: 'Production', regle: 'Les départements où la culture est « adaptée » et le potentiel de gain évalué sont servis d’abord, du plus fort potentiel de gain de rendement au plus faible ; les autres (dont une culture adaptée au potentiel non évalué) viennent ensuite, du plus gros besoin au plus petit. Chacun reçoit son besoin complet tant qu’il reste du stock.' },
 ]

@@ -126,3 +126,78 @@ def test_alerte_seulement_si_fiable():
     avec_fiable = repondre([_ligne("Kolda", 62, True), _ligne("Kaolack", 45, False)])
     assert "1 département en alerte" in avec_fiable.texte_fr and "Kaolack" not in avec_fiable.texte_fr
     assert "fiable" in avec_fiable.nature
+
+
+def test_parler_par_le_service_voix(client_ml, monkeypatch, tmp_path):  # noqa: F811
+    """Audit ARC-02 : en production, l'API ne synthétise plus ; elle appelle le service « voix » et rend 503 s'il ne répond pas."""
+    import importlib
+    import io
+    import json
+    import urllib.request
+
+    from api.voix import tts_local
+
+    module_voix = importlib.import_module("api.routes.voix")
+    monkeypatch.setattr(module_voix, "CACHE_VOIX", tmp_path)
+    monkeypatch.setattr(tts_local, "parler", lambda texte: (_ for _ in ()).throw(AssertionError("synthèse dans l'API")))
+    p = client_ml.app.state.parametres
+    monkeypatch.setattr(p, "voix_service_url", "http://voix:8090")
+    appels = []
+
+    def urlopen(requete, timeout):
+        appels.append((requete.full_url, json.loads(requete.data), timeout))
+        return io.BytesIO(json.dumps({"audio_wo_base64": "UklGRg=="}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    assert client_ml.post(f"{V1}/parler", json={"texte": "Nawet bi."}).json() == {"audio_wo_base64": "UklGRg=="}
+    assert appels == [("http://voix:8090/dire", {"texte": "Nawet bi."}, p.voix_service_delai_s)]
+
+    def trop_lent(requete, timeout):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(urllib.request, "urlopen", trop_lent)
+    r = client_ml.post(f"{V1}/parler", json={"texte": "Beneen."})
+    assert r.status_code == 503 and r.json()["erreur"]["code"] == "voix_indisponible"
+
+
+def test_service_voix(monkeypatch):
+    """Le conteneur « voix » : une synthèse à la fois, texte borné, 503 en cas d'échec."""
+    from fastapi.testclient import TestClient
+
+    from api.voix import service, tts_local
+
+    monkeypatch.setenv("VOIX_PRECHARGER", "0")
+    monkeypatch.setattr(tts_local, "parler", lambda texte: "UklGRg==" if texte != "échec" else None)
+    with TestClient(service.app) as c:
+        assert c.get("/sante").json() == {"pret": False}
+        assert c.post("/dire", json={"texte": "Nawet bi."}).json() == {"audio_wo_base64": "UklGRg=="}
+        assert c.post("/dire", json={"texte": "échec"}).status_code == 503
+        assert c.post("/dire", json={"texte": "x" * 701}).status_code == 422
+
+
+def test_parler_par_le_space_puis_repli_sur_le_service(client_ml, monkeypatch, tmp_path):  # noqa: F811
+    """Le Space (Adia TTS) passe en premier ; s'il ne rend rien (endormi, quota épuisé), le service « voix » prend le relais."""
+    import importlib
+    import io
+    import json
+    import urllib.request
+
+    from api.voix.espace import EspaceVoix
+
+    module_voix = importlib.import_module("api.routes.voix")
+    monkeypatch.setattr(module_voix, "CACHE_VOIX", tmp_path)
+    p = client_ml.app.state.parametres
+    monkeypatch.setattr(p, "voix_space", "compte/voix")
+    monkeypatch.setattr(p, "voix_service_url", "http://voix:8090")
+    monkeypatch.setattr(EspaceVoix, "_connecter", lambda self: object())
+    mp3 = base64.b64encode(b"ID3mp3").decode()
+    monkeypatch.setattr(EspaceVoix, "parler", lambda self, texte: mp3)
+    service = []
+    monkeypatch.setattr(urllib.request, "urlopen", lambda requete, timeout: service.append(1) or io.BytesIO(json.dumps({"audio_wo_base64": "UklGRg=="}).encode()))
+
+    assert client_ml.post(f"{V1}/parler", json={"texte": "Space bi."}).json() == {"audio_wo_base64": mp3}
+    assert service == []  # le Space a répondu : le serveur ne synthétise pas
+
+    monkeypatch.setattr(EspaceVoix, "parler", lambda self, texte: None)
+    assert client_ml.post(f"{V1}/parler", json={"texte": "Space bi nelaw na."}).json() == {"audio_wo_base64": "UklGRg=="}
+    assert service == [1]

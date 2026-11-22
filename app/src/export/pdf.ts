@@ -3,6 +3,7 @@
 import type { jsPDF } from 'jspdf'
 import { cellule, dateHeureFr, estFumier, pdfTexte } from './texte'
 import type { ElementChecklist, Legende, Tableau } from './types'
+import { suivre } from '../lib/mesure'
 
 export const A4 = { largeur: 210, hauteur: 297 }
 export const MARGE = 15
@@ -257,6 +258,7 @@ export class Redacteur {
 export function terminer(doc: jsPDF, nomFichier: string, telecharger: boolean) {
   const octets = doc.output('arraybuffer')
   if (telecharger) {
+    suivre('export_pdf', { type: nomFichier.startsWith('dossier') ? 'dossier' : nomFichier.startsWith('fiche') ? 'fiche' : 'autre' })
     const url = URL.createObjectURL(new Blob([octets], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = url

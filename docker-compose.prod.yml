@@ -61,14 +61,16 @@ services:
       # Obligatoire : sans jeton, impossible de relire les données après un dbt build (POST /systeme/cache/rafraichir).
       # Générer avec : openssl rand -hex 24 (audit, constat ARC-03)
       API_ADMIN_TOKEN: ${API_ADMIN_TOKEN:?API_ADMIN_TOKEN manquant dans .env - générer avec openssl rand -hex 24}
+      # Voix wolof : produite par le service « voix » ci-dessous, plus par l'API (audit, constat ARC-02)
+      VOIX_SERVICE_URL: http://voix:8090
     volumes:
-      - api-donnees:/donnees
       - voix-cache:/app/voix/cache
-    networks: [public, prive]
+    networks: [public, prive, voix]
     depends_on:
       redis: { condition: service_healthy }
     cap_drop: [ALL]
-    mem_limit: 5g
+    # Sans torch ni modèle de voix : les données en mémoire seulement
+    mem_limit: 2g
     pids_limit: 512
     healthcheck:
       # 200 quand des données sont servies (environ 30 s après le démarrage), 503 avant
@@ -77,6 +79,29 @@ services:
       timeout: 6s
       retries: 3
       start_period: 180s
+
+  # Voix wolof (SpeechT5 sur le processeur), à part de l'API : une synthèse ne peut plus ralentir la carte et les fiches.
+  # Un cœur au plus (le VPS en a 2), mémoire bornée, aucun port publié : seule l'API l'appelle (audit, constat ARC-02).
+  voix:
+    <<: *durcissement
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.voix
+    volumes:
+      # Modèles téléchargés au premier démarrage (~1 Go), gardés entre deux mises à jour (même volume qu'avant)
+      - api-donnees:/donnees
+    # Réseau « voix » non interne : le premier démarrage télécharge les modèles depuis Hugging Face
+    networks: [voix]
+    cap_drop: [ALL]
+    cpus: 1.0
+    mem_limit: 3g
+    pids_limit: 200
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8090/sante', timeout=4)"]
+      interval: 30s
+      timeout: 6s
+      retries: 3
+      start_period: 120s
 
   redis:
     <<: *durcissement
@@ -141,6 +166,8 @@ networks:
   public:
   prive:
     internal: true
+  # API ↔ voix seulement (Caddy n'y est pas) ; non interne pour le téléchargement des modèles
+  voix:
   # Base d'Umami : joignable par Umami seulement, sans sortie internet
   umami:
     internal: true
@@ -148,7 +175,7 @@ networks:
 volumes:
   caddy-donnees:
   caddy-config:
-  api-donnees:
+  api-donnees:   # modèles de la voix wolof (monté dans le service « voix »)
   voix-cache:
   redis-donnees:
   umami-db:
