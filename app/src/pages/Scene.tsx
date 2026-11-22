@@ -16,6 +16,9 @@ import { Dock } from '../scene/interface/Dock'
 import { hauteurCran, type Cran } from '../scene/carte/crans'
 import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/interface/Fenetre'
 import { GardeCarte } from '../scene/carte/GardeCarte'
+import { ChoixDepartement } from '../scene/interface/ChoixDepartement'
+import { EtatReseau } from '../scene/interface/EtatReseau'
+import { VersionDonnees } from '../scene/interface/VersionDonnees'
 import { useContours, useContoursZones } from '../scene/carte/fonds'
 import type { LonLat } from '../scene/carte/geo'
 import type { Utilisateur } from '../types/auth'
@@ -222,7 +225,9 @@ export default function Scene() {
   return (
     <div ref={racine} className="scene relative h-dvh overflow-hidden bg-encre-nuit text-white">
       {vue && cadre ? (
-        <GardeCarte large={large} onEchec={() => setSansCarte(true)}>
+        <GardeCarte large={large} onEchec={() => setSansCarte(true)}
+          // « Ma parcelle » a sa propre liste (le département y suit la position du champ)
+          choix={actif.id === 'parcelle' ? undefined : <ChoixDepartement departements={cadre.ref.departements} valeur={selection} onChoisir={setSelection} />}>
         <Suspense fallback={null}>
           <Carte vue={vue} contours={contours} contoursZones={contoursZones} departements={ref?.departements} depart={{ centre: [-32, 18], zoom: 1.6 }}
             onDepartement={setSelection} onPoint={sortie.surPoint} onSurvol={(s) => bulle.current?.montrer(s)}
@@ -264,7 +269,9 @@ export default function Scene() {
       {/* La fonctionnalité s'ouvre dans une fenêtre flottante (pop-up), un tiroir sur téléphone */}
       {cadre && (
         <Fenetre cle={actif.id} titre={actif.titre} icone={actif.icone} resume={sortie.resume} aEcouter={sortie.aEcouter} aEcouterWo={sortie.aEcouterWo} ecouteEnTete={false} large={large} hauteurEcran={ecran.h} cran={cran} onCran={setCran} legende={sansCarte ? undefined : sortie.legende}>
+          <EtatReseau />
           {contenu}
+          <VersionDonnees />
         </Fenetre>
       )}
     </div>

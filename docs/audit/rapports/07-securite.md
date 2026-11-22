@@ -67,6 +67,7 @@ La note est tirée vers le bas par **un secret réel poussé sur GitHub** (SEC-0
 - Effort : S
 
 ### [SEC-04] Consommation de ressources non bornée sur la voix (OWASP API4)
+- **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — voir BE-01 (texte limité à 700 caractères, file commune locale et Space, délai de 120 s, cache LRU) et BE-02 (questions coupées par défaut).
 - Sévérité : 🟠 Élevé   Statut : Constaté (code)
 - Où : `api/routes/voix.py:112-160` ; `api/voix/espace.py:32` (délai de 900 s) ; détail en BE-01 et BE-02
 - Constat : `POST /voix/parler` synthétise tout texte jusqu'à 1 500 caractères, avec une file de 6 et un cache disque qu'on peut saturer. `POST /voix/question` (5 Mo d'audio) reste public sans client.
@@ -91,6 +92,7 @@ La note est tirée vers le bas par **un secret réel poussé sur GitHub** (SEC-0
 - Effort : S
 
 ### [SEC-07] Informations internes exposées publiquement (`/systeme/cache`, en-têtes de diagnostic)
+- **Suivi (22/11/2026, après l'audit)** : 🟡 Partiellement corrigé — `/systeme/cache` est réservé à l'administration (BE-05). **Reste** : retirer `X-Cache-Mode` et `Server-Timing` des réponses en production.
 - Sévérité : 🟡 Moyen   Statut : Constaté (prod)
 - Où : `api/routes/systeme.py:50-54` ; `api/main.py:28` (`ENTETES_EXPOSES`) ; en-têtes de prod : `x-cache-mode: redis`, `x-data-version`, `server-timing`, `x-temps-traitement-ms`
 - Constat : `GET /api/v1/systeme/cache` renvoie sans jeton la base et le schéma source (`SALTIS.MARTS`), les versions, les volumes, les durées de lecture Snowflake et le déclencheur (BE-05). Chaque réponse indique le mode de cache et le temps de traitement.

@@ -398,13 +398,20 @@ Périmètre choisi par l'équipe pour le rendu du code source : **structure et o
 | 4. `docs/` | Rangé en `technique/`, `projet/`, `audit/` (`kit/`, `rapports/`), `visuels/`, `outils-ia/`, avec un index ; liens corrigés dans 34 fichiers ; 0 lien relatif cassé | QUA-06 (partiel) |
 | 5. Front | `app/src/scene/` rangé en `carte/`, `interface/`, `regles/`, `voix/`, `ong/` (25 fichiers, imports réécrits) ; typecheck, ESLint et build réussis ; 13 écrans et le formulaire d'avis vérifiés dans le navigateur | ARC-08 (partiel) |
 | 6. CI dbt | Cible `ci` isolée (`CI_STAGING`, `CI_INTERMEDIATE`, `CI_MARTS`) ; dbt lancé seulement sur les PR, `main`, `develop` ou à la main ; garde-fou sur le manifeste ; `ci-status` accepte un job dbt sauté ; `dbt/README.md` documente les deux cibles | DATA-01 = SEC-02 |
+| 7. Alertes récolte (22/11) | Règle unique `scene/regles/alertes.ts` (risque ≥ 40 % **et** prévision fiable) appliquée à « Alerte récolte », « Préparer la campagne » et à la réponse vocale ; test Python ajouté ; vérifié dans le navigateur | IA-01 |
+| 8. Hors ligne et adresse de l'API (22/11) | Règle de cache du service worker réécrite (expression régulière, sans variable) ; testée API arrêtée : données déjà vues servies depuis le cache. Constat nouveau FE-11 corrigé : le build de prod ne retombe plus sur `localhost:8080` | FE-01, FE-11 (nouveau) |
+| 9. Choix du département sans carte ni GPS (22/11) | Liste région → département dans « Ma parcelle » et à la place de la carte sans WebGL ; vérifiée à 375 px sans WebGL | FE-02 |
+| 10. Erreurs réseau et hors ligne (22/11) | Bandeau commun `EtatReseau` (hors ligne, serveur muet, « Réessayer ») en tête de tous les écrans ; vérifié API coupée, relancée et hors ligne simulé | FE-03 |
+| 11. Voix et API (22/11) | `/voix/parler` : 700 caractères au plus, une synthèse à la fois (locale ou Space), délais réduits, cache des voix LRU ; `/voix/texte` et `/voix/question` coupées par défaut (`VOIX_QUESTIONS`) ; `/systeme/cache` réservé à l'administration ; 3 tests ajoutés | BE-01 = SEC-04, BE-02, BE-05 = SEC-07 (partiel) |
+| 12. Rafraîchissement des données (22/11) | `API_ADMIN_TOKEN` obligatoire en production ; date des données affichée sous les résultats | ARC-03 |
+| 13. Page Confidentialité (22/11) | Avis par Gmail, identifiant Mapbox, Google et Hostinger ajoutés ; mention sous le formulaire d'avis ; hébergeur dans les mentions légales ; inexactitudes corrigées | PRIV-02, PRIV-05 (partiel), PRIV-08 (partiel) |
 
-**Bilan** (constats consolidés) : 5 corrigés (SEC-01 = PRIV-03, DATA-01 = SEC-02, ARC-10, SEC-10, OPS-09) et 5 partiellement (ARC-03, ARC-08, QUA-05, QUA-06, GOV-03), sur 85. **Plus aucun constat critique ouvert** (les deux 🔴 sont corrigés ; restent des actions recommandées côté Snowflake et Google). Les notes de la synthèse ne changent pas : elles décrivent la version auditée.
+**Bilan** (constats consolidés, sur 85) : **13 corrigés** (SEC-01 = PRIV-03, DATA-01 = SEC-02, IA-01, FE-01, FE-02, FE-03, BE-01 = SEC-04, BE-02, ARC-03, PRIV-02, ARC-10, SEC-10, OPS-09) et **7 partiellement** (ARC-08, BE-05 = SEC-07, PRIV-05, PRIV-08, QUA-05, QUA-06, GOV-03). S'y ajoute 1 constat critique découvert et corrigé après l'audit (FE-11). **Plus aucun constat critique ouvert.** Les notes de la synthèse ne changent pas : elles décrivent la version auditée.
 
 **Vérifications après corrections** : `make lint` OK ; `make test` → 121 tests réussis ; `npm run typecheck`, `eslint`, `npm run build` OK ; `dbt parse` OK ; `docker compose config` (dev) OK.
 
 **Reste prioritaire avant le rendu ou la démo** (hors périmètre « structure ») :
 1. ~~Révoquer le mot de passe Gmail~~ : **fait**. Reste facultatif : vérifier l'activité du compte, consigner l'incident, nettoyer l'historique git si le dépôt devient public (SEC-01).
 2. ~~Isoler la CI dbt~~ : **fait** dans le code (cible `ci`). Reste : rôle CI dédié et vérification de `QUERY_HISTORY` (DATA-01).
-3. Alertes récolte seulement si fiables ; cache hors ligne ; sélecteur de département (IA-01, FE-01, FE-02).
+3. ~~Alertes récolte seulement si fiables~~ : **fait** (IA-01). Cache hors ligne, choix du département et erreurs réseau : **faits** (FE-01, FE-02, FE-03).
 4. Commiter la correction de DATA-01, puis ouvrir une PR de `assaman_suuf` vers `develop` : le CI de la PR utilisera déjà la cible `ci`.

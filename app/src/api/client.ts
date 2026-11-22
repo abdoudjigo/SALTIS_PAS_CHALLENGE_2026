@@ -1,4 +1,5 @@
 import { config } from '../config'
+import { noterVersion } from './versionDonnees'
 import { sessionStore } from '../auth/session'
 
 export class ApiError extends Error {
@@ -92,5 +93,6 @@ export async function requete<T>(chemin: string, { method = 'GET', params, body,
   if (!reponse.ok) {
     throw new ApiError(messageErreur(contenu, reponse.status), { status: reponse.status, details: contenu })
   }
+  noterVersion(reponse.headers.get('X-Data-Version'))
   return contenu as T
 }

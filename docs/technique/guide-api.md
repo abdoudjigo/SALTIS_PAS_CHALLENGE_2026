@@ -215,7 +215,7 @@ curl "http://localhost:8080/api/v1/vulnerabilite"
 | Route | Ce qu'elle renvoie |
 |---|---|
 | `GET /systeme/sante` | `200` si l'API sert des données, `503` sinon |
-| `GET /systeme/cache` | État du cache : version, nombre de réponses, taille, durées de chargement |
+| `GET /systeme/cache` | État du cache : version, nombre de réponses, taille, durées de chargement (**en-tête `X-Admin-Token` requis**) |
 
 Les routes `POST /systeme/cache/rafraichir` et `POST /systeme/cache/retour-arriere` servent seulement avec Redis (section 9). Sans Redis, on redémarre l'API.
 

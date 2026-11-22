@@ -249,6 +249,11 @@ Pour les mettre dans Snowflake (facultatif pour tester) :
 |---|---|---|
 | `POST /voix/texte` | `{texte, code_departement?, annee?}` (français transcrit par le navigateur, ou wolof écrit) | la réponse en français et en wolof, et la vue de la carte |
 | `POST /voix/question?code_departement=&annee=` | l'audio brut en wolof (30 s au plus) | la transcription, la réponse, et la réponse parlée en wolof |
+| `POST /voix/parler` | `{texte}` : le texte wolof de la fiche affichée, **700 caractères au plus** | la voix wolof (wav, base64) |
+
+`/voix/texte` et `/voix/question` sont **coupées par défaut** (`VOIX_QUESTIONS=false`, réponse `404 fonction_inactive`) : aucun écran ne s'en sert encore. Les ouvrir quand un client existe (site, WhatsApp, serveur vocal).
+
+`/voix/parler` produit **une voix à la fois** (synthèse locale ou Space), avec au plus 6 demandes en attente (`503 voix_occupee` au-delà), 20 voix nouvelles par minute et par adresse, et un délai de 120 s vers le Space. Les voix produites sont gardées sur disque (`VOIX_CACHE_MAX_FICHIERS`, 400 par défaut) ; au-delà, les moins récemment utilisées sont supprimées.
 
 La compréhension et les phrases types sont dans `voix/` (`comprendre.py`, `repondre.py`, `nombres.py`) ; les chiffres viennent du cache, jamais d'un texte inventé. Le wolof parlé passe par le Space Hugging Face `VOIX_SPACE`. Mise en ligne et limites : [`voix/README.md`](../voix/README.md).
 
@@ -257,7 +262,7 @@ La compréhension et les phrases types sont dans `voix/` (`comprendre.py`, `repo
 | Route | Rôle | Jeton |
 |---|---|---|
 | `GET /systeme/sante` | L'API est-elle prête ? `ok`, ou `503` si le cache n'est pas encore chargé | non |
-| `GET /systeme/cache` | Version des données servie, date du chargement, nombre de lignes par mart, colonnes ignorées, versions conservées | non |
+| `GET /systeme/cache` | Version des données servie, date du chargement, nombre de lignes par mart, colonnes ignorées, versions conservées | oui |
 | `POST /systeme/cache/rafraichir` | Relit les marts dans Snowflake (après un `dbt build`) et bascule sur la nouvelle version quand elle est prête | oui |
 | `POST /systeme/cache/retour-arriere` | Revient à la version précédente des données, instantanément | oui |
 

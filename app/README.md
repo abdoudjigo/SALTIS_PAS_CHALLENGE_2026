@@ -145,11 +145,11 @@ Avec la vraie API, les coordonnées viendront de `/referentiels` (`dim_geographi
 ### PWA et fluidité
 
 - installation sur l'écran d'accueil (Android, iOS, ordinateur), thème vert, icônes dans `public/` ;
-- l'app et les données déjà consultées restent disponibles **hors ligne** (réseau d'abord, cache si la connexion tombe : utile sur le terrain) ; un bandeau signale le mode hors ligne ;
+- l'app et les données déjà consultées restent disponibles **hors ligne** : les réponses `GET /api/v1/…` sont gardées 7 jours (réseau d'abord, cache si la connexion tombe ou au-delà de 6 s). La voix, l'avis et l'état du système demandent le réseau. Règle : `motifApi` dans `vite.config.ts` ; test : charger un écran, couper l'API, recharger ;
 - Mapbox (~525 Ko compressés) n'est téléchargé qu'à l'ouverture d'une carte, puis mis en cache ;
 - chaque écran est un petit fichier chargé à la demande ; les données sont mises en cache 1 h et préchargées au survol du menu ;
 - squelettes de chargement au lieu d'écrans blancs ; l'écran précédent reste affiché pendant le changement d'année ou de département ;
-- une nouvelle version déployée est **proposée** (bouton « Mettre à jour »), jamais imposée pendant une saisie.
+- une nouvelle version déployée s'installe en arrière-plan et s'active quand tous les onglets du site sont fermés (un bouton « Mettre à jour » reste à ajouter : audit, constat FE-05).
 
 ---
 

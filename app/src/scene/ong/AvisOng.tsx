@@ -126,6 +126,10 @@ export function AvisOng({ annee, etape }: { annee: number | null; etape: string 
                   <textarea name="Un problème rencontré ?" rows={3} className="champ-scene mt-1 w-full" />
                 </label>
 
+                <p className="text-2xs leading-snug text-white/60">
+                  Votre avis est envoyé par e-mail à l’équipe (service Gmail de Google) ; rien n’est enregistré par la plateforme.
+                  N’indiquez ni nom de personne ni numéro de téléphone. <a href="/confidentialite" target="_blank" rel="noopener" className="underline underline-offset-2">Confidentialité</a>
+                </p>
                 <button type="submit" disabled={etat === 'envoi'} className="min-h-11 w-full rounded-lg bg-soleil-500 px-4 text-sm font-semibold text-encre-nuit transition disabled:opacity-70">
                   {etat === 'envoi' ? 'Envoi…' : 'Envoyer'}
                 </button>

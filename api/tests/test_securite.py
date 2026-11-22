@@ -69,7 +69,7 @@ def test_bornes_et_longueurs(client):
     assert client.post(f"{V1}/voix/texte", json={"texte": "x" * 501}).status_code == 422
     assert client.post(f"{V1}/voix/texte", json={"texte": "pluie ?", "annee": 3000}).status_code == 422
     assert client.post(f"{V1}/voix/texte", json={"texte": "pluie ?", "code_departement": "x" * 21}).status_code == 422
-    assert client.post(f"{V1}/voix/parler", json={"texte": "x" * 1501}).status_code == 422
+    assert client.post(f"{V1}/voix/parler", json={"texte": "x" * 701}).status_code == 422  # BE-01 : 700 caractères au plus
     assert client.post(f"{V1}/voix/parler", json={"texte": ""}).status_code == 422
 
 
@@ -150,3 +150,40 @@ def test_erreur_interne_sans_detail():
     with TestClient(app, raise_server_exceptions=False) as c:
         r = c.get("/boum")
     assert r.status_code == 500 and r.json()["erreur"]["code"] == "erreur_interne" and "secret" not in r.text
+
+
+def test_etat_du_cache_reserve_a_l_administration(client):
+    """Audit BE-05 : les détails internes du cache ne sont pas publics."""
+    assert client.get(f"{V1}/systeme/cache").status_code == 401
+    assert client.get(f"{V1}/systeme/cache", headers={"X-Admin-Token": "faux"}).status_code == 401
+    assert client.get(f"{V1}/systeme/sante").status_code == 200  # la santé reste publique (supervision)
+
+
+def test_questions_a_la_voix_coupees_par_defaut():
+    """Audit BE-02 : sans client, /voix/texte et /voix/question sont fermées (réglage VOIX_QUESTIONS)."""
+    from api.config import Parametres
+
+    from .conftest import parametres_test, service_test
+
+    assert Parametres(_env_file=None).voix_questions is False
+    p = parametres_test(voix_questions=False)
+    with TestClient(creer_app(p, service_test(p))) as c:
+        r = c.post(f"{V1}/voix/texte", json={"texte": "Quand semer l'arachide ?"})
+        assert r.status_code == 404 and r.json()["erreur"]["code"] == "fonction_inactive"
+        assert c.post(f"{V1}/voix/question", content=b"son", headers={"Content-Type": "audio/webm"}).status_code == 404
+
+
+def test_cache_des_voix_supprime_les_plus_anciennes(tmp_path, monkeypatch):
+    """Audit BE-01 : au-delà du plafond, les voix les moins récemment utilisées laissent la place."""
+    import importlib
+    import os
+
+    module_voix = importlib.import_module("api.routes.voix")  # le module, pas le routeur exporté sous le même nom
+
+    monkeypatch.setattr(module_voix, "CACHE_VOIX", tmp_path)
+    for i in range(3):
+        f = tmp_path / f"v{i}.b64"
+        f.write_text("x")
+        os.utime(f, (1000 + i, 1000 + i))
+    module_voix._garder(tmp_path / "nouvelle.b64", "audio", 3)
+    assert sorted(p.name for p in tmp_path.glob("*.b64")) == ["nouvelle.b64", "v1.b64", "v2.b64"]

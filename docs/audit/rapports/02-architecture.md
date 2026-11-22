@@ -80,7 +80,7 @@ flowchart LR
 - Effort : M
 
 ### [ARC-03] La mise à jour des données documentée ne fonctionne pas avec Redis (le cas de la prod)
-- **Suivi (21/11/2026, après l'audit)** : 🟡 Partiellement corrigé — `deploy/README.md` et `api/README.md` décrivent la bonne procédure (`POST /systeme/cache/rafraichir` avec le jeton). **Reste** : rendre `API_ADMIN_TOKEN` obligatoire dans `docker-compose.prod.yml` et afficher la version des données.
+- **Suivi (21-22/11/2026, après l'audit)** : ✅ Corrigé — (1) `deploy/README.md` et `api/README.md` décrivent la bonne procédure (`POST /systeme/cache/rafraichir` avec le jeton) ; (2) `API_ADMIN_TOKEN` est **obligatoire** dans `docker-compose.prod.yml` (`docker compose config` refuse sans lui, vérifié) ; (3) la date de la version des données s'affiche sous les résultats de tous les écrans (« Données de la plateforme mises à jour le … », lue dans l'en-tête `X-Data-Version` ; `api/versionDonnees.ts`, `scene/interface/VersionDonnees.tsx`), vérifiée avec une API locale.
 - Sévérité : 🟠 Élevé   Statut : Constaté
 - Où : `deploy/README.md:56` ; `api/cache/service.py:50-56` ; `api/README.md:244,264`
 - Constat : le guide de déploiement dit : « Après une mise à jour des marts […] redémarrer seulement l'API pour relire les données ». Or, au démarrage, si Redis contient déjà une version active, l'API la sert « sans appel à Snowflake » et ne relit rien. Seul `POST /systeme/cache/rafraichir` relit les marts, et cette route exige `API_ADMIN_TOKEN`. Elle est désactivée (`403`) si la variable est vide, comme dans le `.env` local.

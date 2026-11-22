@@ -28,8 +28,8 @@ class EspaceVoix:
             from gradio_client import Client
 
             try:
-                # Sur processeur, une voix wolof peut prendre plusieurs minutes : délai large
-                self._client = Client(self.space, token=self.jeton or None, verbose=False, httpx_kwargs={"timeout": 900})
+                # Délai borné : une file de 6 voix à 15 minutes chacune bloquait tout (audit, constat BE-01)
+                self._client = Client(self.space, token=self.jeton or None, verbose=False, httpx_kwargs={"timeout": 120})
             except Exception as exc:  # Space endormi, nom faux, réseau
                 raise VoixIndisponible(f"Le service vocal ne répond pas ({type(exc).__name__}).") from exc
         return self._client

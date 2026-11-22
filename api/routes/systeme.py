@@ -47,9 +47,11 @@ async def sante(request: Request):
     return JSONResponse(corps.model_dump(), status_code=200 if pret else 503)
 
 
-@systeme.get("/cache", response_model=EtatCache, summary="État du cache")
+@systeme.get("/cache", response_model=EtatCache, dependencies=[Security(exiger_admin)], responses=reponses_erreurs(401, 403),
+             summary="État du cache (administration)")
 async def etat_cache(request: Request):
-    """Version active, versions conservées pour le retour arrière, nombre de réponses précalculées, volume,
+    """Réservé à l'administration (en-tête X-Admin-Token) : ces détails internes ne sont pas publics (audit, BE-05).
+    Version active, versions conservées pour le retour arrière, nombre de réponses précalculées, volume,
     durées de lecture Snowflake, de construction et de publication dans Redis."""
     return await service(request).etat()
 

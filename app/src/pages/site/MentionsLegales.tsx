@@ -8,6 +8,9 @@ export default function MentionsLegales() {
       <Partie titre="Éditeur">
         <p>Assaman & Suuf est un prototype réalisé par l'équipe AKAI dans le cadre du SALTIS PAS Challenge 2026.</p>
       </Partie>
+      <Partie titre="Hébergement">
+        <p>Le site, l'API et la mesure d'audience sont hébergés sur un serveur privé virtuel loué à Hostinger. Le fond de carte est fourni par Mapbox.</p>
+      </Partie>
       <Partie titre="Données personnelles">
         <p>
           Pas de compte, pas de cookie publicitaire ; vos saisies restent dans le navigateur. Le détail est dans la{' '}

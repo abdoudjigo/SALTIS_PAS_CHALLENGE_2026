@@ -25,7 +25,11 @@ from ..voix.repondre import Lecteur, repondre
 CACHE_VOIX = Path(__file__).resolve().parents[2] / "voix" / "cache"
 TAILLE_MAX_AUDIO = 5 * 1024 * 1024  # 5 Mo : une question de 30 s tient largement
 SYNTHESES_EN_ATTENTE_MAX = 6  # au-delà, on répond 503 plutôt que d'empiler des synthèses de plusieurs minutes
-_synthese = asyncio.Semaphore(1)  # une seule synthèse locale à la fois : le processeur du serveur n'en tient pas plus
+# Texte wolof le plus long envoyé par le front : 476 caractères (« Ma parcelle », mesuré le 22/11/2026). 700 laisse de la
+# marge sans permettre de faire dire n'importe quel long texte au serveur (audit, constat BE-01).
+TEXTE_WO_MAX = 700
+# Une seule synthèse à la fois, locale OU par le Space : le processeur du serveur (ou le Space gratuit) n'en tient pas plus
+_synthese = asyncio.Semaphore(1)
 _en_attente = 0
 voix = APIRouter(prefix="/voix", tags=["IA · Voix"])
 
@@ -59,6 +63,11 @@ def _espace(request: Request) -> EspaceVoix:
     return app.state.espace_voix
 
 
+def _exiger_questions(request: Request) -> None:
+    if not request.app.state.parametres.voix_questions:
+        raise ErreurApi(404, "fonction_inactive", "Les questions à la voix ne sont pas ouvertes sur ce serveur.", "Réglage VOIX_QUESTIONS")
+
+
 async def _repondre(request: Request, texte: str, code_departement: str | None, annee: int | None) -> dict[str, Any]:
     cache = request.app.state.cache
     version, index = await cache.etat_actif()
@@ -72,6 +81,7 @@ async def _repondre(request: Request, texte: str, code_departement: str | None, 
 async def question_texte(request: Request, q: QuestionTexte):
     """Pour le français : le navigateur transcrit la voix (reconnaissance vocale du navigateur) et envoie le texte.
     Comprend aussi le wolof écrit."""
+    _exiger_questions(request)
     limiter(request, "voix_texte")
     return await _repondre(request, q.texte, q.code_departement, q.annee)
 
@@ -86,6 +96,7 @@ async def question_audio(
 ):
     """Corps de la requête : l'audio brut (`Content-Type: audio/webm`, `audio/wav`…), 30 s au plus.
     L'audio est transcrit par le Space « voix wolof » puis oublié : rien n'est conservé."""
+    _exiger_questions(request)
     limiter(request, "voix_synthese")
     audio = await lire_corps(request, TAILLE_MAX_AUDIO,
                              ErreurApi(413, "audio_trop_long", "La question est trop longue : 30 secondes au plus."))
@@ -108,24 +119,36 @@ async def question_audio(
 
 
 class TexteWolof(BaseModel):
-    texte: str = Field(min_length=1, max_length=1500, description="Texte wolof préparé par le front (mascotte « WLF »)")
+    texte: str = Field(min_length=1, max_length=TEXTE_WO_MAX, description="Texte wolof préparé par le front (mascotte « WLF »)")
 
 
 class AudioWolof(BaseModel):
     audio_wo_base64: str = Field(description="Voix wolof (wav, base64)")
 
 
-async def _synthese_locale(texte: str) -> str | None:
-    """Synthèse sur le processeur du serveur, une à la fois, avec une file d'attente bornée."""
+async def _synthese_bornee(produire, texte: str) -> str | None:
+    """Une synthèse à la fois (locale ou Space), avec une file d'attente bornée : au-delà, 503 plutôt qu'empiler."""
     global _en_attente
     if _en_attente >= SYNTHESES_EN_ATTENTE_MAX:
         raise ErreurApi(503, "voix_occupee", "La voix wolof est très demandée. Réessayez dans un instant.", entetes={"Retry-After": "30"})
     _en_attente += 1
     try:
         async with _synthese:
-            return await asyncio.to_thread(tts_local.parler, texte)
+            return await asyncio.to_thread(produire, texte)
     finally:
         _en_attente -= 1
+
+
+def _garder(fichier: Path, audio: str, maxi: int) -> None:
+    """Garde la voix sur disque. Au-delà du plafond, les voix les moins récemment utilisées sont supprimées :
+    le cache ne peut pas être bloqué une fois pour toutes par des textes jamais rejoués (audit, constat BE-01)."""
+    if maxi <= 0:
+        return
+    CACHE_VOIX.mkdir(parents=True, exist_ok=True)
+    gardes = sorted(CACHE_VOIX.glob("*.b64"), key=lambda f: f.stat().st_mtime)
+    for vieux in gardes[: max(0, len(gardes) - maxi + 1)]:
+        vieux.unlink(missing_ok=True)
+    fichier.write_text(audio)
 
 
 @voix.post("/parler", response_model=AudioWolof, responses=reponses_erreurs(429, 503), summary="Dire un texte wolof (mascotte « WLF »)")
@@ -135,6 +158,7 @@ async def parler_wolof(request: Request, t: TexteWolof):
     # Une voix déjà produite est gardée sur disque : la rejouer est instantané, même après un redémarrage
     fichier = CACHE_VOIX / f"{hashlib.sha256(t.texte.encode()).hexdigest()[:32]}.b64"
     if fichier.exists():
+        fichier.touch()  # récemment utilisée : gardée en priorité
         return {"audio_wo_base64": fichier.read_text()}
     limiter(request, "voix_synthese")  # seules les voix à produire comptent : rejouer une voix gardée est gratuit
     if request.app.state.parametres.voix_space:  # Space Hugging Face (carte graphique), si configuré
@@ -143,17 +167,14 @@ async def parler_wolof(request: Request, t: TexteWolof):
         except VoixIndisponible as exc:
             raise ErreurApi(503, "voix_indisponible", f"{exc} Le texte wolof reste lisible à l'écran.",
                             "Voir voix/README.md.") from None
-        audio = await asyncio.to_thread(espace.parler, t.texte)
+        audio = await _synthese_bornee(espace.parler, t.texte)
     elif tts_local.disponible():  # sinon, voix produite par l'API elle-même, sur le processeur du serveur
-        audio = await _synthese_locale(t.texte)
+        audio = await _synthese_bornee(tts_local.parler, t.texte)
     else:
         raise ErreurApi(503, "voix_indisponible", "La voix wolof n'est pas installée sur ce serveur. Le texte wolof reste lisible.",
                         "Installer requirements-voix.txt (voir voix/README.md).")
     if audio:
-        CACHE_VOIX.mkdir(parents=True, exist_ok=True)
-        # Le disque du serveur est borné : au-delà du plafond, la voix est rendue sans être gardée
-        if sum(1 for _ in CACHE_VOIX.iterdir()) < request.app.state.parametres.voix_cache_max_fichiers:
-            fichier.write_text(audio)
+        _garder(fichier, audio, request.app.state.parametres.voix_cache_max_fichiers)
     if not audio:
         raise ErreurApi(503, "voix_indisponible", "La voix wolof n'a pas pu être produite. Réessayez dans un instant.")
     return {"audio_wo_base64": audio}

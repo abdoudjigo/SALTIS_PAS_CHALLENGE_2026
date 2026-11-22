@@ -92,3 +92,37 @@ def test_decoupage_wolof():
 
     morceaux = decouper("Atum ñaari junni, nawet bi dina am taw bu bare. " + "ñaar-fukk ak juróom, " * 20 + "jeex.")
     assert all(len(m) <= 180 for m in morceaux) and morceaux[0].startswith("Atum")
+
+
+class _LecteurFixe:
+    """Lecteur de cache simulé : renvoie toujours les mêmes lignes d'alerte récolte."""
+
+    def __init__(self, lignes):
+        self.lignes = lignes
+
+    async def donnees(self, cle):
+        return self.lignes
+
+
+def _ligne(dep, proba, fiable):
+    return {"departement": dep, "culture": "ARACHIDE", "proba_chute_pct": proba, "alerte_fiable": fiable}
+
+
+def test_alerte_seulement_si_fiable():
+    """Audit IA-01 : un risque élevé sans prévision fiable n'est jamais annoncé comme une alerte."""
+    import asyncio
+
+    from api.voix.comprendre import Intention
+    from api.voix.repondre import _alerte
+
+    def repondre(lignes):
+        return asyncio.run(_alerte(Intention("alerte", None, None, 2027, None), _LecteurFixe(lignes)))
+
+    sans_fiable = repondre([_ligne("Kolda", 62, False), _ligne("Kaolack", 45, None)])
+    assert "en alerte" not in sans_fiable.texte_fr
+    assert "aucune alerte fiable" in sans_fiable.texte_fr and "Kolda" in sans_fiable.texte_fr
+    assert "risque habituel" in sans_fiable.nature
+
+    avec_fiable = repondre([_ligne("Kolda", 62, True), _ligne("Kaolack", 45, False)])
+    assert "1 département en alerte" in avec_fiable.texte_fr and "Kaolack" not in avec_fiable.texte_fr
+    assert "fiable" in avec_fiable.nature

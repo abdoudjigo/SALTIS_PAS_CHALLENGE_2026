@@ -33,15 +33,16 @@ export default function Confidentialite() {
         <Tableau
           colonnes={['Donnée', 'Où elle se trouve', 'À quoi elle sert']}
           lignes={[
-            ['Profil choisi à l\'entrée', 'Votre navigateur (stockage local)', 'Rouvrir la carte sans repasser par l\'accueil'],
+            ['Profil choisi à l\'entrée (agriculteur, ou organisation), sans nom ni compte', 'Votre navigateur (stockage local)', 'Rouvrir la carte sans repasser par l\'accueil'],
             ['Choix sur les cookies', 'Votre navigateur (stockage local), 6 mois', 'Ne pas reposer la question à chaque visite'],
             ['Position de la parcelle (géolocalisation ou coordonnées saisies)', 'Votre navigateur, le temps de la visite', 'Trouver le département, son sol et ses cultures'],
             ['Surface, doses, stocks et scénarios saisis', 'Votre navigateur', 'Calculer vos besoins et les répartitions'],
             ['Adresse IP', 'Nos serveurs, de façon temporaire', 'Limiter le nombre de requêtes et protéger le service'],
             ['Pages vues, appareil, pays et ville approximative (avec votre accord)', 'Nos serveurs (Umami)', 'Compter les visites, sans cookie'],
+            ['Avis d\'une organisation (formulaire « Donner votre avis ») : nom et type de l\'organisation, régions, réponses écrites', 'Envoyé par e-mail à l\'équipe (service Gmail de Google) ; rien n\'est enregistré par la plateforme', 'Améliorer la plateforme avec les ONG et les services de l\'État'],
           ]}
         />
-        <p>La géolocalisation n'est demandée que si vous appuyez sur le bouton prévu ; vous pouvez la refuser et saisir des coordonnées ou choisir un département.</p>
+        <p>La géolocalisation n'est demandée que si vous appuyez sur le bouton prévu ; vous pouvez la refuser et choisir votre département dans la liste, ou saisir des coordonnées. La position reste dans votre navigateur : seul le code du département est envoyé à nos serveurs.</p>
       </Partie>
 
       <Partie titre="Cookies et stockage local">
@@ -75,14 +76,16 @@ export default function Confidentialite() {
 
       <Partie titre="Services tiers">
         <ul className="list-disc space-y-2 pl-5">
-          <li><strong>Mapbox</strong> fournit le fond de carte : il reçoit votre adresse IP et la zone de carte affichée, comme tout service de cartes.</li>
+          <li><strong>Mapbox</strong> (États-Unis) fournit le fond de carte : il reçoit votre adresse IP et la zone de carte affichée, qui peut être proche de votre parcelle quand la carte s'en approche. À chaque ouverture de la carte, sa bibliothèque garde aussi dans votre navigateur un identifiant aléatoire et envoie un signal de chargement à Mapbox, pour sa facturation.</li>
+          <li><strong>Google (Gmail)</strong> transmet à l'équipe les avis envoyés par le formulaire « Donner votre avis ».</li>
           <li><strong>Lecture à voix haute en français</strong> : elle utilise la synthèse vocale de votre navigateur ; selon le navigateur, le texte lu peut être envoyé à son éditeur.</li>
-          <li><strong>Voix wolof</strong> : le texte de la page à lire est envoyé à un service de synthèse hébergé chez Hugging Face. Ce texte ne contient aucune donnée personnelle.</li>
+          <li><strong>Voix wolof</strong> : le texte de la page à lire est transformé en voix par notre serveur. Si un service de synthèse externe est activé (Hugging Face), ce texte lui est envoyé. Il ne contient aucune donnée personnelle.</li>
+          <li><strong>Hostinger</strong> loue le serveur qui héberge le site, l'API et la mesure d'audience.</li>
         </ul>
       </Partie>
 
       <Partie titre="Durée de conservation">
-        <p>Les données du navigateur restent tant que vous ne les effacez pas. Les adresses IP ne servent qu'à la limitation de débit et aux journaux techniques du serveur ; elles ne sont rattachées à aucun profil.</p>
+        <p>Les données du navigateur restent tant que vous ne les effacez pas. Les adresses IP ne servent qu'à la limitation de débit et aux journaux techniques du serveur ; elles ne sont rattachées à aucun profil. Les avis des organisations restent dans la boîte e-mail de l'équipe.</p>
       </Partie>
 
       <Partie titre="Vos droits">
@@ -93,7 +96,7 @@ export default function Confidentialite() {
       </Partie>
 
       <Partie titre="Mise à jour">
-        <p>Dernière mise à jour : 17 novembre 2026. Cette page est modifiée à chaque changement de ce que la plateforme enregistre.</p>
+        <p>Dernière mise à jour : 22 novembre 2026. Cette page est modifiée à chaque changement de ce que la plateforme enregistre.</p>
       </Partie>
     </PageSite>
   )

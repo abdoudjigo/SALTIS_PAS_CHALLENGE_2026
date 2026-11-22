@@ -205,17 +205,31 @@ async def _alerte(i: Intention, lecteur: Lecteur) -> Reponse:
     lignes = await lecteur.donnees(cles.alerte_recolte(i.annee, "FIN_MAI", i.culture))
     if not lignes:
         return _sans_donnees(i, f"Alerte récolte {i.annee}", "Ngóob mi")
-    alertes, vus = [], set()
+    # Même règle que l'écran « Alerte récolte » (app/src/scene/regles/alertes.ts, audit IA-01) : une alerte exige
+    # un risque au-dessus du seuil ET une prévision fiable (alerte_fiable). Sinon, ce n'est que le risque habituel.
+    eleves, vus = [], set()
     for x in lignes:
         if (x["proba_chute_pct"] or 0) >= SEUIL_ALERTE_PCT and x["departement"] not in vus:
             vus.add(x["departement"])
-            alertes.append(x)
-    if not alertes:
+            eleves.append(x)
+    alertes = [x for x in eleves if x.get("alerte_fiable") is True]
+
+    def liste(xs):
+        return ", ".join(f"{x['departement']} ({LIBELLES.get(x['culture'], (x['culture'],))[0]}, {_pct(x['proba_chute_pct'])})" for x in xs)
+
+    if alertes:
+        noms = [x["departement"] for x in alertes]
+        fr = f"En {i.annee}, {len(noms)} département{'s' if len(noms) > 1 else ''} en alerte : " + liste(alertes) + "."
+        wo = f"Atum {en_lettres(i.annee)}, {en_lettres(len(noms))} departemaa la ngóob mi mën a wàññiku: {', '.join(noms)}."
+        nature = "prévision de l'année (alerte fiable)"
+    elif eleves:
+        fr = (f"En {i.annee}, aucune alerte fiable : le modèle ne prévoit pas encore cette récolte. "
+              f"Risque habituel le plus élevé : " + liste(eleves[:3]) + ".")
+        # Wolof À FAIRE RELIRE : « on ne sait pas encore si la récolte va baisser »
+        wo = f"Atum {en_lettres(i.annee)}, xamuñu ba leegi ndax ngóob mi dina wàññiku."
+        nature = "projection : risque habituel, pas encore une prévision de l'année"
+    else:
         fr = f"En {i.annee}, aucun département ne dépasse {SEUIL_ALERTE_PCT} % de risque de chute de récolte."
         wo = f"Atum {en_lettres(i.annee)}, amul departemaa bu ngóob mi mën a wàññiku lool."
-    else:
-        noms = [x["departement"] for x in alertes]
-        fr = f"En {i.annee}, {len(noms)} département{'s' if len(noms) > 1 else ''} en alerte : " + ", ".join(
-            f"{x['departement']} ({LIBELLES.get(x['culture'], (x['culture'],))[0]}, {_pct(x['proba_chute_pct'])})" for x in alertes) + "."
-        wo = f"Atum {en_lettres(i.annee)}, {en_lettres(len(noms))} departemaa la ngóob mi mën a wàññiku: {', '.join(noms)}."
-    return Reponse("alerte", fr, wo, None, None, i.culture, i.annee, "projection : risque habituel, pas encore une prévision de l'année")
+        nature = "projection : risque habituel, pas encore une prévision de l'année"
+    return Reponse("alerte", fr, wo, None, None, i.culture, i.annee, nature)
