@@ -43,9 +43,9 @@ front-install:
 front:
 	cd app && npm run dev
 front-build:
-	cd app && npm run lint && npm run build
+	cd app && npm run lint && npm test && npm run build
 front-preview:
 	cd app && npm run build && npm run preview
 
-# --- Tout vérifier avant une Pull Request ---
+# --- Tout vérifier avant une Pull Request (ruff, tests Python, lint + tests + build du front) ---
 verifier: lint test front-build

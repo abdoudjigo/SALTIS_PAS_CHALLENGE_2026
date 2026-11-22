@@ -23,6 +23,7 @@ import { useContours, useContoursZones } from '../scene/carte/fonds'
 import type { LonLat } from '../scene/carte/geo'
 import type { Utilisateur } from '../types/auth'
 import { anneeAVenir } from '../types/previsions'
+import { suivre } from '../lib/mesure'
 
 // La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
 // données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
@@ -138,6 +139,15 @@ export default function Scene() {
   const [culture, setCulture] = useState<string | null>(null)
   // Sans carte (pas de WebGL), pas de légende : elle décrirait une carte absente
   const [sansCarte, setSansCarte] = useState(false)
+  // Une seule mesure « carte indisponible » par visite (React monte deux fois les composants en développement)
+  const carteSignalee = useRef(false)
+  const signalerSansCarte = useCallback(() => {
+    setSansCarte(true)
+    if (!carteSignalee.current) {
+      carteSignalee.current = true
+      suivre('carte_indisponible', { raison: 'webgl_ou_erreur' })
+    }
+  }, [])
   const [sortie, setSortie] = useState<Sortie>({ vue: {} })
   // Les choix de l'ONG, gardés pour la session de l'onglet, propres à l'utilisateur (vidés à la déconnexion)
   const cleDossier = `${CLE_DOSSIER}.${user?.id ?? 'anonyme'}`
@@ -164,7 +174,16 @@ export default function Scene() {
   const ouvrir = useCallback((id: string) => {
     setIdMode(id)
     setCran(1)
-  }, [])
+    suivre('ecran_ouvert', { ecran: id, profil: user?.role ?? 'inconnu' })
+  }, [user?.role])
+  // L'année choisie : on ne mesure que son type (passée, prévision océan, tendance), jamais rien de personnel
+  const choisirAnnee = useCallback((a: number | null) => {
+    setAnnee(a)
+    if (a !== null && ref) {
+      const aVenir = anneeAVenir(ref.campagnes)
+      suivre('annee_choisie', { type: a < aVenir ? 'passee' : a === aVenir ? 'ocean' : 'tendance' })
+    }
+  }, [ref])
   const aller = ouvrir
   const exporter = useMemo<AccesExport>(() => ({
     carte: () => registre.carte,
@@ -196,8 +215,8 @@ export default function Scene() {
     }),
   }), [ouvrir])
   const cadre = useMemo<Cadre | null>(
-    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee: setAnnee, culture, choisirCulture: setCulture, aller, marge, exporter } : null),
-    [ref, contours, user, selection, position, anneeChoisie, culture, aller, marge, exporter],
+    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee, culture, choisirCulture: setCulture, aller, marge, exporter } : null),
+    [ref, contours, user, selection, position, anneeChoisie, choisirAnnee, culture, aller, marge, exporter],
   )
   // La sortie de l'étape ouverte, gardée pour l'export
   const publier = useCallback((s: Sortie) => {
@@ -225,7 +244,7 @@ export default function Scene() {
   return (
     <div ref={racine} className="scene relative h-dvh overflow-hidden bg-encre-nuit text-white">
       {vue && cadre ? (
-        <GardeCarte large={large} onEchec={() => setSansCarte(true)}
+        <GardeCarte large={large} onEchec={signalerSansCarte}
           // « Ma parcelle » a sa propre liste (le département y suit la position du champ)
           choix={actif.id === 'parcelle' ? undefined : <ChoixDepartement departements={cadre.ref.departements} valeur={selection} onChoisir={setSelection} />}>
         <Suspense fallback={null}>

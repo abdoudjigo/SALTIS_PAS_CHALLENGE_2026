@@ -91,7 +91,7 @@ jobs:
       - name: Build (run + test) sur Snowflake, schémas CI_*
         run: dbt build --target ci
 
-  # 4. Front (app/) : lint + build avec les données d'exemple (aucun secret)
+  # 4. Front (app/) : lint, tests (Vitest) et build avec les données d'exemple (aucun secret)
   front:
     runs-on: ubuntu-latest
     defaults:
@@ -106,6 +106,7 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       - run: npm run build
         env:
           VITE_USE_MOCK: "true"

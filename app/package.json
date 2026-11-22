@@ -10,10 +10,11 @@
   },
   "scripts": {
     "dev": "vite",
-    "typecheck": "tsc -p . && tsc -p tsconfig.node.json",
+    "typecheck": "tsc -p . && tsc -p tsconfig.node.json && tsc -p tsconfig.test.json",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "test": "vitest run",
     "icons": "python3 scripts/generate_icons.py",
     "images": "python3 scripts/compress_images.py"
   },
@@ -47,6 +48,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.8",
-    "vite-plugin-pwa": "^2.0.0"
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.1"
   }
 }

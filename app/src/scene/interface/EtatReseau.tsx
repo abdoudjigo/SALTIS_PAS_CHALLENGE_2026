@@ -5,8 +5,9 @@
 // Une absence de donnée (404, paramètre refusé) n'est pas une panne : l'écran l'explique lui-même.
 import { useQueryClient, type Query } from '@tanstack/react-query'
 import { CloudOff, RefreshCw } from 'lucide-react'
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { ApiError } from '../../api/client'
+import { suivre } from '../../lib/mesure'
 
 const definitive = (e: unknown) => e instanceof ApiError && [401, 403, 404, 422].includes(e.status)
 const enPanne = (q: Query) => q.state.status === 'error' && q.getObserversCount() > 0 && !definitive(q.state.error)
@@ -27,7 +28,13 @@ export function EtatReseau() {
   const souscrire = useCallback((f: () => void) => cache.subscribe(f), [cache])
   const nbPannes = useSyncExternalStore(souscrire, () => cache.getAll().filter(enPanne).length, () => 0)
 
-  if (enLigne && nbPannes === 0) return null
+  // Une mesure par apparition du bandeau (pas à chaque rendu) ; hors ligne, l'envoi peut lui-même échouer
+  const visible = !enLigne || nbPannes > 0
+  useEffect(() => {
+    if (visible) suivre('hors_ligne', { cause: enLigne ? 'serveur' : 'reseau' })
+  }, [visible, enLigne])
+
+  if (!visible) return null
   const reessayer = () => void client.refetchQueries({ predicate: enPanne })
 
   return (

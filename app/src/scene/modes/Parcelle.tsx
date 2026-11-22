@@ -26,6 +26,7 @@ import { aLire, puceAnnee, type LigneCheck } from '../interface/fiche'
 import { ChoixDepartement } from '../interface/ChoixDepartement'
 import { FicheReponse } from '../interface/FicheReponse'
 import { AFaire, Avis, Bouton, Cle, Cles, ErreurChamp, Groupe, Lien, Ligne, Lignes, LigneFiabilite, Pastille, Rang, Squelette, type Action } from '../interface/ui'
+import { suivre } from '../../lib/mesure'
 
 const vide = (etat: EtatPrevision) => (etat === 'chargement' ? '…' : 'non disponible')
 
@@ -78,6 +79,7 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   const choisirDepartement = (c: string) => {
     definirPosition(null)
     setChoisi(c)
+    suivre('parcelle_localisee', { resultat: 'liste' })
   }
 
   const code = useMemo(() => (position ? trouverDepartement(contours, position[0], position[1]) : choisi), [position, contours, choisi])
@@ -144,8 +146,12 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
       (p) => {
         setEtat('repos')
         definirPosition([p.coords.longitude, p.coords.latitude])
+        suivre('parcelle_localisee', { resultat: 'ok' }) // jamais la position elle-même
       },
-      (e) => setEtat(e.code === e.PERMISSION_DENIED ? 'refus' : 'indisponible'),
+      (e) => {
+        setEtat(e.code === e.PERMISSION_DENIED ? 'refus' : 'indisponible')
+        suivre('parcelle_localisee', { resultat: e.code === e.PERMISSION_DENIED ? 'refus' : 'indisponible' })
+      },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
     )
   }

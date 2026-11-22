@@ -95,7 +95,8 @@ Première mise en route :
 3. Se connecter avec `admin` / `umami`, et **changer ce mot de passe tout de suite** (Paramètres → Profil).
 4. Paramètres → Sites web → Ajouter : nom « Assaman & Suuf », domaine `<domaine>`. Copier l'identifiant du site (UUID).
 5. Dans `.env` : `UMAMI_WEBSITE_ID=<identifiant>`, puis reconstruire le site : `docker compose -f docker-compose.prod.yml up -d --build web`.
-6. Vérifier : ouvrir le site, accepter le bandeau, changer de page ; les visites apparaissent dans le tableau de bord (Temps réel).
+6. Vérifier : ouvrir le site, accepter le bandeau, changer de page ; les visites apparaissent dans le tableau de bord (Temps réel). Les événements (écrans ouverts, voix, exports…) sont dans « Événements » ; leur liste : [`docs/technique/plan-de-marquage.md`](../docs/technique/plan-de-marquage.md).
+7. Sur chaque appareil de l'équipe, ouvrir une fois le site avec `?equipe=1` : ses visites ne sont plus comptées (`?equipe=0` pour annuler).
 
 Sans `UMAMI_WEBSITE_ID`, le site ne charge rien et n'affiche pas de bandeau cookies (rien à accepter).
 Sauvegarde des statistiques : `docker compose -f docker-compose.prod.yml exec umami-db pg_dump -U umami umami > umami.sql`.

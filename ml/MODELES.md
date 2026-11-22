@@ -18,7 +18,7 @@ Les numéros 1, 3 et 4 sont conservés. Le modèle 2 (années semblables), absen
 | 3 | [Rendement prévu et alerte récolte](m3_rendement/README.md) | Combien vais-je récolter ? Où la récolte risque-t-elle de chuter ? | Faible : prouvée seulement pour l'alerte arachide à partir de fin juillet | ✅ fait |
 | 4 | [Date de semis](m4_date_semis/README.md) | À quelle décade semer pour courir le moins de risque ? | Meilleure que la fréquence passée (faux départ : AUC 0,83 contre 0,76) | ✅ fait |
 
-S'y ajoute le **moteur AgroDistrib** ([`agrodistrib/README.md`](agrodistrib/README.md), 18/11/2026). Ce n'est pas un modèle de prévision : il propose des répartitions d'un stock (prorata multicritère, scénarios Équité, Équilibré et Rendement). ✅ fait, pas encore servi par l'API.
+S'y ajoute le **moteur AgroDistrib** ([`agrodistrib/README.md`](agrodistrib/README.md), 18/11/2026). Ce n'est pas un modèle de prévision : il propose des répartitions d'un stock (prorata multicritère, scénarios Équité, Équilibré et Rendement). ✅ fait. Servi par l'application depuis le 22/11/2026 : l'écran « Répartir un stock » (scénario « Multicritère ») applique la même formule en TypeScript (`app/src/scene/regles/repartition.ts`, version `agrodistrib-v1`), vérifiée par un test d'équivalence contre `ml/sorties/` (audit ARC-01).
 
 ## Correspondance avec `README.md` (16/11/2026)
 
@@ -28,7 +28,7 @@ S'y ajoute le **moteur AgroDistrib** ([`agrodistrib/README.md`](agrodistrib/READ
 |---|---|---|
 | 1. Prévision de la pluie de saison | Modèle 1 (`m1_prevision_saison`) | Aucun : mêmes données (`MART_ML_PREVISION_PLUIE`), mêmes cibles, même découpage |
 | 2. Anomalie de rendement | Modèle 3 (`m3_rendement`) | La cible n'est pas `anomalie_rendement_pct` mais le rapport rendement / moyenne des 10 campagnes précédentes : la tendance de la source est ajustée sur toute la série, années futures comprises. 5 cultures pluviales, jusqu'en 2015 (rupture de 2016) |
-| 3. AgroDistrib | Moteur [`agrodistrib/`](agrodistrib/README.md) (18/11/2026), méthode choisie par [`comparaison/agrodistrib.py`](comparaison/agrodistrib.py) | Pas encore servi par l'API, et rien n'est enregistré : `SALTIS.APP` (stocks, scénarios) n'existe pas |
+| 3. AgroDistrib | Moteur [`agrodistrib/`](agrodistrib/README.md) (18/11/2026), méthode choisie par [`comparaison/agrodistrib.py`](comparaison/agrodistrib.py) | Calculé dans le navigateur avec la même formule (`app/src/scene/regles/repartition.ts`, test d'équivalence) ; rien n'est enregistré : `SALTIS.APP` (stocks, scénarios) n'existe pas |
 | — | Modèle 4 (`m4_date_semis`) | **Complément hors `README.md`**, gardé (décision du 16/11/2026) : il sert « Quand semer », « Ma parcelle », « Surface » et l'assistant vocal. Non comparé |
 
 ## Quel algorithme pour chaque partie (16/11/2026)

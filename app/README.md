@@ -51,13 +51,14 @@ Les variables `VITE_*` sont **lisibles dans le navigateur** : n'y mettre aucun s
 |---|---|
 | `npm run dev` | Serveur de développement avec rechargement instantané |
 | `npm run lint` | ESLint (règles TypeScript) |
+| `npm test` | Tests Vitest des règles de calcul et de formatage (`src/**/*.test.ts`) : alertes, répartition, besoins, conseils, nombres « jamais 0 » |
 | `npm run typecheck` | Vérification des types (`tsc`), sans build |
 | `npm run build` | Vérification des types puis build de production dans `dist/` (service worker PWA compris) |
 | `npm run preview` | Sert `dist/` sur `http://localhost:4173` (pour tester la PWA et le hors ligne) |
 | `npm run icons` | Régénère les icônes PNG depuis le dessin de `public/favicon.svg` (Python + Pillow) |
 | `npm run images` | Compresse les PNG de `public/` (palette de 256 couleurs, sans bande visible) ; à relancer après tout nouveau PNG |
 
-Le job `front` du CI (`.github/workflows/ci.yml`) lance `lint` et `build` (donc la vérification des types) à chaque push.
+Le job `front` du CI (`.github/workflows/ci.yml`) lance `lint`, `test` et `build` (donc la vérification des types) à chaque push.
 
 ---
 
@@ -113,7 +114,7 @@ Pas de compte ni de mot de passe : chaque porte ouvre un **profil** (`src/api/mo
 | Profil | Boutons |
 |---|---|
 | Agriculteur | Ma parcelle, La saison qui vient, Quand semer, Quelle culture, Mes besoins |
-| ONG et services de l'État | Préparer la campagne, La saison qui vient, Alerte récolte, Vulnérabilité, Besoins du pays, Répartir un stock |
+| ONG et services de l'État | Préparer la campagne, La saison qui vient, Alerte récolte, Vulnérabilité, Besoins du pays, Répartir un stock (scénario Multicritère = moteur [`ml/agrodistrib`](../ml/agrodistrib/README.md), même formule, test d'équivalence) |
 
 Partout : l'année se **tape** à partir de 2026 (prévision) ou se **choisit** dans la liste des années passées (vérification). Le détail de chaque résultat est replié derrière « Voir le détail ».
 

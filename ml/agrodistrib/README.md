@@ -85,6 +85,13 @@ Depuis Python (pour l'API) : `ml.agrodistrib.moteur.proposer_scenarios(territoir
 
 Les fichiers `ml/sorties/agrodistrib_*` sont versionnés : ils contiennent le **cas de démonstration**. Chaque lancement de `repartir.py` les écrase ; relancer le cas de démonstration (première commande ci-dessus) avant de commiter. Rien n'est écrit dans Snowflake : les scénarios iront dans `SALTIS.APP` quand le schéma existera.
 
+## Dans l'application
+L'écran « Répartir un stock » applique **ce moteur** dans le navigateur, sans appel réseau (le calcul est léger et doit marcher hors ligne) : `app/src/scene/regles/repartition.ts`, version `agrodistrib-v1`.
+- Même préparation (vulnérabilité / 100, potentiel ramené au maximum de la culture, médiane pour un critère vide), même poids, même remplissage plafonné au besoin.
+- Le curseur « Arbitrage » de l'écran est α en % : Équité (0), Équilibré (50, par défaut), Rendement (100).
+- `app/src/scene/regles/repartition.test.ts` relit `ml/sorties/agrodistrib_departements.csv` et vérifie que les quantités des trois scénarios sont retrouvées (à 0,2 % près : les critères du CSV sont arrondis à 3 décimales). **Si la formule change ici, ce test casse** : il faut changer les deux et régénérer les sorties.
+- Les scénarios « Urgence » et « Production » de l'écran sont des règles d'ordre (Cadre harmonisé, potentiel), pas des variantes de ce moteur.
+
 ## Tests
 ```bash
 venv/bin/python -m pytest ml/tests

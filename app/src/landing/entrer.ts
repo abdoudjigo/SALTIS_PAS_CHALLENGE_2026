@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { MOT_DE_PASSE_DEMO } from '../api/mock/comptes'
 import { useAuth } from '../auth/AuthContext'
+import { suivre } from '../lib/mesure'
 
 export type Profil = 'agriculteur' | 'organisation'
 
@@ -21,6 +22,7 @@ export function useEntrer() {
       setErreur(null)
       try {
         await login(COMPTES[profil], MOT_DE_PASSE_DEMO)
+        suivre('porte_entree', { profil })
         navigate('/', { replace: true })
       } catch (e) {
         setErreur(e instanceof Error ? e.message : 'Entrée impossible. Réessayez dans un instant.')

@@ -8,6 +8,8 @@
 //   les voix robotiques (eSpeak).
 import { useSyncExternalStore } from 'react'
 import { api } from '../../api'
+import { ApiError } from '../../api/client'
+import { suivre } from '../../lib/mesure'
 
 const LONGUEUR_MAX = 180 // au-delà, une phrase est recoupée aux virgules
 
@@ -66,6 +68,7 @@ export function lire(phrases: string[]) {
   arreter() // une seule voix : coupe aussi le wolof en cours, d'où qu'il vienne (mascotte ou pied de fenêtre)
   const morceaux = phrases.flatMap(decouper)
   if (!morceaux.length) return notifier(null)
+  suivre('voix_lue', { langue: 'fr', resultat: 'ok' })
   const voix = meilleureVoix()
   morceaux.forEach((texte, i) => {
     const u = new SpeechSynthesisUtterance(texte)
@@ -97,11 +100,20 @@ const cacheWolof = new Map<string, string>()
 /** Lit un texte en wolof : depuis le cache, sinon par le Space (`preparer` est appelé avant l'attente). Rejette si le Space ne répond pas. */
 export async function lireWolof(texte: string, preparer?: () => void) {
   const connu = cacheWolof.get(texte)
-  if (connu) return lireAudio(connu)
+  if (connu) {
+    suivre('voix_lue', { langue: 'wo', resultat: 'ok' })
+    return lireAudio(connu)
+  }
   preparer?.()
-  const { audio_wo_base64 } = await api.voixParler(texte)
-  cacheWolof.set(texte, audio_wo_base64)
-  lireAudio(audio_wo_base64)
+  try {
+    const { audio_wo_base64 } = await api.voixParler(texte)
+    cacheWolof.set(texte, audio_wo_base64)
+    suivre('voix_lue', { langue: 'wo', resultat: 'ok' })
+    lireAudio(audio_wo_base64)
+  } catch (e) {
+    suivre('voix_lue', { langue: 'wo', resultat: e instanceof ApiError && e.status === 503 ? 'occupee' : 'erreur' })
+    throw e
+  }
 }
 
 export function arreter() {
