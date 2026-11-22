@@ -9,6 +9,7 @@
 | [`outils-ia/`](outils-ia/) | Consignes et briefs donnés aux assistants IA pendant le développement, journal d'une mission | Équipe (usage interne) |
 
 Points d'entrée les plus utiles :
+- **Document technique du challenge** (données, méthode, résultats ; PDF de 9 pages) : [`technique/AssamanSuuf_Technique.pdf`](technique/AssamanSuuf_Technique.pdf). Source : [`technique/document-technique/`](technique/document-technique/) (`index.html`, graphiques produits par `graphiques.py`). Régénérer le PDF : `google-chrome --headless=new --no-pdf-header-footer --print-to-pdf=docs/technique/AssamanSuuf_Technique.pdf docs/technique/document-technique/index.html`
 - Comprendre les données servies : [`technique/contrat-donnees.md`](technique/contrat-donnees.md)
 - Appeler l'API : [`technique/guide-api.md`](technique/guide-api.md) (et `http://localhost:8080/docs` en local)
 - Savoir ce qui est décidé, fait et ouvert : [`technique/etat-modelisation.md`](technique/etat-modelisation.md)
