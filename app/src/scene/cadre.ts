@@ -27,6 +27,8 @@ export interface Sortie {
   aEcouterWo?: string[]
   /** un clic sur la carte pose un point (position de la parcelle, dépôt du stock) */
   surPoint?: (position: LonLat) => void
+  /** tableau de bord posé sur la scène (ordinateur) : chiffres clés et visualisation, au lieu de longs tableaux dans la fenêtre */
+  tableauDeBord?: ReactNode
   /** étapes de l'ONG : ce que le dossier exporté reprend de l'étape (phase D2), calculé une seule fois, ici */
   etape?: EtapeExport
 }

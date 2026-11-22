@@ -163,6 +163,12 @@ export const api = {
   // Avis des ONG : envoyé à l'équipe par e-mail par l'API (rien n'est stocké)
   envoyerAvis: (avis: Record<string, string | number>) =>
     requete<{ envoye: boolean }>('/api/v1/avis', { method: 'POST', body: avis, sansJeton: true, timeout: 30000 }),
+
+  // Explications des sections des PDF : la clé du fournisseur IA reste côté API.
+  expliquerExport: (sections: { id: string; titre: string; contexte: string }[]) =>
+    requete<{ explications: string[] }>('/api/v1/export/explications', {
+      method: 'POST', body: { sections }, sansJeton: true, timeout: 35000,
+    }),
 }
 
 export { ApiError }

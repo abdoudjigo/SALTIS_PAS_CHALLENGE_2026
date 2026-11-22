@@ -33,6 +33,12 @@ class Parametres(BaseSettings):
     # tant qu'aucun client (site, WhatsApp, serveur vocal) ne les utilise (audit, constat BE-02).
     voix_questions: bool = False
 
+    # Explications des exports PDF : API compatible OpenAI. Par défaut Groq, offre gratuite (clé sur console.groq.com),
+    # modèle « production » ; vide = génération IA désactivée (repères de lecture sans IA).
+    llm_api_key: SecretStr = SecretStr("")
+    llm_base_url: str = "https://api.groq.com/openai/v1"
+    llm_model: str = "openai/gpt-oss-120b"
+
     # Serveur (python -m api)
     api_host: str = "127.0.0.1"
     api_port: int = 8080
@@ -57,6 +63,7 @@ class Parametres(BaseSettings):
     limite_requetes_par_minute: int = Field(1200, ge=0)
     limite_voix_texte_par_minute: int = Field(60, ge=0)
     limite_voix_synthese_par_minute: int = Field(20, ge=0, description="Reconnaissance et synthèse vocales (coûteuses)")
+    limite_llm_par_minute: int = Field(5, ge=0, description="Rédaction d'explications IA pour les exports PDF")
     limite_admin_par_minute: int = Field(10, ge=0)
     taille_max_json_octets: int = Field(64 * 1024, ge=1024)
 

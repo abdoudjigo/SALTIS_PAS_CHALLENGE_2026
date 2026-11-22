@@ -256,7 +256,7 @@ export default function Landing() {
           <div className="pointer-events-auto relative max-w-[35rem]">
             <p className="vitrine-entree flex items-center gap-2.5 text-xs font-medium tracking-etiquette text-encre-douce uppercase">
               <span className="text-pluie-500">Assaman</span> le ciel
-              <span className="h-px w-6 bg-trait" aria-hidden />
+              <span className="h-px w-2 bg-trait" aria-hidden />
               <span className="text-terre-500">Suuf</span> la terre
             </p>
             <h1 className="vitrine-entree mt-5 font-titre text-titre-hero font-semibold text-balance text-encre" style={delai(0.1)} lang="wo">

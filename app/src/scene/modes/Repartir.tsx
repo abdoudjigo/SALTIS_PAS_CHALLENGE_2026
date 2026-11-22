@@ -16,6 +16,7 @@ import { couleurCouverture, NON_DISPONIBLE } from '../carte/couleurs'
 import { useDossier } from '../ong/dossier'
 import { aLire, puceAnnee, puceChoix, puceCulture, type LigneCheck, type Puce } from '../interface/fiche'
 import { FicheReponse } from '../interface/FicheReponse'
+import { ColonnesDepartements, TableauDeBord } from '../interface/TableauDeBord'
 import type { LonLat } from '../carte/geo'
 import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes, tonnesDeSacs, useDatesLimites } from '../ong/ong'
 import { ARBITRAGES_NOMMES, enSacsEntiers, lignesMulticritere, METHODE, nomArbitrage, ordonner, prorataMulticritere, remplirDansLOrdre, SCENARIOS, VERSION, type Criteres } from '../regles/repartition'
@@ -142,6 +143,31 @@ export default function Repartir({ cadre, publier }: PropsMode) {
           return [d.code_departement, p ? { couleur: couleurCouverture(p.couverture_pct), hauteur: 3000 + 70000 * Math.sqrt(p.quantite_t / max) } : { couleur: NON_DISPONIBLE }]
         })) : null,
       },
+      // Sur la scène : ce que le stock couvre, et la quantité proposée à chaque département
+      tableauDeBord: territoires ? (
+        <TableauDeBord titre={`Répartir ${stock_t !== null ? `${quantite(stock_t)} ${deIntrant(intrant)}` : 'le stock'} · scénario ${scenario.libelle.toLowerCase()}`} tuiles={resultat ? [
+          { valeur: quantite(reparti), libelle: `répartis, sur un besoin de ${quantite(besoinTotal)}`, etat: 'info' },
+          { valeur: pct(couvertureAffichee), libelle: 'du besoin couvert par le stock', etat: (couverture ?? 0) >= 100 ? 'ok' : 'attention' },
+          { valeur: `${entiers} + ${partiels}`, libelle: 'départements servis entièrement + partiellement', etat: 'info' },
+          { valeur: premiere && dates.has(premiere.code) ? dates.get(premiere.code)!.date : '—', libelle: premiere ? `première date limite de livraison (${nomDep(premiere.code)})` : 'date limite non disponible', etat: premiere ? 'attention' : 'info' },
+        ] : [
+          { valeur: demandes.length ? quantite(besoinTotal) : '—', libelle: 'besoin total à couvrir', etat: 'info' },
+          { valeur: demandes.length, libelle: 'départements avec un besoin calculé', etat: 'info' },
+          { valeur: 'à saisir', libelle: 'stock disponible (puce « Stock » de la fenêtre)', etat: 'attention' },
+        ]}>
+          {resultat ? (() => {
+            const max = Math.max(...parts.map((p) => p.quantite_t), 1e-9)
+            return (
+              <ColonnesDepartements code={code} choisir={cadre.choisir} max={max}
+                echelle={{ haut: quantite(max), bas: '0' }}
+                consigne="Dans l'ordre du scénario. Survolez une barre pour lire un département ; cliquez pour le voir sur la carte."
+                legende={<span className="inline-flex items-center gap-1"><span className="h-2 w-6 rounded-[2px]" style={{ background: 'linear-gradient(to right,#d2492f,#f2b544,#2f7d4f)' }} aria-hidden />besoin couvert, 0 à 100 %</span>}
+                elements={parts.map((p) => ({ code: p.code, nom: nomDep(p.code), valeur: p.quantite_t, couleur: couleurCouverture(p.couverture_pct),
+                  detail: `${quantite(p.quantite_t)} proposés sur ${quantite(p.besoin_t)} (${pct(p.couverture_pct)})${p.quantite_t > 0 ? ` · livrer avant le ${dateDe(p.code)}` : ''}` }))} />
+            )
+          })() : <p className="text-xs text-white/60">Saisissez votre stock dans la fenêtre : la répartition s'affiche ici, département par département.</p>}
+        </TableauDeBord>
+      ) : undefined,
       legende: resultat ? <Degrade titre="Besoin couvert" gauche="0 %" droite="100 %" degrade="linear-gradient(to right,#d2492f,#f2b544,#2f7d4f)" note="Hauteur : quantité proposée. Gris : pas de besoin calculé." /> : undefined,
       infobulle: (c) => {
         const p = parCode.get(c)
@@ -155,7 +181,7 @@ export default function Repartir({ cadre, publier }: PropsMode) {
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` et `tableau` sont résumés par leurs clés ; `nomDep`, `quantite`, `dateDe` suivent les référentiels, l'unité et les dates
-  }, [resultat, cadre, demandes.length, reparti, couverture, territoires, code, titre, cleLignes, cleTableau, sacs, dates, couverte, pret, depot])
+  }, [resultat, cadre, demandes.length, reparti, couverture, territoires, code, titre, cleLignes, cleTableau, sacs, dates, couverte, pret, depot, parts, besoinTotal, entiers, partiels, premiere, stock_t, scenario.libelle, intrant])
   usePublier(publier, sortie)
 
   const puceStock: Puce = {

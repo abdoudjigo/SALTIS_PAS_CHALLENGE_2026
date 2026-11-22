@@ -66,13 +66,14 @@ export default function Exporter({ cadre, publier }: PropsMode) {
               <FileDown className="size-4" aria-hidden />{etat.enCours === 'dossier' ? 'Export du dossier en cours…' : 'Télécharger le dossier national (PDF)'}
             </Bouton>
           </div>
-          <p id="export-dossier-aide" className="text-2xs leading-snug text-white/60">Page de garde, une page par étape avec sa carte, sa checklist et son tableau, la répartition complète, puis les sources. L'export ouvre chaque étape : la carte bouge, ne touchez à rien.</p>
+          <p id="export-dossier-aide" className="text-2xs leading-snug text-white/60">Page de garde, une page par étape avec sa carte, une explication, sa checklist et son tableau, la répartition complète, puis les sources. L'export ouvre chaque étape : la carte bouge, ne touchez à rien.</p>
           <div id={ID_BOUTON.fiche}>
             <Bouton disabled={etat.enCours !== null || !code} onClick={() => void exporterFicheOng(contexte())} decritPar="export-fiche-aide" className="w-full justify-center">
               <FileDown className="size-4" aria-hidden />{etat.enCours === 'fiche' ? 'Export de la fiche en cours…' : nomDep ? `Télécharger la fiche ${nomDep} (PDF)` : 'Télécharger la fiche département (PDF)'}
             </Bouton>
           </div>
-          <p id="export-fiche-aide" className="text-2xs leading-snug text-white/60">{nomDep ? `Une page pour ${nomDep} : carte, Cadre harmonisé, saison, risques, besoins en sacs, budget, quantité proposée, date limite, contre-saison et sources.` : 'Choisissez un département sur la carte : la fiche département s’active.'}</p>
+          <p id="export-fiche-aide" className="text-2xs leading-snug text-white/60">{nomDep ? `Une page pour ${nomDep} : explication des indicateurs, carte, Cadre harmonisé, saison, risques, besoins en sacs, budget, quantité proposée, date limite, contre-saison et sources.` : 'Choisissez un département sur la carte : la fiche département s’active.'}</p>
+          <p className="text-2xs leading-snug text-white/50">Les indicateurs et résumés du dossier sont transmis au service IA configuré côté serveur pour rédiger les explications. Si l'IA est indisponible, le PDF contient des repères de lecture sans IA.</p>
           <div aria-live="polite">
             {etat.message && (etat.erreur ? <Avis>{etat.message}</Avis> : <p className="text-xs leading-snug text-white/75">{etat.message}</p>)}
           </div>

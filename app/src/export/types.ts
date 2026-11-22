@@ -162,4 +162,6 @@ export interface ResultatExport {
   nomFichier: string
   octets: ArrayBuffer
   nbPages: number
+  explicationsIA: boolean
+  avertissementIA: string | null
 }

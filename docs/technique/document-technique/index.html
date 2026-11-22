@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Assaman & Suuf — Document technique</title>
+<style>
+@page { size: A4; margin: 15mm 15mm 16mm 15mm;
+  @bottom-left { content: "Assaman & Suuf · Document technique · équipe AKAI"; font: 7.5pt Lato, sans-serif; color: #8a8578; }
+  @bottom-right { content: counter(page) " / " counter(pages); font: 7.5pt Lato, sans-serif; color: #8a8578; } }
+@page :first { @bottom-left { content: none; } }
+:root { --vert:#1f4d36; --vert2:#2f6b4c; --or:#e9a53a; --terre:#8c6d4f; --ciel:#2f7bbf; --encre:#1d211e; --gris:#6b675e; --fond:#f6f3ec; --ligne:#ddd7c9; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin:0; font: 9.4pt/1.42 "Lato", "Noto Sans", sans-serif; color: var(--encre); background:#fff; }
+h1,h2,h3 { font-family: "Noto Serif", Georgia, serif; color: var(--vert); margin: 0; }
+h2 { font-size: 15pt; margin: 0 0 6pt; padding-bottom: 3pt; border-bottom: 1.5pt solid var(--or); break-after: avoid; }
+h2 .num { color: var(--or); margin-right: 6pt; }
+h3 { font-size: 10.8pt; margin: 9pt 0 3pt; break-after: avoid; }
+p { margin: 0 0 5pt; }
+ul { margin: 0 0 5pt; padding-left: 13pt; } li { margin-bottom: 1.5pt; }
+strong { color: #111; }
+code { font: 8pt "Ubuntu Mono", monospace; background: var(--fond); padding: 0 2pt; border-radius: 2pt; }
+table { width: 100%; border-collapse: collapse; margin: 3pt 0 7pt; font-size: 8.1pt; line-height: 1.3; break-inside: avoid; }
+th code { background: rgba(255,255,255,.15); color:#fff; }
+th { background: var(--vert); color: #fff; text-align: left; font-weight: 700; padding: 3pt 4pt; }
+td { padding: 2.6pt 4pt; border-bottom: .5pt solid var(--ligne); vertical-align: top; }
+tr:nth-child(even) td { background: #faf8f3; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+tr.retenu td { background: #e7efe9 !important; font-weight: 700; }
+.ref td { color: var(--gris); font-style: italic; }
+.section { break-before: page; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
+.cols3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8pt; }
+.encadre { background: var(--fond); border-left: 3pt solid var(--or); padding: 5pt 8pt; margin: 4pt 0 7pt; break-inside: avoid; }
+.encadre.vert { border-left-color: var(--vert2); }
+.encadre p:last-child, .encadre ul:last-child { margin-bottom: 0; }
+figure { margin: 4pt 0 7pt; break-inside: avoid; }
+figure img { width: 100%; display: block; border-radius: 3pt; }
+figure.cadre img { border: .5pt solid var(--ligne); }
+figcaption { font-size: 7.6pt; color: var(--gris); margin-top: 2.5pt; }
+.petit { font-size: 8pt; color: var(--gris); }
+.chiffres { display: grid; grid-template-columns: repeat(4,1fr); gap: 6pt; margin: 6pt 0 8pt; }
+.chiffre { border-top: 2pt solid var(--vert2); padding-top: 3pt; }
+.chiffre b { display: block; font: 700 15pt "Noto Serif", serif; color: var(--vert); }
+.chiffre span { font-size: 7.6pt; color: var(--gris); line-height: 1.2; display: block; }
+/* Couverture */
+.couv { display: grid; grid-template-columns: 1fr auto; align-items: center; background: var(--vert); color: #fff; border-radius: 6pt; padding: 16pt 18pt; margin-bottom: 10pt; }
+.couv h1 { color: #fff; font-size: 24pt; line-height: 1.1; }
+.couv .sur { color: var(--or); font: 700 8pt Lato; letter-spacing: 1.6pt; text-transform: uppercase; margin-bottom: 5pt; }
+.couv .sous { color: #d8e5dc; font-size: 10.5pt; margin-top: 5pt; }
+.couv img { width: 74pt; height: 74pt; border-radius: 50%; background: #fff; }
+.meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8pt; font-size: 8pt; margin-bottom: 8pt; }
+.meta div { border-left: 2pt solid var(--ligne); padding-left: 6pt; }
+.meta b { display: block; color: var(--vert); font-size: 7.4pt; text-transform: uppercase; letter-spacing: .8pt; }
+.sommaire { columns: 2; column-gap: 16pt; font-size: 8.6pt; margin: 0 0 6pt; padding-left: 14pt; }
+/* Schéma d'architecture */
+.archi { display: grid; grid-template-columns: 1.05fr .18fr 1.1fr .18fr 1.15fr .18fr 1.1fr; align-items: stretch; margin: 6pt 0 2pt; font-size: 7.4pt; line-height: 1.25; break-inside: avoid; }
+.bloc { border: .8pt solid var(--vert2); border-radius: 4pt; padding: 4pt 5pt; background: #fff; }
+.bloc b { display: block; color: var(--vert); font-size: 8pt; margin-bottom: 2pt; }
+.bloc.c { background: #eaf2fa; border-color: var(--ciel); } .bloc.c b { color: var(--ciel); }
+.bloc.t { background: #f5eee6; border-color: var(--terre); } .bloc.t b { color: var(--terre); }
+.bloc.o { background: #fdf3e1; border-color: var(--or); } .bloc.o b { color: #9a6410; }
+.fl { display: flex; align-items: center; justify-content: center; color: var(--or); font-size: 14pt; font-weight: 700; }
+.pile { display: grid; gap: 4pt; }
+.annexe h2 { border-bottom-color: var(--gris); }
+.badge { display: inline-block; font-size: 7pt; font-weight: 700; padding: 0 4pt; border-radius: 6pt; background: #e7efe9; color: var(--vert); }
+.badge.non { background: #f6e4df; color: #9a3a26; } .badge.mi { background: #fbefd9; color: #8a5a0c; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1 : couverture + synthèse ============ -->
+<div class="couv">
+  <div>
+    <div class="sur">SALTIS PAS Challenge 2026 · Document technique</div>
+    <h1>Assaman &amp; Suuf<br><span style="font-size:15pt;font-weight:400">Le ciel et la terre, pour décider quoi semer et où porter les intrants</span></h1>
+    <div class="sous">Données, méthode et résultats d'une plateforme d'aide à la décision agricole pour les 45 départements du Sénégal</div>
+  </div>
+  <img src="img/logo.png" alt="Logo Assaman & Suuf">
+</div>
+
+<div class="meta">
+  <div><b>Équipe</b>AKAI (Alliance for Knowledge, Action &amp; Innovation) : Abdoulaye Djigo, Aby Faye, Ibrahima Niasse Diouf, Ndèye Khady Mbaye, Anthony Exaucé M.</div>
+  <div><b>Version décrite</b>Code de la branche <code>assaman_suuf</code>, 22 novembre 2026. Chiffres tirés des sorties versionnées du dépôt (<code>ml/sorties/</code>, rapports dbt et d'audit).</div>
+  <div><b>Utilisateurs visés</b>Agriculteurs (site mobile, voix en wolof) ; ONG et services de l'État (tableau de bord national, répartition d'intrants, dossiers PDF).</div>
+</div>
+
+<h2><span class="num">0</span>L'essentiel en une page</h2>
+<p><strong>Le problème.</strong> Au Sénégal, l'agriculture est surtout pluviale. Avant de semer, un producteur doit deviner si la saison sera courte ou longue, abondante ou faible, pour choisir la culture, la variété (cycle court ou long), la date de semis et les intrants. Une ONG ou un service de l'État doit, de son côté, décider où envoyer un stock limité d'engrais ou de semences. Les données existent (satellites, statistiques agricoles, sols) mais sont dispersées et illisibles pour ces décideurs.</p>
+<p><strong>Notre réponse.</strong> Une plateforme web (carte, mobile d'abord) qui croise climat, sol et rendements <strong>département par département</strong>, avec deux portes d'entrée : <em>Agriculteur</em> (« Ma parcelle », « Va-t-il bien pleuvoir ? », « Que semer ? », « Quand semer ? », « Combien m'en faut-il ? ») et <em>ONG et services de l'État</em> (« Où agir en priorité », « Alerte récolte », « Répartir un stock », dossier PDF). Derrière les écrans : un entrepôt Snowflake modélisé avec dbt, trois modèles de prévision et un moteur de répartition, une API FastAPI à réponses précalculées, et une voix en wolof.</p>
+
+<div class="chiffres">
+  <div class="chiffre"><b>11</b><span>sources ouvertes, 1981-2026 (CHIRPS, NASA POWER, NOAA, SoilGrids, DAPSA…)</span></div>
+  <div class="chiffre"><b>51 · 345</b><span>modèles dbt · tests de données automatiques</span></div>
+  <div class="chiffre"><b>−9 %</b><span>d'erreur sur la pluie de saison par rapport à la normale (111 mm contre 122 mm, test 2016-2025)</span></div>
+  <div class="chiffre"><b>0,83</b><span>AUC du risque de faux départ au semis (référence : 0,76)</span></div>
+</div>
+
+<div class="cols">
+<div>
+<h3>Ce qui marche, mesuré sur des années jamais vues</h3>
+<ul>
+  <li><strong>Prévision de saison (fin mai)</strong> : 58,7 % de classes justes contre 38,4 % pour la climatologie dans la comparaison des modèles ; gain RPSS +0,22, prouvé (intervalle à 90 % au-dessus de 0).</li>
+  <li><strong>Date de semis</strong> : les risques de faux départ et de fin de saison trop tôt sont mieux prévus que par la fréquence passée (+5,5 % et +4,3 % sur le score de Brier).</li>
+  <li><strong>Répartition d'un stock</strong> : le prorata multicritère sert les 41 départements concernés, avec l'inégalité la plus faible (Gini 0,06) et une répartition stable quand les scores bougent de 10 %.</li>
+</ul>
+</div>
+<div>
+<h3>Ce que nous disons honnêtement</h3>
+<ul>
+  <li><strong>Le rendement n'est pas prévisible</strong> avec ces données : aucune des 6 familles d'algorithmes testées ne bat la tendance des 10 dernières campagnes. L'application affiche alors la « fourchette habituelle », pas une prévision.</li>
+  <li><strong>L'alerte récolte n'est fiable que pour l'arachide, à partir de fin juillet</strong> ; ailleurs, elle est présentée comme un risque habituel.</li>
+  <li><strong>Les doses d'engrais restent à valider</strong> par l'ISRA et l'ANCAR : l'application affiche « dose à saisir » au lieu d'un chiffre inventé.</li>
+</ul>
+</div>
+</div>
+
+<div class="encadre vert"><p><strong>Principe directeur.</strong> Une valeur inconnue n'est jamais affichée comme zéro, chaque prévision porte sa fourchette et sa fiabilité, et chaque modèle est comparé à une prévision simple sur des années entières. Quand un modèle ne fait pas mieux que la référence, un drapeau dans ses sorties (<code>rendement_fiable</code>, <code>alerte_fiable</code>) empêche l'application de le présenter comme une prévision.</p></div>
+
+<p class="petit"><strong>Plan.</strong> 1. Données (sources, volume, prétraitement, qualité, conformité) · 2. Méthode (architecture, outils, modèles, choix justifiés) · 3. Résultats (métriques, captures, limites, pistes) · Annexes (définitions des mesures, tables servies, reproductibilité).</p>
+
+<!-- ============ 1. DONNÉES ============ -->
+<div class="section">
+<h2><span class="num">1</span>Données</h2>
+
+<h3>1.1 Sources et nature</h3>
+<p>Toutes les sources sont <strong>publiques ou institutionnelles</strong>. Aucune ne contient de donnée personnelle : ce sont des grilles satellitaires, des indices climatiques et des statistiques agrégées au département.</p>
+<table>
+<tr><th>Thème</th><th>Source</th><th>Nature</th><th>Période</th><th>Licence / usage</th></tr>
+<tr><td>Pluie journalière</td><td>CHIRPS (Climate Hazards Center, UC Santa Barbara)</td><td>Grille satellite + stations, 0,05°, agrégée par département</td><td>1981-2025</td><td>Domaine public</td></tr>
+<tr><td>Températures, évaporation, humidité</td><td>NASA POWER</td><td>Réanalyse journalière ; secours de CHIRPS pour Guédiawaye</td><td>1981-2025</td><td>Ouverte, citation</td></tr>
+<tr><td>Humidité du sol avant saison</td><td>ESA CCI Soil Moisture</td><td>Grille satellite, avril-mai</td><td>1981-2025</td><td>Ouverte, citation</td></tr>
+<tr><td>Températures des océans</td><td>NOAA (ONI, TNA, TSA, AMO)</td><td>Indices mensuels, moyennes mars-mai</td><td>1981-2026</td><td>Domaine public</td></tr>
+<tr><td>Sols</td><td>SoilGrids (ISRIC)</td><td>Texture, pH, réserve utile, carbone, par département</td><td>—</td><td>CC BY 4.0</td></tr>
+<tr><td>Rendements, superficies</td><td>DAPSA (ministère de l'Agriculture) via HarvestStat et FEWS NET</td><td>Statistiques par département × campagne × culture</td><td>1981-2021</td><td>Ouverte, citation</td></tr>
+<tr><td>Rendements nationaux</td><td>FAOSTAT</td><td>Contrôle de cohérence</td><td>—</td><td>CC BY-NC-SA</td></tr>
+<tr><td>Insécurité alimentaire</td><td>Cadre harmonisé (CILSS) via HDX</td><td>Phases 1 à 5 et populations par département</td><td>2014-2026</td><td>CC BY</td></tr>
+<tr><td>Doses d'intrants</td><td>IFDC-CORAF (Paquets d'intrants) ; fiches ISRA</td><td>Doses par zone × culture, <strong>à confirmer</strong></td><td>—</td><td>Citation</td></tr>
+<tr><td>Prix des intrants</td><td>APS (sept. 2025) ; circulaire du ministère (30 avril 2026)</td><td>Prix de cession et subvention par sac</td><td>2026</td><td>Information publique</td></tr>
+<tr><td>Découpage administratif</td><td>GADM 4.1 ; zones agroécologiques (référentiel projet)</td><td>Codes et contours des 45 départements</td><td>—</td><td>GADM : non commercial</td></tr>
+</table>
+
+<h3>1.2 Volume</h3>
+<div class="cols">
+<div>
+<p>Le grain commun est le <strong>département</strong> (45, clé GADM <code>SEN.10.1_1</code>), regroupé en 14 régions et 6 zones agroécologiques, deux découpages <strong>parallèles</strong> (Louga, Matam et Tambacounda couvrent deux zones). Le temps est découpé en campagnes (1981-2025) et en décades de 10 jours (la saison des pluies va de la décade 16 à la décade 30).</p>
+<p>Les données brutes chargées dans <code>SALTIS.RAW</code> proviennent de <strong>22 tables sources</strong>. Après transformation : environ <strong>100 000 lignes de faits</strong>, <strong>78 000 lignes de marts</strong> servies à l'application, et <strong>75 600 lignes de prévisions</strong> produites par les modèles. C'est un petit volume, ce qui justifie une architecture sobre (section 2).</p>
+</div>
+<table>
+<tr><th>Table (exemples)</th><th>Grain</th><th class="n">Lignes</th></tr>
+<tr><td><code>fact_pluviometrie_decadaire</code></td><td>département × année × décade</td><td class="n">71 280</td></tr>
+<tr><td><code>fact_rendement_departement</code></td><td>département × campagne × culture</td><td class="n">22 905</td></tr>
+<tr><td>dont rendement observé</td><td></td><td class="n">8 040</td></tr>
+<tr><td><code>fact_saison_departement</code></td><td>département × campagne</td><td class="n">2 025</td></tr>
+<tr><td><code>mart_ml_prevision_pluie</code></td><td>département × année (entraînement)</td><td class="n">2 025</td></tr>
+<tr><td><code>mart_choix_cultures</code></td><td>département × culture × cycle</td><td class="n">1 710</td></tr>
+<tr><td><code>mart_territoires_agrodistrib</code></td><td>département × culture cultivée</td><td class="n">345</td></tr>
+<tr><td><code>risque_semis.csv</code> (modèle 4)</td><td>dép. × année × culture × décade</td><td class="n">59 136</td></tr>
+</table>
+</div>
+
+<h3>1.3 Prétraitement</h3>
+<p>La chaîne suit trois couches dbt sur Snowflake, des données brutes aux tables prêtes à l'emploi :</p>
+<ul>
+  <li><strong>Collecte</strong> (<code>ingestion/</code>, Python) : téléchargement des grilles et des tableaux, agrégation spatiale par département (moyenne des pixels CHIRPS, NASA POWER pour les départements sans pixel terrestre), calcul des variables agroclimatiques : début et fin de saison, séquences sèches, SPI, décades sèches (&lt; 10 mm), normales 1991-2020, couverture en eau des cycles (méthode FAO-56 décadaire).</li>
+  <li><strong>Staging</strong> : une vue par table source, colonnes sélectionnées explicitement, types forcés, noms normalisés. Les sources ne sont jamais modifiées.</li>
+  <li><strong>Intermediate puis marts</strong> : une constellation de 7 dimensions et 10 faits, puis 9 marts, un par écran ou par modèle. Les règles métier y sont écrites une seule fois : clé GADM unique, besoins = superficie × dose de la zone, totaux qui n'additionnent que les colonnes additives, score de vulnérabilité (60 % aléa sécheresse, 40 % sensibilité des rendements).</li>
+  <li><strong>Préparation des jeux d'apprentissage</strong> : seules les variables connues <strong>avant</strong> la décision sont gardées (ex. indices océaniques de mars-mai pour une prévision fin mai) ; découpage <strong>temporel</strong> entraînement ≤ 2015 / test 2016-2025, jamais aléatoire ; contrôle automatique d'absence de fuite d'information à chaque entraînement du modèle de rendement.</li>
+</ul>
+
+<h3>1.4 Qualité</h3>
+<div class="cols">
+<div>
+<p><strong>Contrôles automatiques.</strong> 345 tests dbt (unicité des clés, valeurs non nulles, valeurs admises, relations entre tables) tournent à chaque construction. L'API valide en plus <strong>chaque ligne</strong> contre un contrat Pydantic au chargement : un mart hors contrat fait échouer le chargement, et la version précédente reste servie.</p>
+<p><strong>Règles de traitement.</strong> Une valeur manquante reste vide, jamais remplacée par 0 ; les totaux partiels le signalent (<code>valeurs_manquantes</code>). Chaque réponse de l'API porte ses limites d'usage (<code>meta.avertissements</code>).</p>
+</div>
+<div>
+<p><strong>Défauts connus, documentés et gérés :</strong></p>
+<ul>
+  <li>rupture de série en 2016 : superficies <em>récoltées</em> puis <em>semées</em> ; le modèle de rendement s'arrête donc à 2015 ;</li>
+  <li>pas de rendement publié après 2021 ;</li>
+  <li>indice AMO arrêté en 2022 ; humidité du sol absente pour 6 départements côtiers : variables écartées ;</li>
+  <li>Guédiawaye sans pixel CHIRPS terrestre (repli NASA POWER) ;</li>
+  <li>doses d'engrais absentes pour 286 couples département × culture sur 345 (arachide, niébé, sésame en attente de l'ISRA).</li>
+</ul>
+</div>
+</div>
+
+<h3>1.5 Conformité : données personnelles et licences</h3>
+<p>Le cadre applicable est la <strong>loi sénégalaise n° 2008-12</strong> sur la protection des données personnelles (autorité : la CDP). Le RGPD européen ne s'applique a priori pas (service destiné au Sénégal) ; nous en appliquons cependant les principes de minimisation et de consentement.</p>
+<table>
+<tr><th>Principe</th><th>Ce qui est en place</th><th>État</th></tr>
+<tr><td>Aucune donnée personnelle dans les modèles</td><td>Entraînement uniquement sur des données climatiques et des statistiques agrégées au département : il n'y a <strong>rien à anonymiser</strong>.</td><td><span class="badge">fait</span></td></tr>
+<tr><td>Minimisation</td><td>Pas de compte ni de mot de passe pour l'utilisateur. La position GPS est convertie en département <strong>sur le téléphone</strong> et n'est jamais envoyée au serveur.</td><td><span class="badge">fait</span></td></tr>
+<tr><td>Consentement</td><td>Mesure d'audience Umami auto-hébergée, <strong>sans cookie</strong>, chargée seulement après « Accepter ». Aucune requête vers un tiers avant consentement (vérifié sur la version en ligne).</td><td><span class="badge">fait</span></td></tr>
+<tr><td>Liste fermée des événements mesurés</td><td>Le module d'envoi refuse position, nom, texte libre, surface, quantités ; 11 événements documentés dans un plan de marquage.</td><td><span class="badge">fait</span></td></tr>
+<tr><td>Sous-traitants</td><td>Mapbox (fond de carte), Groq (rédaction facultative des explications des PDF, sans nom d'organisation), hébergeur du VPS. Listés dans la page Confidentialité.</td><td><span class="badge mi">à compléter</span></td></tr>
+<tr><td>Formalités</td><td>Registre des 9 traitements rédigé (audit du 21/11/2026), prêt pour la <strong>déclaration à la CDP, qui n'est pas encore faite</strong>.</td><td><span class="badge non">à faire</span></td></tr>
+<tr><td>Licences des sources</td><td>Citées sur la page « Données ». La licence GADM interdit l'usage commercial : à remplacer par les limites administratives officielles avant toute offre payante.</td><td><span class="badge mi">à traiter</span></td></tr>
+</table>
+</div>
+
+<!-- ============ 2. MÉTHODE ============ -->
+<div class="section">
+<h2><span class="num">2</span>Méthode</h2>
+
+<h3>2.1 Approche choisie</h3>
+<p>Nous avons conçu la plateforme à partir des <strong>questions des utilisateurs</strong>, pas des algorithmes. Chaque question devient un écran (un « bouton »), servi par une table dédiée et, si besoin, par un modèle. Trois décisions ont structuré le travail :</p>
+<ul>
+  <li><strong>Un modèle par question, comparé à une référence simple.</strong> Un modèle n'est affiché comme prévision que s'il bat la prévision qu'on ferait sans lui (normale, tendance, fréquence passée), sur des années qu'il n'a pas vues.</li>
+  <li><strong>Tout précalculer.</strong> Les données changent au plus une fois par saison. L'API calcule donc à l'avance toutes ses réponses (5 182) et ne touche jamais l'entrepôt pendant une visite.</li>
+  <li><strong>Mobile, sobre, en wolof.</strong> Première page légère (≈ 227 Ko), lecture à voix haute de chaque écran, voix wolof pour l'agriculteur.</li>
+</ul>
+
+<h3>2.2 Architecture</h3>
+<div class="archi">
+  <div class="pile">
+    <div class="bloc c"><b>Sources</b>CHIRPS, NASA POWER, ESA CCI, NOAA</div>
+    <div class="bloc t"><b>&nbsp;</b>SoilGrids, DAPSA / HarvestStat, Cadre harmonisé, doses, prix</div>
+    <div class="bloc"><b>Collecte</b>Python (<code>ingestion/</code>) : agrégation par département, variables agroclimatiques</div>
+  </div>
+  <div class="fl">→</div>
+  <div class="pile">
+    <div class="bloc"><b>Snowflake · RAW</b>22 tables sources, en lecture seule</div>
+    <div class="bloc"><b>dbt</b>staging → intermediate → faits, dimensions, marts ; 345 tests ; CI sur des schémas <code>CI_*</code> isolés</div>
+    <div class="bloc"><b>Snowflake · MARTS</b>9 marts (un par écran ou modèle)</div>
+  </div>
+  <div class="fl">→</div>
+  <div class="pile">
+    <div class="bloc o"><b>Modèles (<code>ml/</code>)</b>M1 saison · M3 rendement et alerte · M4 date de semis · moteur AgroDistrib (scikit-learn)</div>
+    <div class="bloc o"><b>SALTIS.ML</b>prévisions, risques, fiabilité (ou CSV de <code>ml/sorties/</code>)</div>
+    <div class="bloc"><b>API FastAPI</b>précharge, valide, précalcule ; cache Redis versionné, gzip, ETag, retour arrière instantané</div>
+  </div>
+  <div class="fl">→</div>
+  <div class="pile">
+    <div class="bloc"><b>Site et PWA</b>React, TypeScript, Vite, Tailwind, carte Mapbox GL ; deux profils</div>
+    <div class="bloc c"><b>Voix</b>Français : synthèse du navigateur. Wolof : phrases types + synthèse Adia TTS sur processeur, conteneur dédié</div>
+    <div class="bloc"><b>Exports</b>Dossier national et fiche département en PDF (jsPDF), explications rédigées par un LLM, avec repli sans IA</div>
+  </div>
+</div>
+<p class="petit" style="margin-bottom:7pt">Production : un VPS (2 processeurs, 8 Go), Docker Compose, Caddy (HTTPS automatique, en-têtes de sécurité), Redis et Umami sur réseau privé. Coût estimé : 10 à 40 € par mois, sans coût par utilisateur.</p>
+
+<h3>2.3 Outils et choix techniques justifiés</h3>
+<table>
+<tr><th style="width:17%">Besoin</th><th style="width:22%">Choix</th><th>Pourquoi ce choix (et ce que nous avons écarté)</th></tr>
+<tr><td>Entrepôt</td><td>Snowflake</td><td>SQL standard, partage des accès par rôle (lecture des marts pour le ML, écriture dans <code>ML</code> seulement), aucune administration de serveur. L'offre d'essai couvre notre volume.</td></tr>
+<tr><td>Transformations</td><td>dbt</td><td>Règles métier versionnées et testées, documentation des grains, CI qui construit dans des schémas isolés. Pas d'Airflow ni de Kafka : quelques mises à jour par saison, <code>make</code> suffit.</td></tr>
+<tr><td>Modèles</td><td>scikit-learn : ridge, régressions logistiques régularisées</td><td>Peu d'années (35 situations océaniques pour la pluie) : un modèle simple et fortement régularisé généralise mieux. 6 familles comparées (dont XGBoost, forêts, réseau de neurones) : aucune ne fait mieux de façon prouvée (section 3).</td></tr>
+<tr><td>API</td><td>FastAPI + Pydantic + Redis</td><td>Contrats de données typés, documentation Swagger automatique, validation au chargement. Réponses précalculées : temps de réponse constant, Snowflake jamais appelé en ligne.</td></tr>
+<tr><td>Front</td><td>React 19, Vite, Tailwind, Mapbox GL, PWA</td><td>Carte vectorielle légère, installation sur téléphone. Repli lisible quand l'appareil n'a pas de carte 3D.</td></tr>
+<tr><td>Voix wolof</td><td>Phrases types + synthèse Adia TTS (CONCREE)</td><td>Aucune IA générative pour le wolof : les phrases sont fixes et seuls les chiffres changent, pour ne jamais inventer. Synthèse isolée dans un conteneur limité à un cœur, pour ne pas ralentir la carte.</td></tr>
+<tr><td>Explications des PDF</td><td>LLM compatible OpenAI (Groq, <code>gpt-oss-120b</code>)</td><td>Rédige le commentaire de chaque section à partir des chiffres affichés. Facultatif : sans clé ou en cas d'échec, des repères de lecture fixes prennent le relais.</td></tr>
+</table>
+
+<h3>2.4 Étapes de conception</h3>
+<table>
+<tr><th style="width:15%">Étape</th><th>Ce qui a été fait</th></tr>
+<tr><td>Cadrage</td><td>Cahier des charges V1, 6 modules (A à F), deux profils, questions écrites avec des mots d'utilisateur ; liste des données manquantes (doses, variétés, stocks).</td></tr>
+<tr><td>Données</td><td>Collecte, chargement dans <code>RAW</code>, modélisation dbt en constellation, contrat de données des marts, tests.</td></tr>
+<tr><td>Modèles</td><td>Jeux d'apprentissage sans fuite ; un modèle par question ; comparaison de 6 familles d'algorithmes avec la même validation temporelle (16/11) ; moteur AgroDistrib (18/11).</td></tr>
+<tr><td>Produit</td><td>API précalculée, scène cartographique, lecture à voix haute, voix wolof, exports PDF pour les ONG.</td></tr>
+<tr><td>Contrôle</td><td>Audit technique complet du dépôt et de la version en ligne (21/11) : 85 constats, dont 2 critiques corrigés le jour même ; tests d'équivalence entre le moteur Python et sa version dans le navigateur.</td></tr>
+</table>
+</div>
+
+<!-- ============ 2.5 Modèles ============ -->
+<div>
+<h3>2.5 Les modèles, question par question</h3>
+<table>
+<tr><th style="width:17%">Modèle · écran</th><th style="width:33%">Question et entrées</th><th style="width:28%">Méthode</th><th>Sortie</th></tr>
+<tr><td><strong>M1</strong> · « Va-t-il bien pleuvoir ? »</td><td>Fin mai : la saison sera-t-elle sèche, normale ou humide ? Entrées : indices océaniques ONI (El Niño) et TSA (Atlantique sud) de mars-mai, normale du département.</td><td>Logistique multinomiale (3 classes) et ridge (pluie en mm), forte régularisation.</td><td>3 probabilités, pluie prévue avec fourchette à 80 %, par département et par année jusqu'en 2035.</td></tr>
+<tr><td><strong>M3</strong> · « Que semer ? », « Alerte récolte »</td><td>Combien récolter, et où le rendement risque-t-il de chuter sous 80 % de l'habituel ? 5 cultures pluviales, 4 moments (fin mai à fin août). Entrées : niveau et irrégularité des rendements passés, probabilités de M1, pluie déjà tombée, décades sèches, date de démarrage.</td><td>12 régressions logistiques, une par seuil (25 % à 260 % de la tendance), qui donnent toute la distribution du rendement.</td><td>Centiles 10, 50, 90 du rendement ; probabilité de chute ; explication en clair ; drapeaux de fiabilité.</td></tr>
+<tr><td><strong>M4</strong> · « Quand semer ? »</td><td>À quelle décade semer pour courir le moins de risque ? Deux dangers opposés : faux départ (semer trop tôt) et fin de saison avant la fin du cycle (semer trop tard).</td><td>Logistique sur tous les départements à la fois (faux départ) ; loi normale de la date de fin de saison (fin trop tôt).</td><td>Risque par décade de juin à août, décade conseillée, pour 8 cultures.</td></tr>
+<tr><td><strong>AgroDistrib</strong> · « Répartir un stock »</td><td>Une organisation a un stock : comment le répartir entre départements ? Critères : besoin, potentiel de gain, capacité à valoriser l'intrant, vulnérabilité.</td><td>Prorata multicritère, plafonné au besoin ; curseur α du décideur entre équité (α = 0) et rendement (α = 1).</td><td>Quantité par département, jamais au-delà du besoin ni du stock ; somme par région ou par zone.</td></tr>
+</table>
+
+<h3>2.6 Protocole d'évaluation</h3>
+<div class="cols">
+<div>
+<ul>
+  <li><strong>Jamais d'années mélangées.</strong> Un modèle ne prévoit une année qu'avec les années d'avant. Pluie : validation 2001-2015, test 2016-2025. Rendement : validation 2001-2008, test 2009-2015 (rupture de série en 2016).</li>
+  <li><strong>Le test ne sert pas à choisir.</strong> Réglages et familles sont choisis sur la validation ; le test est regardé une fois, réglages figés.</li>
+  <li><strong>Règle de choix fixée à l'avance</strong> : la meilleure famille en validation ; si d'autres ne s'en distinguent pas, la plus simple.</li>
+</ul>
+</div>
+<div>
+<ul>
+  <li><strong>Incertitude honnête.</strong> Les 45 départements d'une même année se ressemblent : les intervalles de confiance (90 %) sont calculés par rééchantillonnage d'<strong>années entières</strong>. Il n'y a en réalité que 10 années de test pour la pluie.</li>
+  <li><strong>Mesures adaptées à chaque sortie</strong> : RMSE et MAE pour les quantités, RPSS pour les probabilités de classes, score de Brier et AUC pour les alertes, couverture des fourchettes (annexe A).</li>
+  <li><strong>Drapeaux de fiabilité</strong> : vrais seulement si le gain est présent en validation <em>et</em> confirmé en test.</li>
+</ul>
+</div>
+</div>
+
+<h3>2.7 Qualité logicielle et sécurité</h3>
+<p>Intégration continue GitHub : ruff, compilation et <strong>121 tests Python</strong> (couverture de l'API : 91 %), lint, tests et construction du front, puis construction dbt complète dans des schémas <code>CI_*</code> avec un garde-fou qui bloque toute écriture vers la production. Le moteur AgroDistrib existe en Python et en TypeScript : un test d'équivalence vérifie que le navigateur donne la même répartition, à 0,05 t près. En production : seuls les ports 80 et 443 sont ouverts, conteneurs sans droits root, HTTPS forcé avec HSTS, politique de sécurité du contenu stricte, CORS fermé, limites de débit par adresse IP sur l'API et sur la voix, secrets uniquement dans un fichier <code>.env</code> du serveur.</p>
+</div>
+
+<!-- ============ 3. RÉSULTATS ============ -->
+<div class="section">
+<h2><span class="num">3</span>Résultats</h2>
+
+<h3>3.1 Prévision de la saison (M1)</h3>
+<figure>
+<img src="img/fig_pluie.png" alt="RMSE de la pluie de saison sur le test 2016-2025, par méthode">
+<figcaption>Figure 1. Erreur sur la pluie de saison (juin-octobre), test 2016-2025, 450 prévisions département × année. Les quatre barres grises sont des prévisions sans modèle. Source : <code>ml/sorties/comparaison_pluie.csv</code>.</figcaption>
+</figure>
+<div class="cols">
+<table>
+<tr><th>Mesure (test 2016-2025)</th><th class="n">Modèle</th><th class="n">Référence</th></tr>
+<tr><td>RMSE pluie de saison</td><td class="n"><strong>111 mm</strong></td><td class="n">122 mm (normale)</td></tr>
+<tr><td>Gain sur l'erreur quadratique de la normale (IC 90 %)</td><td class="n" colspan="2"><strong>+17 %</strong> (+8 à +30 %)</td></tr>
+<tr><td>RPSS des 3 classes (IC 90 %)</td><td class="n" colspan="2"><strong>+0,22</strong> (+0,09 à +0,32)</td></tr>
+<tr><td>Bonne classe prévue</td><td class="n"><strong>58,7 %</strong></td><td class="n">38,4 % (climatologie)</td></tr>
+<tr><td>Observé dans la fourchette à 80 %</td><td class="n">79 %</td><td class="n">but : 80 %</td></tr>
+</table>
+<div>
+<p><strong>Lecture.</strong> Le modèle linéaire est le seul à battre la normale de façon prouvée. Face à la moyenne des 15 dernières saisons, son gain (+11 %) n'est pas prouvé. Le réseau de neurones extrapole mal (140 mm). Le modèle en service (<code>m1-v1</code>, ONI + TSA) obtient 113 mm, un RPSS de +0,17 et 46,2 % de bonnes classes ; ajouter l'indice TNA ne change rien de significatif.</p>
+<p><strong>Prévision 2026</strong> (indices NOAA de mars-mai 2026) : 22 % sèche, 37 % normale, 41 % humide. Pour 2027-2035, faute d'indices, une prévision de tendance (RMSE mesurée : 115 mm).</p>
+</div>
+</div>
+
+<h3>3.2 Rendement et alerte récolte (M3)</h3>
+<div class="cols">
+<div>
+<figure style="margin-top:0">
+<img src="img/fig_alerte.png" alt="Gain de l'alerte récolte par culture et par moment, test 2009-2015">
+<figcaption>Figure 2. Gain de l'alerte « chute de récolte » sur la fréquence passée, test 2009-2015. Seule l'arachide dépasse le seuil de fiabilité, à fin juillet et fin août. Source : <code>evaluation_m3.csv</code>.</figcaption>
+</figure>
+</div>
+<div>
+<table>
+<tr><th>Rendement, MAE test (kg/ha)</th><th class="n">MAE</th></tr>
+<tr class="ref"><td>Référence : tendance 10 campagnes</td><td class="n">228,1</td></tr>
+<tr class="retenu"><td>Modèle en service <code>m3-v1</code></td><td class="n">227,1</td></tr>
+<tr><td>Linéaire régularisé direct</td><td class="n">247,7</td></tr>
+<tr><td>Forêt aléatoire</td><td class="n">239,0</td></tr>
+<tr><td>XGBoost</td><td class="n">239,2</td></tr>
+<tr><td>Réseau de neurones</td><td class="n">250,2</td></tr>
+</table>
+<p>Le modèle fait jeu égal avec la tendance ; les 6 familles directes font 5 à 10 % moins bien. Il <strong>classe</strong> pourtant bien les départements et cultures les plus à risque à l'intérieur d'une année (AUC ≈ 0,66, stable entre validation et test).</p>
+</div>
+</div>
+
+<h3>3.3 Date de semis (M4)</h3>
+<table>
+<tr><th>Risque (test 2016-2025)</th><th class="n">Cas</th><th class="n">Fréquence observée</th><th class="n">Brier modèle / référence</th><th class="n">Gain</th><th class="n">AUC modèle / référence</th></tr>
+<tr><td>Faux départ</td><td class="n">2 111</td><td class="n">8,1 %</td><td class="n">0,0645 / 0,0683</td><td class="n"><strong>+5,5 %</strong></td><td class="n"><strong>0,83</strong> / 0,76</td></tr>
+<tr><td>Fin de saison trop tôt</td><td class="n">28 800</td><td class="n">25,0 %</td><td class="n">0,0379 / 0,0396</td><td class="n"><strong>+4,3 %</strong></td><td class="n">0,99 / 0,99</td></tr>
+</table>
+<p>Résultat type : arachide, maïs, sorgho et sésame à semer de préférence en 2<sup>e</sup> décade de juillet ; niébé (cycle court) début août. Dans le nord, même la meilleure décade reste risquée (Podor, mil : 39 %) : l'application le montre au lieu de le cacher.</p>
+</div>
+
+<div class="section">
+<h3 style="margin-top:0">3.4 Répartition d'un stock (AgroDistrib)</h3>
+<table>
+<tr><th>Méthode (20 000 t de NPK, mil)</th><th class="n">Dép. servis</th><th class="n">Couverture min-max</th><th class="n">Gini</th><th class="n">Stock déplacé si scores ±10 %</th></tr>
+<tr class="ref"><td>Prorata du besoin</td><td class="n">41</td><td class="n">16,6 %</td><td class="n">0,00</td><td class="n">0 %</td></tr>
+<tr><td>Parts égales plafonnées</td><td class="n">41</td><td class="n">5-100 %</td><td class="n">0,45</td><td class="n">0 %</td></tr>
+<tr><td>Pondéré par la vulnérabilité</td><td class="n">41</td><td class="n">10-25 %</td><td class="n">0,12</td><td class="n">1,2 %</td></tr>
+<tr class="retenu"><td>Prorata multicritère (retenu)</td><td class="n">41</td><td class="n">13-22 %</td><td class="n">0,06</td><td class="n">0,8 %</td></tr>
+<tr><td>Priorité stricte</td><td class="n">17</td><td class="n">0-100 %</td><td class="n">0,59</td><td class="n">24,9 %</td></tr>
+<tr><td>Optimisation linéaire bornée</td><td class="n">41</td><td class="n">8-50 %</td><td class="n">0,39</td><td class="n">11,9 %</td></tr>
+</table>
+<div class="cols" style="grid-template-columns: 1fr 1.15fr; align-items:start">
+<figure style="margin:0">
+<img src="img/fig_agro.png" alt="Inégalité et valeur indicative des méthodes de répartition">
+<figcaption>Figure 3. Inégalité de la répartition contre valeur agronomique indicative (écart au prorata). Source : <code>comparaison_agrodistrib.csv</code>.</figcaption>
+</figure>
+<div><p>Il n'existe pas de « bonne réponse » observée pour une répartition : nous comparons donc les méthodes sur des critères vérifiables. Vulnérabilité et valeur agronomique tirent en sens inverse (corrélation de rang −0,56) : les zones les plus fragiles sont aussi celles où la saison valorise le moins l'engrais. Aucune méthode ne gagne sur les deux à la fois ; le prorata multicritère est le seul à ne perdre sur aucun des deux critères, et il laisse au décideur le curseur α pour arbitrer en voyant ce qu'il gagne et ce qu'il perd. La priorité stricte est écartée : 24 départements ne recevraient rien, dont tout le Bassin arachidier.</p></div>
+</div>
+
+<h3>3.5 La plateforme en fonctionnement</h3>
+<div class="cols">
+<figure class="cadre" style="margin-top:0">
+<img src="img/scene_agri.jpg" alt="Écran Ma parcelle du profil agriculteur">
+<figcaption>Figure 4. Profil agriculteur, « Ma parcelle » après « Me localiser » (Kaolack) : cultures adaptées, réserve en eau du sol, saison 2026, résumé lu en wolof (mascotte WLF).</figcaption>
+</figure>
+<figure class="cadre" style="margin-top:0">
+<img src="img/scene_repartir.jpg" alt="Écran Répartir un stock du profil ONG">
+<figcaption>Figure 5. Profil ONG, « Répartir un stock » : besoin connu, scénario multicritère, saisie du stock, répartition par département sur la carte.</figcaption>
+</figure>
+</div>
+<p class="petit" style="margin-top:-3pt">Captures du 22/11/2026 en mode démonstration (données d'exemple fournies avec le front), carte Mapbox. La version branchée sur l'API sert les chiffres des marts et des modèles décrits plus haut.</p>
+
+<table>
+<tr><th>Mesure technique</th><th>Résultat</th><th>Mesure technique</th><th>Résultat</th></tr>
+<tr><td>Réponses précalculées par l'API</td><td>5 182, gzip, 0,1 à 25 Ko</td><td>Temps de réponse en ligne (poste distant)</td><td>0,27 à 1,08 s</td></tr>
+<tr><td>Première visite du site (gzip)</td><td>≈ 227 Ko</td><td>Tests Python · couverture de l'API</td><td>121 réussis · 91 %</td></tr>
+<tr><td>Vulnérabilités des dépendances</td><td>0 (npm audit, pip-audit)</td><td>Cookies et requêtes tierces sans consentement</td><td>0 · 0</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h3 style="margin-top:0">3.6 Limites</h3>
+<table>
+<tr><th style="width:24%">Limite</th><th>Conséquence et traitement actuel</th></tr>
+<tr><td>Peu d'années indépendantes</td><td>35 situations océaniques pour apprendre la pluie, 10 années de test : la plupart des écarts entre algorithmes sont plus petits que leur incertitude. Nous gardons le modèle le plus simple et affichons toujours probabilités et fourchettes.</td></tr>
+<tr><td>Rendements très bruités, arrêtés en 2021</td><td>Écart médian à la tendance d'environ 25 % ; la pluie totale de la saison n'en explique qu'une petite part (corrélation de rang 0,19). Rendement présenté comme fourchette habituelle hors des cas fiables.</td></tr>
+<tr><td>Granularité décadaire</td><td>Une période sèche à cheval sur deux décades est mal vue ; le seuil de pluie de semis (20 mm) s'applique à la décade. Seuils du modèle 4 à valider avec des agronomes.</td></tr>
+<tr><td>Doses et variétés incomplètes</td><td>Seul le mil a une dose dans toutes les zones (à confirmer) ; 3 variétés documentées. Besoins partiels signalés, saisie manuelle possible.</td></tr>
+<tr><td>Potentiel et vulnérabilité relatifs</td><td>Le potentiel de gain est une valeur de zone ; le score de vulnérabilité compare les départements entre eux et reste à valider par des techniciens.</td></tr>
+<tr><td>Wolof non relu, hors ligne partiel</td><td>Les phrases types wolof doivent être relues par un locuteur ; l'usage hors réseau et les téléphones sans carte 3D restent à améliorer (repli par liste en place).</td></tr>
+<tr><td>Formalités et licences</td><td>Déclaration CDP à faire ; contours GADM non commerciaux à remplacer avant toute offre payante.</td></tr>
+</table>
+
+<h3>3.7 Pistes d'amélioration</h3>
+<div class="cols">
+<div>
+<p><strong>Données</strong></p>
+<ul>
+  <li>Obtenir les doses validées et le catalogue des variétés (ISRA, ANCAR, DISEM) : c'est ce qui limite le plus la valeur des écrans « besoins » et « répartir ».</li>
+  <li>Rendements DAPSA après 2021 et données d'essais de réponse aux engrais, pour passer d'un indicateur de priorité à un gain chiffré.</li>
+  <li>Pluie quotidienne pour le modèle de semis ; prévisions saisonnières régionales d'AGRHYMET comme variable d'entrée.</li>
+  <li>Limites administratives officielles en remplacement de GADM.</li>
+</ul>
+</div>
+<div>
+<p><strong>Produit et exploitation</strong></p>
+<ul>
+  <li>Stocks et scénarios des organisations enregistrés (<code>SALTIS.APP</code>), avec validation et historique.</li>
+  <li>Canaux adaptés au terrain : serveur vocal et WhatsApp, déjà prévus dans l'API (questions parlées en wolof).</li>
+  <li>Relecture du wolof, ateliers avec des producteurs et des ONG ; suivi des usages par le plan de marquage.</li>
+  <li>Déploiement automatisé, supervision, déclaration CDP, puis ouverture aux services de l'État.</li>
+</ul>
+</div>
+</div>
+
+<div class="encadre"><p><strong>Conclusion.</strong> Assaman &amp; Suuf réunit dans une seule carte des données jusque-là dispersées, et y ajoute deux prévisions utiles et mesurées (la saison, la date de semis) et un outil de répartition transparent. Sa principale qualité est de dire ce qu'il sait et ce qu'il ne sait pas : chaque chiffre affiché porte sa source, sa fourchette et sa fiabilité.</p></div>
+</div>
+
+<!-- ============ ANNEXES ============ -->
+<div class="section annexe">
+<h2>Annexes <span class="petit" style="font-family:Lato;font-size:9pt">(hors limite de pages)</span></h2>
+
+<h3>A. Les mesures utilisées</h3>
+<table>
+<tr><th style="width:18%">Mesure</th><th>Définition et lecture</th></tr>
+<tr><td>RMSE, MAE</td><td>Erreur quadratique moyenne et erreur absolue moyenne, dans l'unité de la variable (mm, kg/ha). Plus bas = meilleur.</td></tr>
+<tr><td>Gain</td><td>1 − erreur du modèle / erreur de la référence (erreur quadratique moyenne pour la pluie). 0 = pas mieux que la référence ; négatif = moins bien.</td></tr>
+<tr><td>RPSS</td><td>Ranked Probability Skill Score : qualité des probabilités des 3 classes (sèche, normale, humide) comparée à la climatologie. 0 = pas mieux, 1 = parfait.</td></tr>
+<tr><td>Score de Brier, BSS</td><td>Erreur quadratique d'une probabilité d'événement (chute, faux départ). Le Brier skill score compare au score de la référence.</td></tr>
+<tr><td>AUC</td><td>Capacité à classer les cas à risque avant les autres. 0,5 = hasard, 1 = parfait.</td></tr>
+<tr><td>Couverture</td><td>Part des observations qui tombent dans la fourchette annoncée (but : 80 % pour une fourchette à 80 %).</td></tr>
+<tr><td>Gini</td><td>Inégalité de couverture du besoin entre départements, 0 = tous couverts à la même part.</td></tr>
+</table>
+
+<h3>B. Tables servies et routes de l'API</h3>
+<table>
+<tr><th>Module</th><th>Mart</th><th class="n">Lignes</th><th>Routes principales (<code>/api/v1</code>)</th></tr>
+<tr><td>A. Suivi agroclimatique</td><td><code>mart_carte_agroclimat</code>, <code>mart_suivi_decadaire</code></td><td class="n">2 025 · 71 280</td><td><code>/agroclimat/…</code>, <code>/suivi-decadaire/{code}/{annee}</code></td></tr>
+<tr><td>B. Choix des cultures</td><td><code>mart_choix_cultures</code></td><td class="n">1 710</td><td><code>/choix-cultures/{code}</code></td></tr>
+<tr><td>C. Besoins</td><td><code>mart_besoins</code></td><td class="n">369</td><td><code>/besoins/…</code>, <code>/prix-intrants</code></td></tr>
+<tr><td>D. AgroDistrib</td><td><code>mart_territoires_agrodistrib</code>, <code>mart_vulnerabilite_departement</code></td><td class="n">345 · 45</td><td><code>/agrodistrib/…</code>, <code>/vulnerabilite</code></td></tr>
+<tr><td>E. Opportunités</td><td><code>mart_carte_opportunites</code></td><td class="n">45</td><td><code>/opportunites</code></td></tr>
+<tr><td>F. Cadre harmonisé</td><td><code>mart_cadre_harmonise_departement</code></td><td class="n">45</td><td><code>/cadre-harmonise</code></td></tr>
+<tr><td>Modèles</td><td><code>SALTIS.ML</code> (4 tables)</td><td class="n">≈ 75 600</td><td><code>/previsions/saison|rendement|alerte-recolte|semis|fiabilite</code></td></tr>
+<tr><td>Voix</td><td>—</td><td class="n">—</td><td><code>/voix/parler</code> (synthèse wolof, 700 caractères au plus)</td></tr>
+</table>
+
+<h3>C. Reproduire les résultats</h3>
+<table>
+<tr><th style="width:30%">Étape</th><th>Commande (depuis la racine du dépôt)</th></tr>
+<tr><td>Installer</td><td><code>cp .env.example .env</code> (accès Snowflake), puis <code>make install</code></td></tr>
+<tr><td>Construire et tester les données</td><td><code>make dbt-run</code> (staging, marts, 345 tests)</td></tr>
+<tr><td>Entraîner les modèles (dans cet ordre)</td><td><code>venv/bin/python -m ml.m1_prevision_saison.entrainer</code>, puis <code>ml.m3_rendement.entrainer</code>, puis <code>ml.m4_date_semis.entrainer</code></td></tr>
+<tr><td>Comparer les 6 familles</td><td>scripts de <code>ml/comparaison/</code> → <code>ml/sorties/comparaison_*.csv</code></td></tr>
+<tr><td>Servir l'API, puis le site</td><td><code>make api</code> (http://localhost:8080/docs), <code>make front-install &amp;&amp; make front</code></td></tr>
+<tr><td>Vérifier avant livraison</td><td><code>make verifier</code> (ruff, tests Python, lint et build du front)</td></tr>
+</table>
+<p class="petit">Documentation détaillée dans le dépôt : <code>docs/technique/contrat-donnees.md</code> (colonnes des marts), <code>ml/MODELES.md</code> et <code>docs/technique/rapport-comparaison-modeles.md</code> (modèles), <code>api/README.md</code> (API), <code>deploy/README.md</code> (production), <code>docs/audit/rapports/RAPPORT-AUDIT.md</code> (audit du 21/11/2026). Les graphiques de ce document sont produits par <code>docs/technique/document-technique/graphiques.py</code>.</p>
+</div>
+
+</body>
+</html>

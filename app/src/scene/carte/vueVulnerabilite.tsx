@@ -43,9 +43,9 @@ export function ScoreVulnerabilite({ fiche }: { fiche: LigneVulnerabilite }) {
 }
 
 /** Le classement des départements notés ; un clic choisit le département (sélection partagée). */
-export function ClassementVulnerabilite({ classement, code, choisir }: { classement: LigneVulnerabilite[]; code: string | null; choisir: (code: string) => void }) {
+export function ClassementVulnerabilite({ classement, code, choisir, replie = false }: { classement: LigneVulnerabilite[]; code: string | null; choisir: (code: string) => void; replie?: boolean }) {
   return (
-    <Groupe titre="Classement de vulnérabilité" complement={`${classement.length} départements`}>
+    <Groupe titre="Classement de vulnérabilité" complement={`${classement.length} départements`} replie={replie}>
       <ol>
         {classement.map((v, i) => (
           <Rang key={v.code_departement} rang={i + 1} nom={v.departement} part={v.score_vulnerabilite} couleur={couleurVulnerabilite(v.score_vulnerabilite)} valeur={nombre(v.score_vulnerabilite)}

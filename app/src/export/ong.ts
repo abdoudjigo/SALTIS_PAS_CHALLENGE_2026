@@ -199,7 +199,8 @@ export async function exporterDossierOng(x: ContexteExport) {
       (p) => barre.maj(p),
     )
     if (!map) await cadre.exporter.activer('exporter').catch(() => undefined)
-    terminerExport('dossier', map ? `Dossier exporté : ${resultat.nomFichier} (${resultat.nbPages} pages).` : `${CARTE_ABSENTE_MSG} Fichier : ${resultat.nomFichier}.`, !map)
+    const avertissementIA = resultat.explicationsIA ? '' : ` Les explications IA étaient indisponibles (${resultat.avertissementIA ?? 'erreur inconnue'}) : des repères de lecture sans IA ont été ajoutés.`
+    terminerExport('dossier', (map ? `Dossier exporté : ${resultat.nomFichier} (${resultat.nbPages} pages).` : `${CARTE_ABSENTE_MSG} Fichier : ${resultat.nomFichier}.`) + avertissementIA, !map)
   } catch (e) {
     await cadre.exporter.activer('exporter').catch(() => undefined)
     terminerExport('dossier', `L'export a échoué : ${e instanceof Error ? e.message : 'erreur inconnue'}. Réessayez.`, true)
@@ -292,7 +293,8 @@ export async function exporterFicheOng(x: ContexteExport) {
       },
     )
     barre.maj({ fait: total, total, libelle: 'Fiche prête' })
-    terminerExport('fiche', map ? `Fiche exportée : ${resultat.nomFichier}.` : `${CARTE_ABSENTE_MSG} Fichier : ${resultat.nomFichier}.`, !map)
+    const avertissementIA = resultat.explicationsIA ? '' : ` Les explications IA étaient indisponibles (${resultat.avertissementIA ?? 'erreur inconnue'}) : un repère de lecture sans IA a été ajouté.`
+    terminerExport('fiche', (map ? `Fiche exportée : ${resultat.nomFichier}.` : `${CARTE_ABSENTE_MSG} Fichier : ${resultat.nomFichier}.`) + avertissementIA, !map)
   } catch (e) {
     await cadre.exporter.activer('exporter').catch(() => undefined)
     terminerExport('fiche', `L'export a échoué : ${e instanceof Error ? e.message : 'erreur inconnue'}. Réessayez.`, true)

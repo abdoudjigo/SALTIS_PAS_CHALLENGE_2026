@@ -10,6 +10,7 @@ import { cadrer, questionOng, usePublier, type PropsMode, type Sortie } from '..
 import { COULEURS_OPPORTUNITE, LEGENDE_OPPORTUNITES, NON_DISPONIBLE } from '../carte/couleurs'
 import { aLire, puceCulture, type LigneCheck } from '../interface/fiche'
 import { FicheReponse } from '../interface/FicheReponse'
+import { ClassementBarres, TableauDeBord } from '../interface/TableauDeBord'
 import { Categories, Groupe, Methode, Rang, Squelette } from '../interface/ui'
 
 const RAPPEL = 'Repérages indicatifs, à vérifier sur le terrain'
@@ -60,6 +61,27 @@ export default function Potentiel({ cadre, publier }: PropsMode) {
           return [d.code_departement, { couleur: o?.couleur_carte ? COULEURS_OPPORTUNITE[o.couleur_carte] : NON_DISPONIBLE }]
         })) : null,
       },
+      // Sur la scène : les deux classements (eau pour la contre-saison, gain de rendement), les premiers seulement
+      tableauDeBord: opportunites || territoires ? (() => {
+        const ha = eau.reduce((s, o) => s + (o.potentiel_contre_saison_ha ?? 0), 0)
+        return (
+          <TableauDeBord titre={`Fort potentiel${pourCulture} · repérages indicatifs`} tuiles={[
+            { valeur: opportunites ? eau.length : '—', libelle: 'départements avec de l’eau pour la contre-saison', etat: 'info' },
+            { valeur: opportunites ? `${nombre(ha)} ha` : '—', libelle: 'cultivables en contre-saison (somme)', etat: 'info' },
+            { valeur: gains[0] ? `+${nombre(gains[0].potentiel_gain_kg_ha)}` : '—', libelle: gains[0] ? `kg/ha au mieux : ${gains[0].departement} (${libelle(gains[0].culture).toLowerCase()})` : 'gain de rendement non repéré', etat: 'info' },
+            { valeur: gains.length, libelle: 'cultures × départements avec un gain repéré', etat: 'info' },
+          ]}>
+            <div className="grid gap-x-6 gap-y-3 md:grid-cols-2">
+              <ClassementBarres titre="Contre-saison : surface (ha)" code={code} choisir={cadre.choisir} vide="Contre-saison non disponible"
+                elements={eau.slice(0, 6).map((o) => ({ code: o.code_departement, nom: o.departement, valeur: o.potentiel_contre_saison_ha, couleur: COULEURS_OPPORTUNITE.bleu,
+                  texte: o.potentiel_contre_saison_ha === null ? 'n. d.' : `${nombre(o.potentiel_contre_saison_ha)} ha`, detail: `${o.categorie_eau}${o.potentiel_contre_saison_ha === null ? '' : `, ${nombre(o.potentiel_contre_saison_ha)} ha`}` }))} />
+              <ClassementBarres titre="Gain de rendement (kg/ha)" code={code} choisir={cadre.choisir} vide="Gain de rendement non repéré"
+                elements={gains.slice(0, 6).map((g) => ({ code: g.code_departement, nom: `${g.departement} · ${libelle(g.culture).toLowerCase()}`, valeur: g.potentiel_gain_kg_ha, couleur: 'var(--color-vert-500)',
+                  texte: `+${nombre(g.potentiel_gain_kg_ha)}`, detail: `+${nombre(g.potentiel_gain_kg_ha)} kg/ha (${libelle(g.culture).toLowerCase()}, valeur de zone)` }))} />
+            </div>
+          </TableauDeBord>
+        )
+      })() : undefined,
       legende: opportunites ? <Categories titre="Carte des opportunités" entrees={LEGENDE_OPPORTUNITES} /> : undefined,
       infobulle: (c) => {
         const o = parCode.get(c)
@@ -78,7 +100,7 @@ export default function Potentiel({ cadre, publier }: PropsMode) {
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` est résumé par `cleLignes`
-  }, [opportunites, gains, eau, code, cadre, titre, cleLignes])
+  }, [opportunites, territoires, gains, eau, code, cadre, titre, cleLignes, pourCulture])
   usePublier(publier, sortie)
 
   const maxHa = eau[0]?.potentiel_contre_saison_ha ?? 0

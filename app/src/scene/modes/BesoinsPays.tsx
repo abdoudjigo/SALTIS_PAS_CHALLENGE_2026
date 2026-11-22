@@ -10,6 +10,7 @@ import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie 
 import { couleurQuantite, NON_DISPONIBLE } from '../carte/couleurs'
 import { aLire, puceAnnee, puceCulture, type LigneCheck } from '../interface/fiche'
 import { FicheReponse } from '../interface/FicheReponse'
+import { ColonnesDepartements, TableauDeBord } from '../interface/TableauDeBord'
 import { cleZone, ZONES } from '../carte/geo'
 import { useDossier } from '../ong/dossier'
 import { budget, deIntrant, fcfa, intrantOng, nomIntrant, prixRetenu, puceIntrant, sacsDeTonnes } from '../ong/ong'
@@ -71,6 +72,30 @@ export default function BesoinsPays({ cadre, publier }: PropsMode) {
         ambiance: 'jour', camera: cadrer.pays(cadre, { inclinaison: 50, cap: 8 }), zones: null, relief: true, selection: code, satellite: false, arcs: [], reperes: [], pluie: 0, alertes: [],
         departements: new Map(besoins.map((b) => [b.code, b.besoin_t === null || !max ? { couleur: NON_DISPONIBLE } : { couleur: couleurQuantite(Math.sqrt(b.besoin_t / max)), hauteur: 4000 + 75000 * Math.sqrt(b.besoin_t / max) }])),
       },
+      // Sur la scène : le besoin du pays et de chaque département
+      tableauDeBord: territoires ? (() => {
+        const sacsPays = connus.reduce((s, b) => s + sacsDeTonnes(b.besoin_t!), 0)
+        const prixSac = prix.saisi ?? prix.cession
+        const inconnus = besoins.filter((b) => b.besoin_t === null)
+        return (
+          <TableauDeBord titre={`Besoin en ${nom} · ${culture ? libelle(culture).toLowerCase() : 'toutes cultures'}`} tuiles={[
+            { valeur: connus.length ? nombre(sacsPays) : '—', libelle: 'sacs de 50 kg pour le pays', etat: 'info' },
+            { valeur: connus.length ? tonnes(total) : '—', libelle: 'besoin total de référence', etat: 'info' },
+            { valeur: prixSac === null ? 'à saisir' : fcfa(budget(sacsPays, prixSac)), libelle: prix.saisi !== null ? 'budget au prix saisi par vous' : prixSac === null ? `prix ${nom} non renseigné` : 'budget au prix subventionné', etat: prixSac === null ? 'attention' : 'info' },
+            { valeur: inconnus.length, libelle: 'départements où la dose est à saisir (besoin non calculé)', etat: inconnus.length ? 'attention' : 'ok' },
+          ]}>
+            <ColonnesDepartements code={code} choisir={cadre.choisir} max={max || 1}
+              echelle={{ haut: tonnes(max), bas: '0' }}
+              consigne="Les plus gros besoins à gauche. Survolez une barre pour lire un département ; cliquez pour le voir sur la carte."
+              legende={<span className="inline-flex items-center gap-1"><span className="h-2 w-6 rounded-[2px]" style={{ background: 'linear-gradient(to right,#d5eadb,#5aa878,#12391f)' }} aria-hidden />besoin, faible à fort</span>}
+              elements={[
+                ...connus.map((b) => ({ code: b.code, nom: b.departement, valeur: b.besoin_t, couleur: couleurQuantite(Math.sqrt(b.besoin_t! / (max || 1))),
+                  detail: `${nombre(sacsDeTonnes(b.besoin_t!))} sacs, soit ${tonnes(b.besoin_t)}${prixSac !== null ? ` · ${fcfa(budget(sacsDeTonnes(b.besoin_t!), prixSac))}` : ''}${b.sansDose ? ` · ${b.sansDose} culture(s) sans dose` : ''}` })),
+                ...inconnus.map((b) => ({ code: b.code, nom: b.departement, valeur: null, couleur: NON_DISPONIBLE, detail: 'dose à saisir : besoin non calculé' })),
+              ]} />
+          </TableauDeBord>
+        )
+      })() : undefined,
       legende: <Degrade titre={`Besoin en ${nom}`} gauche="faible" droite={tonnes(max)} degrade="linear-gradient(to right,#d5eadb,#5aa878,#12391f)" note="Gris : dose à saisir, besoin non calculé." />,
       infobulle: (c) => {
         const b = parCode.get(c)
@@ -91,7 +116,7 @@ export default function BesoinsPays({ cadre, publier }: PropsMode) {
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` est résumé par `cleLignes`, `prix` par ses champs
-  }, [besoins, connus, total, max, code, cadre, nom, territoires, titre, cleLignes, prix.saisi, prix.cession, prix.reel])
+  }, [besoins, connus, total, max, code, cadre, nom, territoires, titre, cleLignes, prix.saisi, prix.cession, prix.reel, culture])
   usePublier(publier, sortie)
 
   // Sources et statuts de la dose retenue, pour le choix en cours

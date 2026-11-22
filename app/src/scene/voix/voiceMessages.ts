@@ -3,7 +3,7 @@
 // (le moteur est dans accueil.ts, le bandeau de sous-titres dans BandeauAccueil.tsx).
 //
 // À l'entrée — et chaque fois que l'agriculteur localise son champ — la voix lit le RÉSUMÉ RÉEL du premier écran (agriculteur : « Ma parcelle », en wolof ;
-// ONG : « Où agir en priorité », en français), composé par l'écran avec ses vrais chiffres — le même texte que
+// ONG : chacun des onglets, en français), composé par l'écran avec ses vrais chiffres — le même texte que
 // les mascottes FR et WLF. Ce fichier ne fournit que l'ENCADREMENT de ce résumé (une phrase avant, une après).
 // Les MESSAGES plus bas ne servent qu'en secours : à l'entrée quand aucun champ n'est encore connu (ils
 // invitent alors à se localiser ; le résumé suivra), ou quand le résumé ne vient pas.
@@ -36,10 +36,10 @@ export const LANGUE_PAR_DEFAUT: Record<ProfilAccueil, LangueAccueil> = {
   organisation: 'fr',
 }
 
-/** Lire seul le résumé de chaque onglet ouvert (et non seulement du premier). Faux : premier écran seulement. */
+/** Lire le résumé de chaque onglet ouvert. */
 export const LIRE_CHAQUE_ONGLET: Record<ProfilAccueil, boolean> = {
   agriculteur: true,
-  organisation: false,
+  organisation: true,
 }
 
 type Encadrement = Partial<Record<LangueAccueil, { debut?: string[]; fin?: string[] }>>

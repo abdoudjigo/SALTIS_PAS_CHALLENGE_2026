@@ -15,12 +15,13 @@ import { estAlerte, risqueHabituelEleve } from '../regles/alertes'
 import { cadrer, questionOng, useAnnee, usePublier, type PropsMode, type Sortie } from '../cadre'
 import { chCompte, couleurPhase, enCrise, etatPhase, nomPhase, periodeCH, PHASE_CRISE } from '../regles/cadreHarmonise'
 import { ordonner } from '../regles/repartition'
-import { NON_DISPONIBLE, tendance } from '../carte/couleurs'
+import { couleurVulnerabilite, NON_DISPONIBLE, tendance } from '../carte/couleurs'
 import { aLire, puceAnnee, puceChoix, puceCulture, type EtatLigne, type LigneCheck } from '../interface/fiche'
 import { FicheReponse } from '../interface/FicheReponse'
 import { Attente, MarquesRendement, MethodeModele, Morceau } from '../previsions'
-import { Categories, Groupe, Lien, Ligne, Lignes } from '../interface/ui'
+import { Barre, Categories, Groupe, Lien, Ligne, Lignes } from '../interface/ui'
 import { ClassementVulnerabilite, classerVulnerabilite, ScoreVulnerabilite, vueVulnerabilite } from '../carte/vueVulnerabilite'
+import { TableauDeBord } from '../interface/TableauDeBord'
 
 type Niveau = 'rouge' | 'orange' | 'calme' | 'inconnu'
 const TEINTES: Record<Niveau, string> = { rouge: 'var(--color-alerte-500)', orange: 'var(--color-soleil-500)', calme: 'var(--color-vert-500)', inconnu: 'rgb(255 255 255 / 0.25)' }
@@ -58,6 +59,147 @@ function raisons(d: Dossier): string[] {
 }
 
 const Point = ({ niveau }: { niveau: Niveau }) => <span className="size-2 shrink-0 rounded-full" style={{ background: TEINTES[niveau] }} aria-hidden />
+
+function ApercuClassements({ priorites, classement, code, choisir }: {
+  priorites: Dossier[]
+  classement: ReturnType<typeof classerVulnerabilite>
+  code: string | null
+  choisir: (code: string) => void
+}) {
+  const topPriorites = priorites.filter((d) => d.rouges + d.oranges > 0).slice(0, 3)
+  const topVulnerabilites = classement.slice(0, 3)
+  if (!topPriorites.length && !topVulnerabilites.length) return null
+
+  return (
+    <section aria-label="Aperçu des départements prioritaires" className="mt-4 rounded-lg border border-white/[0.09] bg-white/[0.035] p-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-2xs font-medium tracking-etiquette text-white/60 uppercase">Repères départementaux</h3>
+        <span className="text-[0.65rem] text-white/50">Top 3</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <section className="min-w-0 rounded-md bg-black/10 p-2" aria-label="Départements les plus signalés">
+          <h4 className="mb-1.5 text-[0.68rem] font-medium leading-tight text-white/80">Les plus signalés <span className="text-[0.6rem] font-normal text-white/45">R / O</span></h4>
+          {topPriorites.length ? (
+            <ol>
+              {topPriorites.map((d, i) => {
+                const total = d.rouges + d.oranges
+                const pourcentRouge = (d.rouges / 4) * 100
+                const pourcentTotal = (total / 4) * 100
+                return (
+                  <li key={d.code}>
+                    <button type="button" onClick={() => choisir(d.code)} aria-current={d.code === code ? 'true' : undefined}
+                      aria-label={`${i + 1}. ${d.nom} : ${d.rouges} signal${d.rouges === 1 ? '' : 'aux'} au rouge, ${d.oranges} à l’orange`}
+                      title={d.nom}
+                      className={clsx('flex min-h-11 w-full flex-col justify-center rounded px-1 text-left transition hover:bg-white/[0.06]', d.code === code && 'bg-white/[0.09] shadow-[inset_2px_0_0_var(--color-soleil-500)]')}>
+                      <span className="flex w-full min-w-0 items-center gap-1">
+                        <span className="w-3 shrink-0 text-[0.65rem] text-white/45 tabular-nums">{i + 1}</span>
+                        <span className="min-w-0 flex-1 truncate text-[0.68rem] text-white">{d.nom}</span>
+                        <span className="flex shrink-0 gap-1 text-[0.6rem] tabular-nums">
+                          <span className="text-alerte-500">{d.rouges}R</span>
+                          <span className="text-soleil-500">{d.oranges}O</span>
+                        </span>
+                      </span>
+                      <span className="ml-4 mt-1 block h-1 overflow-hidden rounded-full bg-white/10" aria-hidden>
+                        <span className="block h-full rounded-full" style={{ width: `${pourcentTotal}%`, background: `linear-gradient(to right, ${CARTE[3]} 0 ${pourcentRouge / Math.max(pourcentTotal, 1) * 100}%, ${CARTE[1]} ${pourcentRouge / Math.max(pourcentTotal, 1) * 100}% 100%)` }} />
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          ) : <p className="py-2 text-[0.65rem] leading-snug text-white/50">Aucun signal à prioriser</p>}
+        </section>
+        <section className="min-w-0 rounded-md bg-black/10 p-2" aria-label="Départements les plus vulnérables">
+          <h4 className="mb-1.5 text-[0.68rem] font-medium leading-tight text-white/80">Vulnérabilité <span className="text-white/50">/100</span></h4>
+          {topVulnerabilites.length ? (
+            <ol>
+              {topVulnerabilites.map((v, i) => (
+                <li key={v.code_departement}>
+                  <button type="button" onClick={() => choisir(v.code_departement)} aria-current={v.code_departement === code ? 'true' : undefined}
+                    aria-label={`${i + 1}. ${v.departement}, score de vulnérabilité ${nombre(v.score_vulnerabilite)} sur 100`}
+                    title={v.departement}
+                    className={clsx('flex min-h-11 w-full flex-col justify-center gap-1 rounded px-1 text-left transition hover:bg-white/[0.06]', v.code_departement === code && 'bg-white/[0.09] shadow-[inset_2px_0_0_var(--color-soleil-500)]')}>
+                    <span className="flex w-full min-w-0 items-center gap-1">
+                      <span className="w-3 shrink-0 text-[0.65rem] text-white/45 tabular-nums">{i + 1}</span>
+                      <span className="min-w-0 flex-1 truncate text-[0.68rem] text-white">{v.departement}</span>
+                      <span className="shrink-0 text-[0.65rem] font-medium text-white tabular-nums">{nombre(v.score_vulnerabilite)}</span>
+                    </span>
+                    <span className="ml-4 block"><Barre part={v.score_vulnerabilite} couleur={couleurVulnerabilite(v.score_vulnerabilite)} /></span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : <p className="py-2 text-[0.65rem] leading-snug text-white/50">Classement non disponible</p>}
+        </section>
+      </div>
+      <p className="mt-1.5 text-[0.6rem] leading-snug text-white/45">R/O : signaux rouge/orange · Sélectionnez un département pour le voir sur la carte.</p>
+    </section>
+  )
+}
+
+const SIGNAUX: { cle: keyof Dossier['niveaux']; libelle: string }[] = [
+  { cle: 'ch', libelle: 'Cadre harmonisé' }, { cle: 'pluie', libelle: 'Pluie' }, { cle: 'recolte', libelle: 'Récolte' }, { cle: 'vulnerabilite', libelle: 'Vulnérabilité' },
+]
+const DIT_NIVEAU: Record<Niveau, string> = { rouge: 'au rouge', orange: 'à l’orange', calme: 'rien à signaler', inconnu: 'non disponible' }
+
+/** Une case de la matrice. Rouge et orange se distinguent aussi par la forme (point blanc au centre du rouge), pas
+ *  seulement par la couleur ; « non disponible » est une case vide au contour pointillé. */
+function Case({ niveau, souple = false }: { niveau: Niveau; souple?: boolean }) {
+  const taille = souple ? 'h-3 w-full' : 'size-3'
+  if (niveau === 'inconnu') return <span className={clsx('block rounded-[3px] border border-dashed border-white/25', taille)} aria-hidden />
+  return (
+    <span className={clsx('relative grid place-items-center rounded-[3px]', taille)} aria-hidden
+      style={{ background: niveau === 'calme' ? 'rgb(255 255 255 / 0.12)' : TEINTES[niveau] }}>
+      {niveau === 'rouge' && <span className="size-1 rounded-full bg-white" />}
+    </span>
+  )
+}
+
+/** Les signaux des 45 départements d'un coup d'œil : une colonne par département (les plus signalés d'abord), une
+ *  ligne par signal. Survol ou clic : le détail du département s'affiche au-dessus ; le clic le choisit sur la carte. */
+function MatriceSignaux({ dossiers, code, choisir, valeurs }: {
+  dossiers: Dossier[]
+  code: string | null
+  choisir: (code: string) => void
+  valeurs: (d: Dossier) => Record<keyof Dossier['niveaux'], string>
+}) {
+  const [survol, setSurvol] = useState<string | null>(null)
+  const montre = dossiers.find((d) => d.code === (survol ?? code))
+  return (
+    <div>
+      <p className="flex min-h-5 flex-wrap items-baseline gap-x-3 text-xs text-white/80" aria-live="polite">
+        {montre ? <>
+          <span className="font-semibold text-white">{montre.nom}</span>
+          {SIGNAUX.map((g) => <span key={g.cle} className="inline-flex items-center gap-1"><Case niveau={montre.niveaux[g.cle]} />{g.libelle} : {valeurs(montre)[g.cle]}</span>)}
+        </> : <span className="text-white/55">Survolez une colonne pour lire un département ; cliquez pour le voir sur la carte.</span>}
+      </p>
+      <div className="mt-2 flex gap-2">
+        <div className="flex shrink-0 flex-col gap-[3px] pt-px text-right text-[0.65rem] leading-3 text-white/55" aria-hidden>
+          {SIGNAUX.map((g) => <span key={g.cle} className="h-3">{g.libelle}</span>)}
+        </div>
+        {/* Les colonnes se partagent la largeur (8 à 16 px chacune) ; en dessous, on fait défiler */}
+        <div className="min-w-0 flex-1 overflow-x-auto pb-1 [scrollbar-width:thin]">
+        <ol className="grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${dossiers.length}, minmax(8px, 18px))` }} onMouseLeave={() => setSurvol(null)}>
+          {dossiers.map((d) => (
+            <li key={d.code} className="min-w-0">
+              <button type="button" onClick={() => choisir(d.code)} onMouseEnter={() => setSurvol(d.code)} onFocus={() => setSurvol(d.code)} onBlur={() => setSurvol(null)}
+                aria-current={d.code === code ? 'true' : undefined}
+                aria-label={`${d.nom} : ${SIGNAUX.map((g) => `${g.libelle} ${valeurs(d)[g.cle]}, ${DIT_NIVEAU[d.niveaux[g.cle]]}`).join(' ; ')}`}
+                className={clsx('flex w-full flex-col gap-[3px] rounded-[4px] p-px outline-offset-2 transition', d.code === code ? 'ring-2 ring-soleil-500' : 'hover:ring-1 hover:ring-white/60')}>
+                {SIGNAUX.map((g) => <Case key={g.cle} niveau={d.niveaux[g.cle]} souple />)}
+              </button>
+            </li>
+          ))}
+        </ol>
+        </div>
+      </div>
+      <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] text-white/55">
+        {(['rouge', 'orange', 'calme', 'inconnu'] as Niveau[]).map((n) => <span key={n} className="inline-flex items-center gap-1"><Case niveau={n} />{DIT_NIVEAU[n]}</span>)}
+        <span className="ml-auto">{dossiers.length} départements, les plus signalés à gauche</span>
+      </p>
+    </div>
+  )
+}
 
 export default function Campagne({ cadre, publier }: PropsMode) {
   // Les années du modèle 1, qui porte la pluie attendue ; le risque de récolte s'affiche là où le modèle 3 existe
@@ -175,13 +317,29 @@ export default function Campagne({ cadre, publier }: PropsMode) {
           `Vulnérabilité : ${d.vulnerabilite === null ? 'non notée' : `${nombre(d.vulnerabilite)} / 100`}`,
         ] }
       },
+      // Sur la scène : chiffres clés du pays et matrice des signaux des 45 départements
+      tableauDeBord: etat === 'ok' || ch ? (
+        <TableauDeBord titre={`Campagne ${annee} · le pays d'un coup d'œil`} tuiles={[
+          { valeur: etat === 'ok' ? aSurveiller.length : '—', libelle: 'départements à surveiller (au moins un signal au rouge)', etat: etat !== 'ok' ? 'info' : aSurveiller.length ? 'non' : 'ok' },
+          { valeur: ch ? crises.length : '—', libelle: `départements en phase ${PHASE_CRISE} ou plus (Cadre harmonisé)`, etat: !ch ? 'info' : crises.length ? 'non' : 'ok' },
+          { valeur: ch ? nombre(totalPersonnes) : '—', libelle: 'personnes en phases 3 à 5', etat: !ch ? 'info' : totalPersonnes ? 'attention' : 'ok' },
+          { valeur: t ? t.classe : '—', libelle: t ? `saison la plus probable (${pct(t.proba)} de chances)` : `saison ${annee} non disponible`, etat: !t ? 'info' : t.classe === 'sèche' ? 'attention' : 'ok' },
+        ]}>
+          {etat === 'ok' && <MatriceSignaux dossiers={dossiers} code={code} choisir={cadre.choisir} valeurs={(d) => ({
+            ch: d.ch?.phase_retenue == null ? 'non disponible' : `phase ${d.ch.phase_retenue}`,
+            pluie: d.pluie?.pluie_prevue_mm == null ? 'non disponible' : mm(d.pluie.pluie_prevue_mm),
+            recolte: d.recolte ? pct(d.recolte.proba_chute_pct) : 'non disponible',
+            vulnerabilite: d.vulnerabilite === null ? 'non notée' : `${nombre(d.vulnerabilite)}/100`,
+          })} />}
+        </TableauDeBord>
+      ) : undefined,
       etape: {
         titre, question: questionOng('campagne'), lignes, legende,
         tableau: { colonnes: ['Département', 'Signaux au rouge', 'Cadre harmonisé', 'Vulnérabilité (/100)'], lignes: aSurveiller.map((d) => [d.nom, raisons(d).join(', ') || '—', nomPhase(d.ch), d.vulnerabilite === null ? 'non notée' : nombre(d.vulnerabilite)]) },
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` est résumé par `cleLignes`
-  }, [dossiers, aSurveiller, fiche, annee, code, cadre, etat, vueCarte, vulnerabilites, ch, phases, periode, titre, cleLignes])
+  }, [dossiers, aSurveiller, fiche, annee, code, cadre, etat, vueCarte, vulnerabilites, ch, phases, periode, titre, cleLignes, crises.length, totalPersonnes, t?.classe, t?.proba])
   usePublier(publier, sortie)
 
   // Le niveau dit aussi en texte (lecteurs d'écran) : la couleur seule ne suffit pas
@@ -224,7 +382,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
   const pikine = ch?.find((l) => l.fusion_keur_massar)
 
   return (
-    <FicheReponse cadre={cadre} mode="campagne" cle={`${code}-${annee}-${vueCarte}`} titre={titre} lignes={lignes} aEcouter={sortie.aEcouter}
+    <FicheReponse cadre={cadre} mode="campagne" cle={`${code}-${annee}-${vueCarte}`} titre={titre} lignes={lignes} aEcouter={sortie.aEcouter} detailOuvertParDefaut
       puces={[puceAnnee(cadre, a, fiche?.pluie), puceCulture(cadre, cadre.ref.cultures, cadre.culture, 'Toutes'), puceChoix('vue', 'Voir', VUES, vueCarte, setVue)]}
       etat={<>
         <p className="mt-1.5 text-xs leading-relaxed text-white/60">Cadre harmonisé : {periode}{ch && !chCompteAnnee ? ` · cycle ${cycleCH ?? 'non disponible'}, non compté dans les signaux de ${annee}` : ''}.</p>
@@ -232,6 +390,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
         <Attente etat={etat} objet={`la campagne ${annee}`} lignes={4} />
       </>}
       detail={<>
+        {(etat === 'ok' || vulnerabilites) && <ApercuClassements priorites={dossiers} classement={classement} code={code} choisir={cadre.choisir} />}
         {fiche && (
           <Groupe titre="Les signaux du département">
             <dl className="-my-2 divide-y divide-white/[0.07]">
@@ -264,11 +423,11 @@ export default function Campagne({ cadre, publier }: PropsMode) {
           </Groupe>
         )}
         {etat === 'ok' && (
-          <Groupe titre="Tous les départements" complement="les plus signalés d'abord">
+          <Groupe titre="Tous les départements" complement="les plus signalés d'abord" replie>
             {tableauDepartements}
           </Groupe>
         )}
-        {vulnerabilites && <ClassementVulnerabilite classement={classement} code={code} choisir={cadre.choisir} />}
+        {vulnerabilites && <ClassementVulnerabilite classement={classement} code={code} choisir={cadre.choisir} replie />}
         {fiche && <div className="mt-3"><Lien onClick={() => cadre.choisir(null)}>Revenir à la liste du pays</Lien></div>}
         <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }, { modele: 'M3', moment: 'FIN_MAI', volet: 'alerte' }]} avertissements={[...(saison.data?.avertissements ?? []), ...(alerte.data?.avertissements ?? [])]}>
           <p>Indicatif, à valider avec les techniciens. Les signaux n'ont pas la même fiabilité : ils sont montrés côte à côte et jamais fondus en un seul chiffre. Le classement compte les signaux au rouge.</p>
