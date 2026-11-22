@@ -10,6 +10,10 @@ export const config = {
   authDemo: String(env.VITE_AUTH_DEMO ?? env.VITE_USE_MOCK ?? 'true') === 'true',
   /** Données d'exemple intégrées au front, au lieu de l'API. Défaut : VITE_USE_MOCK */
   donneesDemo: String(env.VITE_DONNEES_DEMO ?? env.VITE_USE_MOCK ?? 'true') === 'true',
+  /** Type de jeu de données actif. Les données synthétiques ne doivent jamais être présentées comme mesurées. */
+  modeDonnees: String(env.VITE_DONNEES_DEMO ?? env.VITE_USE_MOCK ?? 'true') === 'true'
+    ? 'DEMO_SYNTHETIQUE'
+    : 'PLATEFORME',
   mapboxToken: env.VITE_MAPBOX_TOKEN || '',
   /** Vue satellite sous la parcelle : demande un compte Mapbox qui sert les tuiles satellite */
   mapboxSatellite: String(env.VITE_MAPBOX_SATELLITE ?? 'false') === 'true',

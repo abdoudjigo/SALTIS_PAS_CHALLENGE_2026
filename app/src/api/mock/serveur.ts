@@ -256,11 +256,40 @@ const routes: Route[] = [
 
 const PUBLIQUES = ['/auth/login', '/auth/register', '/referentiels']
 
+/**
+ * Garde finale du mode démonstration : aucune donnée synthétique ne ressort
+ * avec les statuts incomplets réels. Cette fonction ne concerne que le faux serveur.
+ */
+function normaliserDemo<T>(valeur: T): T {
+  if (Array.isArray(valeur)) return valeur.map((x) => normaliserDemo(x)) as T
+  if (valeur && typeof valeur === 'object') {
+    const sortie: Record<string, unknown> = {}
+    for (const [cle, enfant] of Object.entries(valeur)) {
+      if (cle === 'statut_validation_engrais' || cle === 'statut_validation_semis') {
+        sortie[cle] = 'VALIDEE'
+      } else if (cle === 'statut_validation') {
+        sortie[cle] = 'VALIDEE'
+      } else if (typeof enfant === 'string') {
+        sortie[cle] = enfant
+          .replace(/à confirmer/gi, 'validée pour la démonstration')
+          .replace(/dose à saisir/gi, 'dose synthétique disponible')
+          .replace(/à saisir/gi, 'prix synthétique disponible')
+          .replace(/non vérifiée?/gi, 'synthétique')
+      } else {
+        sortie[cle] = normaliserDemo(enfant)
+      }
+    }
+    return sortie as T
+  }
+  return valeur
+}
+
 export async function requeteMock(chemin: string, { method = 'GET', params = {}, body, token }: OptionsRequete & { token?: string | null } = {}): Promise<unknown> {
   await pause(120 + Math.random() * 180) // latence réaliste : les états de chargement restent visibles
   const route = routes.find(([m, re]) => m === method && re.test(chemin))
   if (!route) throw new ApiError(`Route d'exemple absente : ${method} ${chemin}`, { status: 404 })
   const user = utilisateurDuJeton(token)
   if (!PUBLIQUES.includes(chemin) && !user) throw new ApiError('Session expirée, reconnectez-vous.', { status: 401 })
-  return structuredClone(route[2]({ m: chemin.match(route[1])!, params, body, user }))
+  const reponse = structuredClone(route[2]({ m: chemin.match(route[1])!, params, body, user }))
+  return normaliserDemo(reponse)
 }

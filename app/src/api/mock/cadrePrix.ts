@@ -15,20 +15,20 @@ export const PHASES_CH: PhaseCadreHarmonise[] = [
   { phase: 5, libelle: 'famine', couleur: '#640000' },
 ]
 
-/** Urée et DAP sans prix (« à saisir »), comme dans l'API ; le fumier n'a jamais de prix. */
+/** Mode démonstration : tous les prix nécessaires sont présents et explicitement synthétiques. */
 export function prixIntrants(campagne?: number): PrixIntrant[] {
   const campagnes = [2026]
   return campagnes.filter((c) => !campagne || c === campagne).flatMap((c) => INTRANTS.filter((i) => i.dans_totaux && i.code_intrant !== 'SEMENCES').map((i): PrixIntrant => {
-    const aSaisir = i.code_intrant === 'UREE' || i.code_intrant === 'DAP_18_46_0'
     const r = rng(`prix${i.code_intrant}${c}`)
-    const cession = aSaisir ? null : 500 * Math.round(11 + 6 * r())
-    const subvention = aSaisir ? null : 5000 * Math.round(50 + 6 * r())
+    const cession = 500 * Math.round(11 + 6 * r())
+    const subvention = 5000 * Math.round(50 + 6 * r())
     return {
       code_intrant: i.code_intrant, nom_intrant: i.nom_intrant, campagne: c,
-      prix_cession_sac_50kg_fcfa: cession, subvention_tonne_fcfa: subvention,
-      cout_reel_sac_50kg_fcfa: cession === null || subvention === null ? null : cession + subvention / 20,
-      statut_validation: aSaisir ? 'A_SAISIR' : 'A_CONFIRMER',
-      source: aSaisir ? `${SOURCE_DEMO} : prix à saisir` : SOURCE_DEMO,
+      prix_cession_sac_50kg_fcfa: cession,
+      subvention_tonne_fcfa: subvention,
+      cout_reel_sac_50kg_fcfa: cession + subvention / 20,
+      statut_validation: 'VALIDEE',
+      source: `${SOURCE_DEMO} : prix fictifs utilisés uniquement pour les écrans`,
     }
   }))
 }
