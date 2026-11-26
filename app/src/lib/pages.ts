@@ -46,6 +46,12 @@ export const PAGES = {
     description: 'Les sources publiques de la plateforme : CHIRPS, NASA POWER, SoilGrids, DAPSA, FAOSTAT, NOAA et GADM. Des données nettoyées, contrôlées et testées.',
     priorite: '0.8',
   },
+  observatoire: {
+    chemin: '/observatoire',
+    titre: 'Observatoire Sénégal 2050',
+    description: "Production, superficie et rendement des cultures du Sénégal par département depuis 1981, et objectifs officiels de souveraineté alimentaire.",
+    priorite: '0.9',
+  },
   contact: {
     chemin: '/contact',
     titre: 'Contact',

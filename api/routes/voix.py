@@ -12,16 +12,17 @@ import hashlib
 import json
 import logging
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from ..erreurs import ErreurApi, reponses_erreurs
 from ..securite import limiter, lire_corps
-from ..voix import tts_local
+from ..voix import tts_fr, tts_local
 from ..voix.comprendre import comprendre
 from ..voix.espace import EspaceVoix, VoixIndisponible
 from ..voix.repondre import Lecteur, repondre
@@ -210,3 +211,51 @@ async def parler_wolof(request: Request, t: TexteWolof):
     if not audio:
         raise ErreurApi(503, "voix_indisponible", "La voix wolof n'a pas pu être produite. Réessayez dans un instant.")
     return {"audio_wo_base64": audio}
+
+
+# ---- Voix française des guides (Piper) -------------------------------------------------------------------------
+TEXTE_FR_MAX = 400  # une phrase : le front découpe (lecture.ts, decouper)
+_francais = asyncio.Semaphore(2)
+# Une voix française déjà dite ne change jamais : le navigateur la garde, et le serveur aussi (disque)
+ENTETES_FR = {"Cache-Control": "public, max-age=31536000, immutable"}
+
+
+def _francais_par_service(url: str, delai_s: float):
+    def produire(texte: str) -> bytes | None:
+        adresse = f"{url.rstrip('/')}/dire_fr?{urllib.parse.urlencode({'texte': texte})}"
+        try:
+            with urllib.request.urlopen(adresse, timeout=delai_s) as r:  # adresse interne, fixée par la configuration
+                return r.read()
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            log.warning("Service voix (français) injoignable : %s", exc)
+            return None
+    return produire
+
+
+@voix.get("/francais", response_class=Response, responses={**reponses_erreurs(429, 503), 200: {"content": {"audio/wav": {}}}},
+          summary="Dire une phrase en français (guides vocaux, Piper)")
+async def parler_francais(request: Request, texte: Annotated[str, Query(min_length=1, max_length=TEXTE_FR_MAX)]):
+    """Une phrase française dite par Piper (modèle neuronal, serveur), en WAV. 503 : le front lit avec la voix du navigateur."""
+    fichier = CACHE_VOIX / f"fr-{tts_fr.MODELE}-{hashlib.sha256(texte.encode()).hexdigest()[:32]}.wav"
+    if fichier.exists():
+        fichier.touch()
+        return Response(fichier.read_bytes(), media_type="audio/wav", headers=ENTETES_FR)
+    limiter(request, "voix_francais")
+    p = request.app.state.parametres
+    if p.voix_service_url:  # production : service « voix », conteneur à part
+        produire = _francais_par_service(p.voix_service_url, min(p.voix_service_delai_s, 15))
+    elif tts_fr.disponible():  # développement : Piper dans l'API
+        produire = tts_fr.dire
+    else:
+        raise ErreurApi(503, "voix_indisponible", "La voix française du serveur n'est pas installée.", "Installer requirements-voix.txt.")
+    async with _francais:
+        audio = await asyncio.to_thread(produire, texte)
+    if not audio:
+        raise ErreurApi(503, "voix_indisponible", "La voix française n'a pas pu être produite.")
+    if p.voix_cache_max_fichiers > 0:
+        CACHE_VOIX.mkdir(parents=True, exist_ok=True)
+        gardes = sorted(CACHE_VOIX.glob("fr-*.wav"), key=lambda f: f.stat().st_mtime)
+        for vieux in gardes[: max(0, len(gardes) - p.voix_cache_max_fichiers + 1)]:
+            vieux.unlink(missing_ok=True)
+        fichier.write_bytes(audio)
+    return Response(audio, media_type="audio/wav", headers=ENTETES_FR)

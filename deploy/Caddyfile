@@ -35,7 +35,7 @@ https://{$DOMAINE} {
 		@fichier file
 		# Les pages de l'application : même liste que les routes de app/src/App.tsx et que app/src/lib/pages.ts.
 		# Chacune a son HTML pré-rendu (a-propos.html…), avec ses propres balises pour les aperçus de partage.
-		@page path / /a-propos /methode /donnees /contact /mentions-legales /confidentialite /conditions-generales
+		@page path / /a-propos /methode /donnees /observatoire /contact /mentions-legales /confidentialite /conditions-generales
 		handle @fichier {
 			file_server
 		}
@@ -54,8 +54,10 @@ https://{$DOMAINE} {
 		header @ressources Cache-Control "public, max-age=31536000, immutable"
 		@fonds path /geo/* /logos/*
 		header @fonds Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
-		@sw path /sw.js
-		header @sw Cache-Control "no-cache"
+		# Pages, sw.js, registerSW, manifeste : toujours revalidés, pour qu'un déploiement soit vu tout de suite
+		# (les fichiers de /assets portent leur empreinte dans leur nom : ceux-là restent en cache un an)
+		@frais not path /assets/* /geo/* /logos/*
+		header @frais Cache-Control "no-cache"
 	}
 
 	# En-têtes de sécurité, posés sur toutes les réponses (site et API) et prioritaires sur ceux de l'API

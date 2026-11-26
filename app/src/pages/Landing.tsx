@@ -250,30 +250,40 @@ export default function Landing() {
       {/* La page laisse passer la souris jusqu'à la carte ; seuls les blocs de contenu la captent */}
       <main className="pointer-events-none relative">
         {/* --- Hero : du globe aux 6 zones agroécologiques ------------------------------------ */}
-        <section id="zones" data-chapitre className="pointer-events-none relative flex min-h-svh flex-col justify-end px-4 pt-28 pb-6 sm:px-8 lg:justify-center lg:px-[6vw] lg:pb-24">
+        <section id="zones" data-chapitre className="pointer-events-none relative flex min-h-svh flex-col justify-end px-4 pt-28 pb-6 sm:px-8 lg:justify-start lg:px-[6vw] lg:pt-32 lg:pb-[clamp(10rem,24svh,14rem)]">
           <div className="voile-clair absolute inset-0" aria-hidden />
           <div className="aurore absolute inset-0" aria-hidden />
-          <div className="pointer-events-auto relative max-w-[35rem]">
-            <p className="vitrine-entree flex items-center gap-2.5 text-xs font-medium tracking-etiquette text-encre-douce uppercase">
-              <span className="text-pluie-500">Assaman</span> le ciel
-              <span className="h-px w-2 bg-trait" aria-hidden />
-              <span className="text-terre-500">Suuf</span> la terre
-            </p>
-            <h1 className="vitrine-entree mt-5 font-titre text-titre-hero font-semibold text-balance text-encre" style={delai(0.1)} lang="wo">
-              Dalal ak <span className="text-pluie-500">jàmm</span>.
-            </h1>
-            <p className="vitrine-entree mt-2 font-titre text-xl text-encre-douce italic" style={delai(0.18)}>Bienvenue, en paix.</p>
-            <p className="vitrine-entree mt-6 max-w-md text-lg leading-relaxed text-encre-douce" style={delai(0.25)}>
-              La pluie, le sol et les cultures des 45 départements du Sénégal, réunis sur une seule carte pour savoir quoi semer et où porter les intrants.
-            </p>
-            <div className="vitrine-entree mt-8 flex flex-wrap items-center gap-3" style={delai(0.4)}>
-              {/* Un seul appel à l'action ; le récit reste accessible par un simple lien */}
-              <button type="button" onClick={() => setPortes(true)} className="bouton-action group min-h-12 pr-5 pl-6 text-md">
-                Entrer dans la carte <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
-              </button>
-              <a href="#ciel" className="inline-flex min-h-12 items-center gap-2 px-2 text-md font-medium text-encre-douce underline-offset-4 transition hover:text-encre hover:underline">
-                Voir le récit <ArrowDown className="size-4" aria-hidden />
-              </a>
+          {/* Ordinateur : le bloc occupe toute la hauteur de la colonne gauche, en trois temps (marque, accueil, action) */}
+          <div className="pointer-events-auto relative max-w-[35rem] lg:flex lg:max-w-[min(40rem,44vw)] lg:flex-1 lg:flex-col lg:justify-between lg:gap-12">
+            <div className="vitrine-entree">
+              <p className="flex items-center gap-3 text-xs font-semibold tracking-[0.18em] text-encre-douce uppercase">
+                <span className="h-px w-8 bg-encre-douce/50" aria-hidden />Aide à la décision agricole
+              </p>
+              <p className="mt-4 font-titre text-2xl leading-snug font-medium text-pretty text-encre sm:text-[1.75rem] lg:text-[2rem]">
+                <span className="font-semibold text-pluie-500">Assaman</span>-<span className="font-semibold text-terre-500">Suuf</span>, votre plateforme web d’intelligence artificielle pour vos décisions agricoles.
+              </p>
+            </div>
+
+            <div className="mt-10 lg:mt-0">
+              <h1 className="vitrine-entree font-titre text-titre-hero font-semibold text-balance text-encre" style={delai(0.1)} lang="wo">
+                Dalal ak <span className="text-pluie-500">jàmm</span>.
+              </h1>
+              <p className="vitrine-entree mt-3 font-titre text-2xl text-encre-douce italic" style={delai(0.18)}>Bienvenue.</p>
+            </div>
+
+            <div className="mt-8 lg:mt-0 lg:border-t lg:border-trait lg:pt-8">
+              <p className="vitrine-entree max-w-xl text-lg leading-relaxed text-justify hyphens-auto text-encre-douce" style={delai(0.25)} lang="fr">
+                La pluie, le sol et les cultures des 45 départements du Sénégal, réunis sur une seule carte pour savoir quoi semer et où porter les intrants.
+              </p>
+              <div className="vitrine-entree mt-7 flex flex-wrap items-center gap-3" style={delai(0.4)}>
+                {/* Un seul appel à l'action ; le récit reste accessible par un simple lien */}
+                <button type="button" onClick={() => setPortes(true)} className="bouton-action group min-h-12 pr-5 pl-6 text-md">
+                  Entrer dans la carte <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
+                </button>
+                <a href="#ciel" className="inline-flex min-h-12 items-center gap-2 px-2 text-md font-medium text-encre-douce underline-offset-4 transition hover:text-encre hover:underline">
+                  Voir le récit <ArrowDown className="size-4" aria-hidden />
+                </a>
+              </div>
             </div>
           </div>
 

@@ -7,6 +7,21 @@ import { ApiError } from './api/client'
 import { App } from './App'
 import { demarrerMesureAudience } from './consentement/audience'
 import './index.css'
+import { registerSW } from 'virtual:pwa-register'
+
+// Mise à jour automatique : à chaque déploiement, le service worker installe la nouvelle version, prend la main et
+// recharge la page (plus besoin de Ctrl+Maj+R). Un onglet resté ouvert vérifie toutes les 30 min et au retour.
+registerSW({
+  immediate: true,
+  onRegisteredSW(_url, enregistrement) {
+    if (!enregistrement) return
+    const verifier = () => {
+      if (navigator.onLine) void enregistrement.update().catch(() => undefined)
+    }
+    window.setInterval(verifier, 30 * 60 * 1000)
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && verifier())
+  },
+})
 
 const queryClient = new QueryClient({
   defaultOptions: {

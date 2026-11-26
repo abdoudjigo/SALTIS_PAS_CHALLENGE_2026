@@ -1,0 +1,94 @@
+/* Observatoire Sénégal 2050 : styles propres à la page (chargés avec elle, hors du bundle initial).
+   Palette : marine #1F4466, bleu #2B5C80, or #A8843A, gris #5A6470, fond #F3F6F9. */
+.obs {
+  --obs-marine: #1f4466;
+  --obs-bleu: #2b5c80;
+  --obs-or: #a8843a;
+  --obs-or-texte: #7f6226;
+  --obs-gris: #5a6470;
+  --obs-fond: #f3f6f9;
+  --obs-trait: #d9e1e8;
+  background: #fff;
+  color: #1c2b39;
+  font-family: var(--font-sans);
+}
+.obs h1, .obs h2, .obs h3 { color: var(--obs-marine); font-family: var(--font-titre); }
+.obs .obs-doux { color: var(--obs-gris); }
+.obs .obs-or { color: var(--obs-or-texte); }
+.obs .obs-bleu { color: var(--obs-bleu); }
+.obs-fond { background: var(--obs-fond); }
+.obs-carte {
+  background: #fff;
+  border: 1px solid var(--obs-trait);
+  border-radius: 1rem;
+}
+.obs :focus-visible {
+  outline: 3px solid var(--obs-or);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.obs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--obs-or);
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--obs-or-texte);
+  background: #fbf7ee;
+  white-space: nowrap;
+}
+.obs-bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--obs-trait);
+  padding: 0 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--obs-marine);
+  background: #fff;
+}
+.obs-bouton[aria-pressed='true'] { background: var(--obs-marine); border-color: var(--obs-marine); color: #fff; }
+.obs-bouton:disabled { color: var(--obs-gris); background: var(--obs-fond); cursor: not-allowed; }
+.obs-champ {
+  width: 100%;
+  min-height: 2.5rem;
+  border: 1px solid #b9c5d0;
+  border-radius: 0.6rem;
+  background: #fff;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.9rem;
+  color: #1c2b39;
+}
+.obs-barre-filtres {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgb(255 255 255 / 0.96);
+  border-bottom: 1px solid var(--obs-trait);
+  backdrop-filter: blur(6px);
+}
+.obs-curseur { width: 100%; accent-color: var(--obs-marine); }
+.obs-graduation { display: flex; gap: 1px; height: 0.5rem; }
+.obs-graduation > span { flex: 1; border-radius: 1px; background: var(--obs-bleu); opacity: 0.55; }
+.obs-graduation > span[data-etat='faostat'] { background: var(--obs-gris); opacity: 0.45; }
+.obs-graduation > span[data-etat='vide'] { background: #cfd6dd; opacity: 1; }
+.obs-graduation > span[data-choisie='true'] { background: var(--obs-or); opacity: 1; }
+
+/* Apparition des blocs et transitions : transform et opacity seulement, 300 ms */
+.obs-entree { animation: obs-entree 0.3s ease-out both; }
+@keyframes obs-entree { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.obs-dep { transition: opacity 0.25s ease, stroke-width 0.25s ease; cursor: pointer; }
+.obs-dep:focus { outline: none; }
+.obs-dep:focus-visible { stroke: var(--obs-or); stroke-width: 3; }
+.obs-barre { transform-origin: left; transition: transform 0.35s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .obs-entree { animation: none; }
+  .obs-dep, .obs-barre { transition: none; }
+}

@@ -13,6 +13,7 @@ import { CLE_DOSSIER, DossierContext, lireDossier, type DossierOng } from '../sc
 import { definirCarte, registre } from '../scene/ong/registreExport'
 import { AvisOng } from '../scene/ong/AvisOng'
 import { Dock } from '../scene/interface/Dock'
+import { SignalTableau } from '../scene/interface/signalTableau'
 import { hauteurCran, type Cran } from '../scene/carte/crans'
 import { Fenetre, LARGEUR_FENETRE_PX } from '../scene/interface/Fenetre'
 import { GardeCarte } from '../scene/carte/GardeCarte'
@@ -24,8 +25,8 @@ import type { LonLat } from '../scene/carte/geo'
 import type { Utilisateur } from '../types/auth'
 import { anneeAVenir } from '../types/previsions'
 import { suivre } from '../lib/mesure'
-import { BandeauAccueil, BoutonAccueil } from '../scene/voix/BandeauAccueil'
-import { lireEcran, type ResumeEcran } from '../scene/voix/accueil'
+import { BandeauAccueil } from '../scene/voix/BandeauAccueil'
+import { GuideOng, GuidesAgri } from '../scene/voix/GuideOng'
 
 // La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
 // données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
@@ -136,7 +137,7 @@ export default function Scene() {
   const actif = liste.find((f) => f.id === idMode) ?? liste[0]
   const [selection, setSelection] = useState<string | null>(null)
   const [position, setPosition] = useState<LonLat | null>(null)
-  // L'année choisie vaut pour toutes les fonctionnalités ; au départ, la campagne à venir
+  // L'année choisie vaut pour toutes les fonctionnalités ; au départ, config.anneePrevisionParDefaut (2027)
   const [anneeChoisie, setAnnee] = useState<number | null>(null)
   // La culture choisie suit d'un écran à l'autre (« Que semer ? », « Quand semer ? », « Combien m'en faut-il ? »)
   const [culture, setCulture] = useState<string | null>(null)
@@ -222,7 +223,7 @@ export default function Scene() {
     }),
   }), [ouvrir])
   const cadre = useMemo<Cadre | null>(
-    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? anneeAVenir(ref.campagnes), choisirAnnee, culture, choisirCulture: setCulture, aller, marge, exporter } : null),
+    () => (ref && contours && user ? { ref, contours, user, selection, choisir: setSelection, position, definirPosition: setPosition, annee: anneeChoisie ?? Math.max(config.anneePrevisionParDefaut, anneeAVenir(ref.campagnes)), choisirAnnee, culture, choisirCulture: setCulture, aller, marge, exporter } : null),
     [ref, contours, user, selection, position, anneeChoisie, choisirAnnee, culture, aller, marge, exporter],
   )
   // La sortie de l'étape ouverte, gardée pour l'export
@@ -247,13 +248,6 @@ export default function Scene() {
       </Suspense>
     </DossierContext.Provider>
   ), [Composant, actif.id, cadre, publier, valeurDossier])
-  // La voix lit seule le résumé de l'écran ouvert (texte des mascottes), une fois que cet écran l'a publié
-  const resumeAccueil = useMemo<ResumeEcran | null>(
-    () => (ecranSortie === actif.id && lireEcran(profilAccueil, actif.id, liste[0].id)
-      ? { ecran: actif.id, fr: sortie.aEcouter, wo: sortie.aEcouterWo, lieu: profilAccueil === 'organisation' ? 'pays' : selection }
-      : null),
-    [ecranSortie, actif.id, liste, sortie.aEcouter, sortie.aEcouterWo, profilAccueil, selection],
-  )
   const vue = useMemo<VueCarte | null>(() => (cadre ? { ambiance: 'jour', camera: cadrer.pays(cadre), ...sortie.vue } : null), [cadre, sortie.vue])
 
   return (
@@ -287,7 +281,7 @@ export default function Scene() {
               {config.donneesDemo && <span className="ml-1.5 rounded-full border border-white/20 px-1.5 whitespace-nowrap text-white/70" title="Données de démonstration synthétiques : elles illustrent la plateforme et ne servent pas à décider.">Démo · données synthétiques</span>}
             </p>
           </div>
-          <BoutonAccueil profil={profilAccueil} />
+          
           <button type="button" onClick={logout} aria-label="Se déconnecter" title="Se déconnecter" className="grid size-11 place-items-center rounded-lg text-white/70 transition hover:text-white">
             <LogOut className="size-4" />
           </button>
@@ -297,17 +291,22 @@ export default function Scene() {
       </header>
 
       {/* Message vocal d'accueil et ses sous-titres : sous l'en-tête, dans la place laissée par la fenêtre */}
-      <BandeauAccueil profil={profilAccueil} resume={resumeAccueil}
+      <BandeauAccueil profil={profilAccueil} resume={null}
         className="absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+7.25rem)] z-40 md:inset-x-auto md:z-30 md:top-24 md:left-24 md:w-[min(32rem,calc(100vw-336px-10rem))]" />
 
-      <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} reponse={sortie.resume} />
+      <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} reponse={sortie.resume}
+        guide={profilAccueil === 'organisation' && large ? <GuideOng actif={actif.id} titre={actif.titre} resume={ecranSortie === actif.id ? sortie.aEcouter : undefined} /> : undefined}
+        guideCompact={!large ? (profilAccueil === 'organisation'
+          ? <GuideOng compact actif={actif.id} titre={actif.titre} resume={ecranSortie === actif.id ? sortie.aEcouter : undefined} />
+          : <GuidesAgri compact actif={actif.id} titre={actif.titre} fr={ecranSortie === actif.id ? sortie.aEcouter : undefined} wo={ecranSortie === actif.id ? sortie.aEcouterWo : undefined} />) : undefined}
+        avantDock={profilAccueil === 'agriculteur' && large ? <GuidesAgri actif={actif.id} titre={actif.titre} fr={ecranSortie === actif.id ? sortie.aEcouter : undefined} wo={ecranSortie === actif.id ? sortie.aEcouterWo : undefined} /> : undefined} />
 
 
       {/* Bas de la carte, entre le dock et la fenêtre : la légende, puis le tableau de bord de l'écran (ONG) */}
       {large && (sortie.tableauDeBord || (!sansCarte && sortie.legende)) && (
         <div className="pointer-events-none absolute bottom-6 left-24 z-10 flex flex-col items-start gap-2" style={{ right: LARGEUR_FENETRE_PX + 40 }}>
           {!sansCarte && sortie.legende && <div className="verre-scene pointer-events-auto rounded-lg px-3.5 py-3">{sortie.legende}</div>}
-          {sortie.tableauDeBord && <div className="w-full max-w-[64rem]">{sortie.tableauDeBord}</div>}
+          {sortie.tableauDeBord && <div className="w-full max-w-[64rem]"><SignalTableau.Provider value={selection}>{sortie.tableauDeBord}</SignalTableau.Provider></div>}
         </div>
       )}
 

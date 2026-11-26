@@ -311,3 +311,17 @@
 .avis-appel { animation: avis-respire 2.6s ease-in-out infinite; }
 .avis-appel:hover, .avis-appel:focus-visible { animation: none; }
 @media (prefers-reduced-motion: reduce) { .avis-appel { animation: none; } }
+
+/* Tableau de bord replié de l'ONG : la pastille appelle 3 fois, puis toutes les 8 s, tant qu'il n'a jamais été ouvert ;
+   une fois quand le département change. Sans animation (réduire les animations) : pastille fixe. */
+@keyframes tdb-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(244 180 0 / 0); }
+  40% { box-shadow: 0 0 0 6px rgb(244 180 0 / 0.35); }
+}
+@keyframes tdb-rappel {
+  0%, 15%, 100% { box-shadow: 0 0 0 0 rgb(244 180 0 / 0); }
+  6% { box-shadow: 0 0 0 6px rgb(244 180 0 / 0.35); }
+}
+.tdb-appel { animation: tdb-pulse 1.2s ease-in-out 3, tdb-rappel 8s ease-in-out 3.6s infinite; }
+.tdb-une { animation: tdb-pulse 1.2s ease-in-out 1; }
+@media (prefers-reduced-motion: reduce) { .tdb-appel, .tdb-une { animation: none; } }

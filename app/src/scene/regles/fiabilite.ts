@@ -5,9 +5,9 @@ import type { CodeModele, EvaluationModele, Moment } from '../../types/prevision
 import { MOMENTS, type PrevisionSaison } from '../../types/previsions'
 
 export const MODELES: Record<CodeModele, { nom: string; fiabilite: string }> = {
-  M1: { nom: 'Modèle 1, prévision de la saison', fiabilite: 'fiabilité modeste' },
-  M3: { nom: 'Modèle 3, rendement', fiabilite: 'fiabilité faible' },
-  M4: { nom: 'Modèle 4, date de semis', fiabilite: 'seuils à valider avec les agronomes' },
+  M1: { nom: 'Estimation 1, prévision de la saison', fiabilite: 'fiabilité modeste' },
+  M3: { nom: 'Estimation 3, récolte par hectare', fiabilite: 'fiabilité faible' },
+  M4: { nom: 'Estimation 4, date de semis', fiabilite: 'seuils à valider avec les agronomes' },
 }
 
 export interface Cible {
@@ -53,7 +53,7 @@ export function phrasesFiabilite(lignes: EvaluationModele[], { modele, moment, c
     const quoi = `${culture ? libelle(culture) : 'Toutes cultures'}, ${nomMoment(moment ?? 'FIN_JUILLET')}`
     return [
       auc !== null && volet !== 'rendement' ? `${quoi}, sur ${periode} : l'alerte classe les départements avec un score de ${nombre(auc, { decimales: 2 })} (0,5 = au hasard, 1 = parfait)${fiable === null ? '' : fiable ? ' ; elle fait mieux que la fréquence passée.' : ' ; elle ne fait pas mieux que la fréquence passée.'}` : null,
-      gain !== null && volet !== 'alerte' ? `Rendement (${quoi.toLowerCase()}) : erreur ${gain > 0 ? 'réduite' : 'augmentée'} de ${nombre(Math.abs(gain), { decimales: 1, unite: '%' })} par rapport au rendement habituel${fourchette === null ? '' : ` ; le rendement observé était dans la fourchette ${p0(fourchette)} des fois`}.` : null,
+      gain !== null && volet !== 'alerte' ? `Rendement (${quoi.toLowerCase()}) : erreur ${gain > 0 ? 'réduite' : 'augmentée'} de ${nombre(Math.abs(gain), { decimales: 1, unite: '%' })} par rapport au rendement habituel${fourchette === null ? '' : ` ; la récolte observée par hectare était dans la fourchette ${p0(fourchette)} des fois`}.` : null,
     ].filter((x): x is string => x !== null)
   }
 
@@ -61,10 +61,10 @@ export function phrasesFiabilite(lignes: EvaluationModele[], { modele, moment, c
     const [auc, ref] = [v('auc_modele', (l) => l.risque === risque), v('auc_reference', (l) => l.risque === risque)]
     return auc === null || ref === null ? null : `${risque} : ${nombre(auc, { decimales: 2 })} contre ${nombre(ref, { decimales: 2 })} pour la fréquence passée`
   }
-  const liste = ['faux départ', 'fin trop tôt'].map(un).filter((x): x is string => x !== null)
+  const liste = ['faux départ (la pluie s’arrête après les premières averses)', 'fin trop tôt'].map(un).filter((x): x is string => x !== null)
   return liste.length
     ? [`Capacité à reconnaître les semis à risque, sur ${periode} (0,5 = au hasard, 1 = parfait). ${libelle(liste.join(' ; '))}.`,
-      'Le gain porte sur le faux départ. Pour la fin de saison, un score élevé est facile à obtenir (semer en juin ou en août change tout) : il prouve peu.']
+      'Le gain porte sur le faux départ (la pluie s’arrête après les premières averses). Pour la fin de saison, un score élevé est facile à obtenir (semer en juin ou en août change tout) : il prouve peu.']
     : []
 }
 

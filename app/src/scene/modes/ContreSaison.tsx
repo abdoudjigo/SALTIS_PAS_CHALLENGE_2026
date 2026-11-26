@@ -42,7 +42,7 @@ const RESUMES: Record<CategorieEau, string> = {
 }
 const OUI: CategorieEau[] = ['eau de surface peu exploitée', 'nappe accessible']
 const VERIFIER = 'Avant d’investir, vérifiez sur place le foncier, le sel du sol et l’accès à l’eau.'
-const FORAGE = 'Un forage à 1 L/s, pompé 10 h par jour, donne environ 36 m³ : de quoi arroser un demi-hectare de maraîchage.'
+const FORAGE = 'Un forage qui donne 1 litre par seconde, pompé 10 heures par jour, fournit environ 36 000 litres : de quoi arroser un demi-hectare de légumes.'
 
 export default function ContreSaison({ cadre, publier }: PropsMode) {
   const code = cadre.selection ?? cadre.user.code_departement
@@ -80,7 +80,7 @@ export default function ContreSaison({ cadre, publier }: PropsMode) {
     ...(eauCible ? [{ texte: eauCible }] : []),
     { texte: VERIFIER },
   ] : categorie === 'eau de surface déjà exploitée' ? [{ texte: VERIFIER }]
-    : categorie === "pas d'eau mobilisable identifiée" ? [{ texte: 'Concentrez-vous sur l’hivernage.', vers: { mode: 'semer', libelle: 'Que semer ?' } }] : []
+    : categorie === "pas d'eau mobilisable identifiée" ? [{ texte: 'Concentrez-vous sur la saison des pluies.', vers: { mode: 'semer', libelle: 'Que semer ?' } }] : []
 
   const resume = !departement ? 'Choisissez un département' : isPending ? departement.departement : RESUMES[categorie]
 
@@ -94,13 +94,13 @@ export default function ContreSaison({ cadre, publier }: PropsMode) {
   })()
   const lignes: LigneCheck[] = !departement || isPending ? [] : [
     ...(categorie === 'eau de surface peu exploitée' ? [{ etat: 'ok' as const, texte: o0?.surface_proche_eau_inexploitee_ha == null ? `Eau de surface : surface libre **${NON_DISPONIBLE_TXT}**` : `Eau de surface : **${nombre(o0.surface_proche_eau_inexploitee_ha)} ha** libres à 2 km de l’eau` }]
-      : categorie === 'nappe accessible' ? [{ etat: 'ok' as const, texte: `Nappe : **${o0?.profondeur_classe_dominante ?? 'profondeur non disponible'}** de profondeur` }]
+      : categorie === 'nappe accessible' ? [{ etat: 'ok' as const, texte: `Eau sous la terre : à **${o0?.profondeur_classe_dominante ?? 'profondeur non disponible'}** de profondeur` }]
         : categorie === 'eau de surface déjà exploitée' ? [{ etat: 'attention' as const, texte: o0?.part_proche_eau_exploitee_pct == null ? `Eau de surface : part déjà cultivée **${NON_DISPONIBLE_TXT}**` : `Eau de surface : **${nombre(o0.part_proche_eau_exploitee_pct)} %** déjà cultivés` }]
-          : categorie === "pas d'eau mobilisable identifiée" ? [{ etat: 'non' as const, texte: 'Pas d’eau mobilisable repérée en saison sèche' }]
+          : categorie === "pas d'eau mobilisable identifiée" ? [{ etat: 'non' as const, texte: 'Pas d’eau utilisable repérée près de chez vous en saison sèche' }]
             : [{ etat: 'info' as const, texte: 'Eau en saison sèche : **non évaluée** pour l’instant' }]),
     ...(oui && permis.length ? [{ etat: 'info' as const, texte: possibles }] : []),
-    ...(categorie === "pas d'eau mobilisable identifiée" ? [{ etat: 'info' as const, texte: 'Concentrez-vous sur l’hivernage' }] : []),
-    ...(oui || categorie === 'eau de surface déjà exploitée' ? [{ etat: 'info' as const, texte: 'Vérifiez sur place : foncier, sel du sol, accès à l’eau' }] : []),
+    ...(categorie === "pas d'eau mobilisable identifiée" ? [{ etat: 'info' as const, texte: 'Concentrez-vous sur la saison des pluies' }] : []),
+    ...(oui || categorie === 'eau de surface déjà exploitée' ? [{ etat: 'info' as const, texte: 'Vérifiez sur place : le droit d’utiliser la terre, le sel dans le sol, l’accès à l’eau' }] : []),
   ]
   const cleLignes = lignes.map((l) => l.texte).join('|')
   const titreFiche = !departement ? 'Choisissez un département' : isPending ? `À ${departement.departement}` : titre

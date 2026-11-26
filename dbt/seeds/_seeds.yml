@@ -152,3 +152,70 @@ seeds:
                 values: ['VALIDEE', 'A_CONFIRMER', 'A_SAISIR']
       - name: source
         data_tests: [not_null]
+
+  - name: ref_objectifs_souverainete
+    description: >
+      Objectifs et chiffres officiels de l'Observatoire Sénégal 2050, une ligne par valeur et par document
+      (SSA 2025-2034, LPSAE 2025-2029) : couvertures céréales et riz, semences certifiées, irrigation, pertes,
+      producteurs climato-intelligents, géoréférencement, évaluations ; productions officielles 2019 et 2023
+      (indicateur production_officielle) ; rendements de référence du tableau 8 de la SSA (indicateur
+      rendement_reference, « référence indiquée par la SSA, origine non précisée »). Seules les valeurs vérifiées
+      page par page (docs/audit-observatoire.md) sont reprises. Une cellule vide = non disponible (jamais 0).
+      Les contradictions entre documents restent côte à côte (mil et arachide 2023) ; une erreur probable du
+      document est gardée telle quelle avec une note (maïs 2019 : 50 705 t, lire 530 705 t).
+      cultures_concernees : liste séparée par « ; » des cultures de la base visées par un objectif de groupe.
+      Clé : tests/ref_objectifs_souverainete_valeurs_valides.sql.
+    config:
+      column_types:
+        indicateur: varchar
+        perimetre: varchar
+        culture: varchar
+        cultures_concernees: varchar
+        unite: varchar
+        valeur_reference: float
+        annee_reference: integer
+        cible: float
+        annee_cible: integer
+        document: varchar
+        page: varchar
+        url: varchar
+        note: varchar
+    columns:
+      - name: indicateur
+        data_tests: [not_null]
+      - name: perimetre
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['national']
+      - name: document
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SSA 2025-2034', 'LPSAE 2025-2029']
+      - name: page
+        data_tests: [not_null]
+
+  - name: ref_departements_attendus
+    description: >
+      Départements attendus par culture pour les totaux région et pays de l'Observatoire : ceux qui ont au moins une
+      campagne avec production et superficie entre 1981 et 2021 dans fact_rendement_departement (7 cultures :
+      arachide, manioc, maïs, mil, niébé, riz, sorgho). Guédiawaye et Pikine ne sont jamais observés : exclus des
+      totaux. Un total est « complet » quand tous ces départements sont observés. Sésame : pas de total.
+    config:
+      column_types:
+        culture: varchar
+        code_departement: varchar
+        departement: varchar
+    columns:
+      - name: culture
+        data_tests: [not_null]
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geographie')
+                field: code_departement

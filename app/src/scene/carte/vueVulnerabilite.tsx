@@ -13,12 +13,12 @@ export function vueVulnerabilite(data: LigneVulnerabilite[] | undefined) {
   const parCode = new Map(data?.map((v) => [v.code_departement, v]))
   return {
     departements: new Map<string, EtatDepartement>(data?.map((v) => [v.code_departement, { couleur: couleurVulnerabilite(v.score_vulnerabilite), hauteur: (v.score_vulnerabilite ?? 0) * 800 }])),
-    legende: <Degrade titre="Score de vulnérabilité" gauche="0" droite="100" degrade="linear-gradient(to right,#fdf0d2,#f2b544,#e07a3a,#a3311c)" note="Relatif entre départements. Gris : non noté." />,
+    legende: <Degrade titre="Niveau de fragilité du département" gauche="0" droite="100" degrade="linear-gradient(to right,#fdf0d2,#f2b544,#e07a3a,#a3311c)" note="Relatif entre départements. Gris : non noté." />,
     /** la même légende, en données (export) */
     entrees: [0, 40, 70, 100].map((v) => ({ couleur: couleurVulnerabilite(v), libelle: `score ${v}` })),
     infobulle: (c: string): Infobulle | null => {
       const v = parCode.get(c)
-      return v ? { titre: v.departement, lignes: v.score_vulnerabilite === null ? ['Non noté (données de rendement insuffisantes)', `Aléa sécheresse : ${nombre(v.score_alea_secheresse)}`] : [`Score ${nombre(v.score_vulnerabilite)} · rang ${v.rang_vulnerabilite}`, libelle(v.classe_vulnerabilite)] } : null
+      return v ? { titre: v.departement, lignes: v.score_vulnerabilite === null ? ['Non noté (données de récolte par hectare insuffisantes)', `Aléa sécheresse : ${nombre(v.score_alea_secheresse)}`] : [`Score ${nombre(v.score_vulnerabilite)} · rang ${v.rang_vulnerabilite}`, libelle(v.classe_vulnerabilite)] } : null
     },
   }
 }
@@ -31,12 +31,12 @@ export const classerVulnerabilite = (data: LigneVulnerabilite[] | undefined) =>
 /** Ce qui fait le score d'un département. */
 export function ScoreVulnerabilite({ fiche }: { fiche: LigneVulnerabilite }) {
   return (
-    <Groupe titre="Ce qui fait le score de vulnérabilité">
+    <Groupe titre="Ce qui fait le niveau de fragilité du département">
       <Lignes>
         <Ligne libelle="Saisons en alerte sécheresse" valeur={pct(fiche.freq_alerte_secheresse_pct)} />
         <Ligne libelle="Pluie d'une année sèche" valeur={mm(fiche.pluie_saison_annee_seche_mm)} />
         <Ligne libelle="Variabilité de la pluie" valeur={pct(fiche.variabilite_pluie_cv_pct)} />
-        <Ligne libelle="Variabilité des rendements" valeur={pct(fiche.variabilite_rendement_pct)} detail={fiche.confiance_rendement === 'faible' ? 'confiance faible' : undefined} />
+        <Ligne libelle="Variabilité des récoltes par hectare" valeur={pct(fiche.variabilite_rendement_pct)} detail={fiche.confiance_rendement === 'faible' ? 'confiance faible' : undefined} />
       </Lignes>
     </Groupe>
   )
@@ -45,7 +45,7 @@ export function ScoreVulnerabilite({ fiche }: { fiche: LigneVulnerabilite }) {
 /** Le classement des départements notés ; un clic choisit le département (sélection partagée). */
 export function ClassementVulnerabilite({ classement, code, choisir, replie = false }: { classement: LigneVulnerabilite[]; code: string | null; choisir: (code: string) => void; replie?: boolean }) {
   return (
-    <Groupe titre="Classement de vulnérabilité" complement={`${classement.length} départements`} replie={replie}>
+    <Groupe titre="Classement de fragilité" complement={`${classement.length} départements`} replie={replie}>
       <ol>
         {classement.map((v, i) => (
           <Rang key={v.code_departement} rang={i + 1} nom={v.departement} part={v.score_vulnerabilite} couleur={couleurVulnerabilite(v.score_vulnerabilite)} valeur={nombre(v.score_vulnerabilite)}

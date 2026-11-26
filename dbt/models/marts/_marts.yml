@@ -631,3 +631,54 @@ models:
       - name: licence
         data_tests: [not_null]
 
+
+  # ------------------------------------------------------------------
+  # Observatoire Sénégal 2050
+  # ------------------------------------------------------------------
+
+  - name: mart_observatoire_series
+    description: >
+      Séries 1981-2021 de production (t), superficie (ha) et rendement (kg/ha) par département, région et pays,
+      construites depuis fact_rendement_departement sans le modifier. Région et pays = somme des départements
+      attendus (seed ref_departements_attendus) ayant production et superficie ; rendement = production x 1000 /
+      superficie (jamais une moyenne) ; est_complet faux si un département attendu manque ; riz 2021 : total
+      région et pays NULL. Série serie = 'FAOSTAT' : rendement national seul (1981-2024), jamais additionné aux
+      sommes. Mesure absente = NULL, jamais 0. Aucune prévision.
+    columns:
+      - name: niveau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['DEPARTEMENT', 'REGION', 'PAYS']
+      - name: code_zone
+        data_tests: [not_null]
+      - name: culture
+        data_tests: [not_null]
+      - name: campagne_agricole
+        data_tests: [not_null]
+      - name: serie
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['DAPSA', 'FAOSTAT']
+      - name: source
+        data_tests: [not_null]
+      - name: type_superficie
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['récoltée', 'semée', 'mixte']
+
+  - name: mart_observatoire_objectifs
+    description: >
+      Objectifs et chiffres officiels (SSA 2025-2034, LPSAE 2025-2029), copie typée du seed
+      ref_objectifs_souverainete : une ligne par valeur et par document, contradictions côte à côte.
+    columns:
+      - name: indicateur
+        data_tests: [not_null]
+      - name: document
+        data_tests: [not_null]
+      - name: page
+        data_tests: [not_null]

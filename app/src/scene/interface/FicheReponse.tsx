@@ -2,12 +2,10 @@
 // De haut en bas : la question et les choix (puces), la réponse en gros, 1 à 3 lignes à cocher, le détail replié,
 // puis un pied collé en bas : écouter (français, wolof) et passer à la question suivante.
 import clsx from 'clsx'
-import { ArrowRight, Check, ChevronDown, Loader2, Square, TriangleAlert, X } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, TriangleAlert, X } from 'lucide-react'
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { parcoursDe, type Cadre, type IdEtape } from '../cadre'
 import type { EtatLigne, LigneCheck, Puce } from './fiche'
-import { arreter, lectureDisponible, lire, lireWolof, pourLOreille, useQuiParle, type Parleur } from '../voix/lecture'
-import { Fille, Garcon } from '../voix/Mascottes'
 import { Lien } from './ui'
 
 const PASTILLES: Record<EtatLigne, { Icone: typeof Check | null; classe: string; dit: string }> = {
@@ -22,56 +20,6 @@ function Texte({ texte }: { texte: string }) {
   return <>{texte.split(/\*\*(.+?)\*\*/).map((m, i) => (i % 2 ? <strong key={i} className="font-semibold text-white">{m}</strong> : <Fragment key={i}>{m}</Fragment>))}</>
 }
 
-/** Les deux boutons d'écoute : les mascottes (mêmes avatars, même lecture, une seule voix à la fois), en cibles de 44 px. */
-function Ecoute({ fr, wo }: { fr?: string[]; wo?: string[] }) {
-  const qui = useQuiParle()
-  const [attente, setAttente] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const parlerWolof = async () => {
-    const texte = (wo ?? []).join(' ')
-    if (!texte) return
-    setMessage(null)
-    try {
-      await lireWolof(texte, () => {
-        setAttente(true)
-        setMessage('La voix wolof se prépare : quelques secondes.')
-      })
-      setMessage(null)
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'La voix wolof ne répond pas.')
-    } finally {
-      setAttente(false)
-    }
-  }
-  const bouton = (p: Parleur, Tete: () => React.JSX.Element, libelle: string, pret: boolean, agir: () => void) => {
-    const parle = qui === p
-    return (
-      <button type="button" disabled={!pret && !parle} aria-pressed={parle} onClick={() => (parle ? arreter() : agir())}
-        aria-label={parle ? `Arrêter la lecture ${p === 'fr' ? 'en français' : 'en wolof'}` : `${libelle} : l’essentiel ${p === 'fr' ? 'en français' : 'en wolof'}`}
-        className={clsx('relative grid size-11 shrink-0 place-items-center rounded-full transition disabled:opacity-35', parle ? 'ecoute-en-cours ring-2 ring-white' : 'hover:scale-105')}>
-        <span className="size-10 overflow-hidden rounded-full"><Tete /></span>
-        {(parle || (p === 'wo' && attente)) && (
-          <span className="absolute inset-0.5 grid place-items-center rounded-full bg-encre-nuit/55">
-            {p === 'wo' && attente ? <Loader2 className="size-4 animate-spin text-white" aria-hidden /> : <Square className="size-3.5 fill-white text-white" aria-hidden />}
-          </span>
-        )}
-        <span className={clsx('absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full px-1.5 text-[0.6rem] leading-4 font-bold tracking-wide', p === 'fr' ? 'bg-pluie-500 text-white' : 'bg-soleil-500 text-encre-nuit')}>{p === 'fr' ? 'FR' : 'WLF'}</span>
-      </button>
-    )
-  }
-  return (
-    <div className="relative flex shrink-0 items-center gap-1.5">
-      {lectureDisponible && bouton('fr', Garcon, 'Écouter', Boolean(fr?.length), () => lire((fr ?? []).map(pourLOreille)))}
-      {wo?.length ? bouton('wo', Fille, 'Wolof', !attente, () => void parlerWolof()) : null}
-      {message && (
-        <p role="status" className="absolute bottom-full left-0 z-10 mb-2 w-60 rounded-lg bg-encre-nuit px-3 py-2 text-xs text-white/80 shadow-lg">
-          {message}
-          <button type="button" onClick={() => setMessage(null)} className="ml-2 min-h-11 min-w-11 text-white underline">OK</button>
-        </p>
-      )}
-    </div>
-  )
-}
 
 interface PropsFiche {
   cadre: Cadre
@@ -97,7 +45,7 @@ interface PropsFiche {
   culture?: string | null
 }
 
-export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, avant, etat, detail, detailOuvertParDefaut = false, cle, aEcouter, aEcouterWo, culture }: PropsFiche) {
+export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, avant, etat, detail, detailOuvertParDefaut = false, cle, culture }: PropsFiche) {
   // Le parcours du profil : 6 questions de l'agriculteur, ou 7 étapes de l'ONG
   const parcours = parcoursDe(cadre)
   const i = parcours.findIndex((p) => p.id === mode)
@@ -195,7 +143,8 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
         </ul>
       )}
 
-      {detail && (
+      {/* ONG : le détail est déjà sur le tableau de bord de la carte, la palette n'en garde que la réponse */}
+      {detail && agriculteur && (
         <div className="mt-4">
           <button type="button" onClick={() => setEtatDetail({ cle, ouvert: !ouvert })} aria-expanded={ouvert} aria-controls={idDetail}
             className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-white/20 bg-white/[0.04] px-3.5 text-sm font-medium text-white transition hover:border-white/45 hover:bg-white/[0.08]">
@@ -207,7 +156,7 @@ export function FicheReponse({ cadre, mode, puces = [], titre, teinte, lignes, a
       )}
 
       <div className="sticky -bottom-4 z-10 -mx-4 mt-4 flex items-center gap-2 border-t border-white/[0.09] bg-encre-nuit px-4 py-2.5">
-        <Ecoute fr={aEcouter} wo={aEcouterWo} />
+        {/* La lecture passe par les guides vocaux, en tête du dock */}
         <button type="button" onClick={() => { if (culture && !cadre.culture) cadre.choisirCulture(culture); cadre.aller(suivant?.id ?? parcours[0].id) }}
           className="ml-auto inline-flex min-h-11 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-lg bg-soleil-500 px-3 py-1 text-left text-xs leading-tight font-semibold text-encre-nuit transition hover:bg-soleil-100 active:scale-[0.98]">
           <span className="min-w-0">{suivant ? <>Suivant : {suivant.question}</> : agriculteur ? 'Revenir à mon champ' : <>Revenir au début : {parcours[0].question}</>}</span>

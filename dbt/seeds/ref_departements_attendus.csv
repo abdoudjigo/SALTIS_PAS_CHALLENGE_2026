@@ -1,0 +1,291 @@
+culture,code_departement,departement
+ARACHIDE,SEN.1.4_1,Rufisque
+ARACHIDE,SEN.10.1_1,Dagana
+ARACHIDE,SEN.10.2_1,Podor
+ARACHIDE,SEN.10.3_1,Saint-Louis
+ARACHIDE,SEN.11.1_1,Bounkiling
+ARACHIDE,SEN.11.2_1,Goudomp
+ARACHIDE,SEN.11.3_1,Sédhiou
+ARACHIDE,SEN.12.1_1,Bakel
+ARACHIDE,SEN.12.2_1,Goudiry
+ARACHIDE,SEN.12.3_1,Koupentoum
+ARACHIDE,SEN.12.4_1,Tambacounda
+ARACHIDE,SEN.13.1_1,Mbour
+ARACHIDE,SEN.13.2_1,Thiès
+ARACHIDE,SEN.13.3_1,Tivaouane
+ARACHIDE,SEN.14.1_1,Bignona
+ARACHIDE,SEN.14.2_1,Oussouye
+ARACHIDE,SEN.14.3_1,Ziguinchor
+ARACHIDE,SEN.2.1_1,Bambey
+ARACHIDE,SEN.2.2_1,Diourbel
+ARACHIDE,SEN.2.3_1,Mbacké
+ARACHIDE,SEN.3.1_1,Fatick
+ARACHIDE,SEN.3.2_1,Foundiougne
+ARACHIDE,SEN.3.3_1,Gossas
+ARACHIDE,SEN.4.1_1,Birkilane
+ARACHIDE,SEN.4.2_1,Kaffrine
+ARACHIDE,SEN.4.3_1,Koungheul
+ARACHIDE,SEN.4.4_1,MalèmeHodar
+ARACHIDE,SEN.5.1_1,Guinguinéo
+ARACHIDE,SEN.5.2_1,Kaolack
+ARACHIDE,SEN.5.3_1,NioroduRip
+ARACHIDE,SEN.6.1_1,Kédougou
+ARACHIDE,SEN.6.2_1,Salémata
+ARACHIDE,SEN.6.3_1,Saraya
+ARACHIDE,SEN.7.1_1,Kolda
+ARACHIDE,SEN.7.2_1,MédinaYoroFoula
+ARACHIDE,SEN.7.3_1,Vélingara
+ARACHIDE,SEN.8.1_1,Kébémer
+ARACHIDE,SEN.8.2_1,Linguère
+ARACHIDE,SEN.8.3_1,Louga
+ARACHIDE,SEN.9.1_1,Kanel
+ARACHIDE,SEN.9.2_1,Matam
+ARACHIDE,SEN.9.3_1,RanérouFerlo
+MANIOC,SEN.1.4_1,Rufisque
+MANIOC,SEN.10.1_1,Dagana
+MANIOC,SEN.10.2_1,Podor
+MANIOC,SEN.10.3_1,Saint-Louis
+MANIOC,SEN.11.1_1,Bounkiling
+MANIOC,SEN.11.2_1,Goudomp
+MANIOC,SEN.11.3_1,Sédhiou
+MANIOC,SEN.12.1_1,Bakel
+MANIOC,SEN.12.3_1,Koupentoum
+MANIOC,SEN.12.4_1,Tambacounda
+MANIOC,SEN.13.1_1,Mbour
+MANIOC,SEN.13.2_1,Thiès
+MANIOC,SEN.13.3_1,Tivaouane
+MANIOC,SEN.14.1_1,Bignona
+MANIOC,SEN.14.2_1,Oussouye
+MANIOC,SEN.14.3_1,Ziguinchor
+MANIOC,SEN.2.1_1,Bambey
+MANIOC,SEN.2.2_1,Diourbel
+MANIOC,SEN.2.3_1,Mbacké
+MANIOC,SEN.3.1_1,Fatick
+MANIOC,SEN.3.2_1,Foundiougne
+MANIOC,SEN.3.3_1,Gossas
+MANIOC,SEN.4.1_1,Birkilane
+MANIOC,SEN.4.2_1,Kaffrine
+MANIOC,SEN.4.3_1,Koungheul
+MANIOC,SEN.4.4_1,MalèmeHodar
+MANIOC,SEN.5.1_1,Guinguinéo
+MANIOC,SEN.5.2_1,Kaolack
+MANIOC,SEN.5.3_1,NioroduRip
+MANIOC,SEN.6.1_1,Kédougou
+MANIOC,SEN.6.2_1,Salémata
+MANIOC,SEN.6.3_1,Saraya
+MANIOC,SEN.7.1_1,Kolda
+MANIOC,SEN.7.2_1,MédinaYoroFoula
+MANIOC,SEN.7.3_1,Vélingara
+MANIOC,SEN.8.1_1,Kébémer
+MANIOC,SEN.8.2_1,Linguère
+MANIOC,SEN.8.3_1,Louga
+MANIOC,SEN.9.1_1,Kanel
+MANIOC,SEN.9.2_1,Matam
+MANIOC,SEN.9.3_1,RanérouFerlo
+MAÏS,SEN.1.4_1,Rufisque
+MAÏS,SEN.10.1_1,Dagana
+MAÏS,SEN.10.2_1,Podor
+MAÏS,SEN.10.3_1,Saint-Louis
+MAÏS,SEN.11.1_1,Bounkiling
+MAÏS,SEN.11.2_1,Goudomp
+MAÏS,SEN.11.3_1,Sédhiou
+MAÏS,SEN.12.1_1,Bakel
+MAÏS,SEN.12.2_1,Goudiry
+MAÏS,SEN.12.3_1,Koupentoum
+MAÏS,SEN.12.4_1,Tambacounda
+MAÏS,SEN.13.1_1,Mbour
+MAÏS,SEN.13.2_1,Thiès
+MAÏS,SEN.13.3_1,Tivaouane
+MAÏS,SEN.14.1_1,Bignona
+MAÏS,SEN.14.2_1,Oussouye
+MAÏS,SEN.14.3_1,Ziguinchor
+MAÏS,SEN.2.1_1,Bambey
+MAÏS,SEN.2.2_1,Diourbel
+MAÏS,SEN.2.3_1,Mbacké
+MAÏS,SEN.3.1_1,Fatick
+MAÏS,SEN.3.2_1,Foundiougne
+MAÏS,SEN.3.3_1,Gossas
+MAÏS,SEN.4.1_1,Birkilane
+MAÏS,SEN.4.2_1,Kaffrine
+MAÏS,SEN.4.3_1,Koungheul
+MAÏS,SEN.4.4_1,MalèmeHodar
+MAÏS,SEN.5.1_1,Guinguinéo
+MAÏS,SEN.5.2_1,Kaolack
+MAÏS,SEN.5.3_1,NioroduRip
+MAÏS,SEN.6.1_1,Kédougou
+MAÏS,SEN.6.2_1,Salémata
+MAÏS,SEN.6.3_1,Saraya
+MAÏS,SEN.7.1_1,Kolda
+MAÏS,SEN.7.2_1,MédinaYoroFoula
+MAÏS,SEN.7.3_1,Vélingara
+MAÏS,SEN.8.1_1,Kébémer
+MAÏS,SEN.8.2_1,Linguère
+MAÏS,SEN.8.3_1,Louga
+MAÏS,SEN.9.1_1,Kanel
+MAÏS,SEN.9.2_1,Matam
+MAÏS,SEN.9.3_1,RanérouFerlo
+MIL (SOUNA),SEN.1.4_1,Rufisque
+MIL (SOUNA),SEN.10.1_1,Dagana
+MIL (SOUNA),SEN.10.2_1,Podor
+MIL (SOUNA),SEN.10.3_1,Saint-Louis
+MIL (SOUNA),SEN.11.1_1,Bounkiling
+MIL (SOUNA),SEN.11.2_1,Goudomp
+MIL (SOUNA),SEN.11.3_1,Sédhiou
+MIL (SOUNA),SEN.12.1_1,Bakel
+MIL (SOUNA),SEN.12.2_1,Goudiry
+MIL (SOUNA),SEN.12.3_1,Koupentoum
+MIL (SOUNA),SEN.12.4_1,Tambacounda
+MIL (SOUNA),SEN.13.1_1,Mbour
+MIL (SOUNA),SEN.13.2_1,Thiès
+MIL (SOUNA),SEN.13.3_1,Tivaouane
+MIL (SOUNA),SEN.14.1_1,Bignona
+MIL (SOUNA),SEN.14.2_1,Oussouye
+MIL (SOUNA),SEN.14.3_1,Ziguinchor
+MIL (SOUNA),SEN.2.1_1,Bambey
+MIL (SOUNA),SEN.2.2_1,Diourbel
+MIL (SOUNA),SEN.2.3_1,Mbacké
+MIL (SOUNA),SEN.3.1_1,Fatick
+MIL (SOUNA),SEN.3.2_1,Foundiougne
+MIL (SOUNA),SEN.3.3_1,Gossas
+MIL (SOUNA),SEN.4.1_1,Birkilane
+MIL (SOUNA),SEN.4.2_1,Kaffrine
+MIL (SOUNA),SEN.4.3_1,Koungheul
+MIL (SOUNA),SEN.4.4_1,MalèmeHodar
+MIL (SOUNA),SEN.5.1_1,Guinguinéo
+MIL (SOUNA),SEN.5.2_1,Kaolack
+MIL (SOUNA),SEN.5.3_1,NioroduRip
+MIL (SOUNA),SEN.6.1_1,Kédougou
+MIL (SOUNA),SEN.6.2_1,Salémata
+MIL (SOUNA),SEN.6.3_1,Saraya
+MIL (SOUNA),SEN.7.1_1,Kolda
+MIL (SOUNA),SEN.7.2_1,MédinaYoroFoula
+MIL (SOUNA),SEN.7.3_1,Vélingara
+MIL (SOUNA),SEN.8.1_1,Kébémer
+MIL (SOUNA),SEN.8.2_1,Linguère
+MIL (SOUNA),SEN.8.3_1,Louga
+MIL (SOUNA),SEN.9.1_1,Kanel
+MIL (SOUNA),SEN.9.2_1,Matam
+MIL (SOUNA),SEN.9.3_1,RanérouFerlo
+NIÉBÉ,SEN.1.1_1,Dakar
+NIÉBÉ,SEN.1.4_1,Rufisque
+NIÉBÉ,SEN.10.1_1,Dagana
+NIÉBÉ,SEN.10.2_1,Podor
+NIÉBÉ,SEN.10.3_1,Saint-Louis
+NIÉBÉ,SEN.11.1_1,Bounkiling
+NIÉBÉ,SEN.11.2_1,Goudomp
+NIÉBÉ,SEN.11.3_1,Sédhiou
+NIÉBÉ,SEN.12.1_1,Bakel
+NIÉBÉ,SEN.12.2_1,Goudiry
+NIÉBÉ,SEN.12.3_1,Koupentoum
+NIÉBÉ,SEN.12.4_1,Tambacounda
+NIÉBÉ,SEN.13.1_1,Mbour
+NIÉBÉ,SEN.13.2_1,Thiès
+NIÉBÉ,SEN.13.3_1,Tivaouane
+NIÉBÉ,SEN.14.1_1,Bignona
+NIÉBÉ,SEN.14.2_1,Oussouye
+NIÉBÉ,SEN.14.3_1,Ziguinchor
+NIÉBÉ,SEN.2.1_1,Bambey
+NIÉBÉ,SEN.2.2_1,Diourbel
+NIÉBÉ,SEN.2.3_1,Mbacké
+NIÉBÉ,SEN.3.1_1,Fatick
+NIÉBÉ,SEN.3.2_1,Foundiougne
+NIÉBÉ,SEN.3.3_1,Gossas
+NIÉBÉ,SEN.4.1_1,Birkilane
+NIÉBÉ,SEN.4.2_1,Kaffrine
+NIÉBÉ,SEN.4.3_1,Koungheul
+NIÉBÉ,SEN.4.4_1,MalèmeHodar
+NIÉBÉ,SEN.5.1_1,Guinguinéo
+NIÉBÉ,SEN.5.2_1,Kaolack
+NIÉBÉ,SEN.5.3_1,NioroduRip
+NIÉBÉ,SEN.6.1_1,Kédougou
+NIÉBÉ,SEN.6.2_1,Salémata
+NIÉBÉ,SEN.6.3_1,Saraya
+NIÉBÉ,SEN.7.1_1,Kolda
+NIÉBÉ,SEN.7.2_1,MédinaYoroFoula
+NIÉBÉ,SEN.7.3_1,Vélingara
+NIÉBÉ,SEN.8.1_1,Kébémer
+NIÉBÉ,SEN.8.2_1,Linguère
+NIÉBÉ,SEN.8.3_1,Louga
+NIÉBÉ,SEN.9.1_1,Kanel
+NIÉBÉ,SEN.9.2_1,Matam
+NIÉBÉ,SEN.9.3_1,RanérouFerlo
+RIZ (IRRIGUÉ),SEN.10.1_1,Dagana
+RIZ (IRRIGUÉ),SEN.10.2_1,Podor
+RIZ (IRRIGUÉ),SEN.10.3_1,Saint-Louis
+RIZ (IRRIGUÉ),SEN.11.1_1,Bounkiling
+RIZ (IRRIGUÉ),SEN.11.2_1,Goudomp
+RIZ (IRRIGUÉ),SEN.11.3_1,Sédhiou
+RIZ (IRRIGUÉ),SEN.12.1_1,Bakel
+RIZ (IRRIGUÉ),SEN.12.2_1,Goudiry
+RIZ (IRRIGUÉ),SEN.12.3_1,Koupentoum
+RIZ (IRRIGUÉ),SEN.12.4_1,Tambacounda
+RIZ (IRRIGUÉ),SEN.13.2_1,Thiès
+RIZ (IRRIGUÉ),SEN.14.1_1,Bignona
+RIZ (IRRIGUÉ),SEN.14.2_1,Oussouye
+RIZ (IRRIGUÉ),SEN.14.3_1,Ziguinchor
+RIZ (IRRIGUÉ),SEN.2.2_1,Diourbel
+RIZ (IRRIGUÉ),SEN.2.3_1,Mbacké
+RIZ (IRRIGUÉ),SEN.3.1_1,Fatick
+RIZ (IRRIGUÉ),SEN.3.2_1,Foundiougne
+RIZ (IRRIGUÉ),SEN.3.3_1,Gossas
+RIZ (IRRIGUÉ),SEN.4.1_1,Birkilane
+RIZ (IRRIGUÉ),SEN.4.2_1,Kaffrine
+RIZ (IRRIGUÉ),SEN.4.3_1,Koungheul
+RIZ (IRRIGUÉ),SEN.4.4_1,MalèmeHodar
+RIZ (IRRIGUÉ),SEN.5.1_1,Guinguinéo
+RIZ (IRRIGUÉ),SEN.5.2_1,Kaolack
+RIZ (IRRIGUÉ),SEN.5.3_1,NioroduRip
+RIZ (IRRIGUÉ),SEN.6.1_1,Kédougou
+RIZ (IRRIGUÉ),SEN.6.2_1,Salémata
+RIZ (IRRIGUÉ),SEN.6.3_1,Saraya
+RIZ (IRRIGUÉ),SEN.7.1_1,Kolda
+RIZ (IRRIGUÉ),SEN.7.2_1,MédinaYoroFoula
+RIZ (IRRIGUÉ),SEN.7.3_1,Vélingara
+RIZ (IRRIGUÉ),SEN.8.1_1,Kébémer
+RIZ (IRRIGUÉ),SEN.8.2_1,Linguère
+RIZ (IRRIGUÉ),SEN.8.3_1,Louga
+RIZ (IRRIGUÉ),SEN.9.1_1,Kanel
+RIZ (IRRIGUÉ),SEN.9.2_1,Matam
+RIZ (IRRIGUÉ),SEN.9.3_1,RanérouFerlo
+SORGHO,SEN.1.4_1,Rufisque
+SORGHO,SEN.10.1_1,Dagana
+SORGHO,SEN.10.2_1,Podor
+SORGHO,SEN.10.3_1,Saint-Louis
+SORGHO,SEN.11.1_1,Bounkiling
+SORGHO,SEN.11.2_1,Goudomp
+SORGHO,SEN.11.3_1,Sédhiou
+SORGHO,SEN.12.1_1,Bakel
+SORGHO,SEN.12.2_1,Goudiry
+SORGHO,SEN.12.3_1,Koupentoum
+SORGHO,SEN.12.4_1,Tambacounda
+SORGHO,SEN.13.1_1,Mbour
+SORGHO,SEN.13.2_1,Thiès
+SORGHO,SEN.13.3_1,Tivaouane
+SORGHO,SEN.14.1_1,Bignona
+SORGHO,SEN.14.2_1,Oussouye
+SORGHO,SEN.14.3_1,Ziguinchor
+SORGHO,SEN.2.1_1,Bambey
+SORGHO,SEN.2.2_1,Diourbel
+SORGHO,SEN.2.3_1,Mbacké
+SORGHO,SEN.3.1_1,Fatick
+SORGHO,SEN.3.2_1,Foundiougne
+SORGHO,SEN.3.3_1,Gossas
+SORGHO,SEN.4.1_1,Birkilane
+SORGHO,SEN.4.2_1,Kaffrine
+SORGHO,SEN.4.3_1,Koungheul
+SORGHO,SEN.4.4_1,MalèmeHodar
+SORGHO,SEN.5.1_1,Guinguinéo
+SORGHO,SEN.5.2_1,Kaolack
+SORGHO,SEN.5.3_1,NioroduRip
+SORGHO,SEN.6.1_1,Kédougou
+SORGHO,SEN.6.2_1,Salémata
+SORGHO,SEN.6.3_1,Saraya
+SORGHO,SEN.7.1_1,Kolda
+SORGHO,SEN.7.2_1,MédinaYoroFoula
+SORGHO,SEN.7.3_1,Vélingara
+SORGHO,SEN.8.1_1,Kébémer
+SORGHO,SEN.8.2_1,Linguère
+SORGHO,SEN.8.3_1,Louga
+SORGHO,SEN.9.1_1,Kanel
+SORGHO,SEN.9.2_1,Matam
+SORGHO,SEN.9.3_1,RanérouFerlo

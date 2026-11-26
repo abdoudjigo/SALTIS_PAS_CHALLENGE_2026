@@ -20,7 +20,7 @@ export const ARBITRAGES_NOMMES: { valeur: number; libelle: string }[] = [
 /** « Équilibré (50 %) », ou la valeur seule. */
 export const nomArbitrage = (v: number) => {
   const nomme = ARBITRAGES_NOMMES.find((a) => a.valeur === v)
-  return nomme ? `${nomme.libelle} (${v} % rendement)` : `${v} % rendement, ${100 - v} % vulnérabilité`
+  return nomme ? `${nomme.libelle} (${v} % rendement)` : `${v} % rendement, ${100 - v} % fragilité`
 }
 
 export interface Demande {
@@ -135,9 +135,9 @@ export function prorataMulticritere(lignes: LigneMulticritere[], stock_t: number
 
 // --- Scénarios nommés (étape 5 de l'ONG) -----------------------------------------------------------
 export const SCENARIOS: { id: ScenarioRepartition; libelle: string; regle: string }[] = [
-  { id: 'proportionnel', libelle: 'Multicritère', regle: 'Chaque département et chaque culture reçoivent une part du stock proportionnelle à leur besoin, majorée selon la vulnérabilité du département et la valeur indicative d’une tonne (potentiel de gain, chances que le cycle soit couvert, risque de saison sèche). Le réglage arbitre entre les deux : équité (vulnérabilité seule), équilibré, rendement (valeur indicative seule). Une part ne dépasse jamais le besoin. Méthode du moteur AgroDistrib (prorata multicritère, version agrodistrib-v1).' },
-  { id: 'urgence', libelle: 'Urgence', regle: 'Les départements sont servis dans l’ordre de la phase du Cadre harmonisé (période retenue, la plus grave d’abord), puis du nombre de personnes en phases 3 à 5, puis du score de vulnérabilité ; chacun reçoit son besoin complet tant qu’il reste du stock. Le Cadre harmonisé ne compte que pour l’année de son cycle : une autre année, l’ordre suit la vulnérabilité.' },
-  { id: 'production', libelle: 'Production', regle: 'Les départements où la culture est « adaptée » et le potentiel de gain évalué sont servis d’abord, du plus fort potentiel de gain de rendement au plus faible ; les autres (dont une culture adaptée au potentiel non évalué) viennent ensuite, du plus gros besoin au plus petit. Chacun reçoit son besoin complet tant qu’il reste du stock.' },
+  { id: 'proportionnel', libelle: 'Multicritère', regle: 'Chaque département et chaque culture reçoivent une part du stock proportionnelle à leur besoin, majorée selon la fragilité du département et la valeur indicative d’une tonne (potentiel de gain, chances que le cycle soit couvert, risque de saison sèche). Le réglage arbitre entre les deux : équité (fragilité seule), équilibré, récolte par hectare (valeur indicative seule). Une part ne dépasse jamais le besoin. Méthode du moteur AgroDistrib (prorata multicritère, version agrodistrib-v1).' },
+  { id: 'urgence', libelle: 'Urgence', regle: 'Les départements sont servis dans l’ordre de la phase du Cadre harmonisé (période retenue, la plus grave d’abord), puis du nombre de personnes en phases 3 à 5, puis du niveau de fragilité du département ; chacun reçoit son besoin complet tant qu’il reste du stock. Le Cadre harmonisé ne compte que pour l’année de son cycle : une autre année, l’ordre suit la fragilité.' },
+  { id: 'production', libelle: 'Production', regle: 'Les départements où la culture est « adaptée » et le potentiel de gain évalué sont servis d’abord, du plus fort potentiel de gain de récolte par hectare au plus faible ; les autres (dont une culture adaptée au potentiel non évalué) viennent ensuite, du plus gros besoin au plus petit. Chacun reçoit son besoin complet tant qu’il reste du stock.' },
 ]
 
 /**

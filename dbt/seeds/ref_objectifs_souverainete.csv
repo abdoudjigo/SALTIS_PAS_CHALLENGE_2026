@@ -1,0 +1,48 @@
+indicateur,perimetre,culture,cultures_concernees,unite,valeur_reference,annee_reference,cible,annee_cible,document,page,url,note
+couverture_besoins_cereales,national,CÉRÉALES,RIZ (IRRIGUÉ);MIL (SOUNA);SORGHO;MAÏS,%,48,,78,2029,LPSAE 2025-2029,50,,"Liste du document : riz, mil, fonio, sorgho, maïs (pas de sésame). Année de la valeur de référence et méthode de calcul non précisées."
+couverture_besoins_riz,national,RIZ (IRRIGUÉ),RIZ (IRRIGUÉ),%,41,,64,2029,LPSAE 2025-2029,50,,Année de la valeur de référence et méthode de calcul non précisées.
+semences_certifiees,national,ARACHIDE/NIÉBÉ,ARACHIDE;NIÉBÉ,%,,,100,,LPSAE 2025-2029,49,,Valeur de référence vide dans le document ; année de la cible non précisée.
+semences_certifiees,national,CÉRÉALES (semences),RIZ (IRRIGUÉ);MIL (SOUNA);SORGHO;SÉSAME;MAÏS,%,,,100,,LPSAE 2025-2029,49,,"Le document range le sésame parmi les céréales (riz, mil, sorgho, sésame, maïs). Valeur de référence vide ; année de la cible non précisée."
+superficie_irriguee,national,,,ha,130000,,320000,2029,SSA 2025-2034,16 ; 52,,Référence : 130 000 ha déjà aménagés sur un potentiel de 350 000 ha (page 16). Cible : 320 000 ha irrigués avant 2029 (page 52). Année de la référence non précisée.
+pertes_post_production,national,,,%,,,20,,SSA 2025-2034,57,,"Cible : pertes inférieures à 20 % (valeur 20 = seuil à ne pas atteindre). Le document cite une moyenne africaine proche de 60 %, non reprise ici comme référence du Sénégal."
+producteurs_climato_intelligents,national,,,producteurs,,,240000,2029,SSA 2025-2034,59,,Objectif d'ici 2029.
+part_femmes_producteurs_climato_intelligents,national,,,%,,,40,2029,SSA 2025-2034,59,,Part des femmes parmi les 240 000 producteurs climato-intelligents.
+georeferencement_parcelles,national,,,%,,,100,2029,SSA 2025-2034,53,,Toutes les parcelles d'ici 2029 (100 % déduit de « toutes »).
+evaluation_mi_parcours,national,,,,,,,2027,SSA 2025-2034,76,,Évaluation à mi-parcours en 2027.
+evaluation_finale,national,,,,,,,2029,SSA 2025-2034,76,,Évaluation finale fin 2029.
+production_officielle,national,CÉRÉALES,,t,2768798,2019,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,CÉRÉALES,,t,4015165,2023,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,RIZ (IRRIGUÉ),,t,1155730,2019,,,LPSAE 2025-2029,20-21,,Tonnes de paddy (le libellé « riz blanchi » du tableau 1 de la SSA est faux).
+production_officielle,national,RIZ (IRRIGUÉ),,t,1525464,2023,,,LPSAE 2025-2029,20-21,,Tonnes de paddy (le libellé « riz blanchi » du tableau 1 de la SSA est faux). Contradiction entre documents : la SSA donne 1 409 120 t au tableau 1 (page 26).
+production_officielle,national,SORGHO,,t,270168,2019,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,SORGHO,,t,364577,2023,,,LPSAE 2025-2029,20-21,,Contradiction entre documents : la SSA donne 363 164 t au tableau 1 (page 26).
+production_officielle,national,NIÉBÉ,,t,184137,2019,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,NIÉBÉ,,t,221798,2023,,,LPSAE 2025-2029,20-21,,Contradiction entre documents : la SSA donne 239 194 t au tableau 1 (page 26).
+production_officielle,national,MANIOC,,t,1030592,2019,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,MANIOC,,t,1388741,2023,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,SÉSAME,,t,24304,2019,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,SÉSAME,,t,60036,2023,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,LÉGUMES,,t,1229225,2019,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,LÉGUMES,,t,1274750,2023,,,LPSAE 2025-2029,20-21,,
+production_officielle,national,MAÏS,,t,50705,2019,,,LPSAE 2025-2029,20,,"Erreur probable dans le document : 530 705 t (valeur du tableau 1 de la SSA, qui redonne le total des céréales)."
+production_officielle,national,MAÏS,,t,530705,2019,,,SSA 2025-2034,26,,"colonne « 2020 » du tableau 1 (page 26), rattachée à la campagne 2019 : le tableau semble nommer la campagne par son année de fin."
+production_officielle,national,MAÏS,,t,855033,2023,,,LPSAE 2025-2029,20-21,,Contradiction entre documents : la SSA donne 787 750 t au tableau 1 (page 26).
+production_officielle,national,MIL (SOUNA),,t,807044,2019,,,SSA 2025-2034,26,,"colonne « 2020 » du tableau 1 (page 26), rattachée à la campagne 2019 : le tableau semble nommer la campagne par son année de fin."
+production_officielle,national,MIL (SOUNA),,t,1260709,2023,,,LPSAE 2025-2029,20,,Contradiction entre documents : la SSA donne 1 097 033 t au tableau 1 (page 26). Même valeur dans la SSA page 21.
+production_officielle,national,MIL (SOUNA),,t,1097033,2023,,,SSA 2025-2034,26,,Contradiction entre documents : la LPSAE donne 1 260 709 t (page 20). Colonne « 2023 » du tableau 1.
+production_officielle,national,ARACHIDE,,t,1421288,2019,,,SSA 2025-2034,26,,"colonne « 2020 » du tableau 1 (page 26), rattachée à la campagne 2019 : le tableau semble nommer la campagne par son année de fin."
+production_officielle,national,ARACHIDE,,t,1675329,2023,,,LPSAE 2025-2029,21,,"Contradiction entre documents : la SSA donne 1 677 804 t au tableau 1 (page 26), valeur recopiée de la colonne « 2022 ». Même valeur dans la SSA page 24."
+production_officielle,national,ARACHIDE,,t,1677804,2023,,,SSA 2025-2034,26,,Contradiction entre documents : la LPSAE donne 1 675 329 t (page 21). Valeur identique à la colonne « 2022 » du tableau 1 (recopiée).
+production_officielle,national,RIZ (IRRIGUÉ),,t,1326761,2021,,,SSA 2025-2034,26,,"Colonne « 2022 » du tableau 1, rattachée à la campagne 2021 (décalage d'année). Tonnes de paddy. Sert de point officiel : nos départements 2021 sont incomplets."
+rendement_reference,national,MIL (SOUNA),,kg/ha,1253,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, rendement moyen du Sénégal ; année non précisée)."
+rendement_reference,national,SORGHO,,kg/ha,1319,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, rendement moyen du Sénégal ; année non précisée)."
+rendement_reference,national,MAÏS,,kg/ha,3074,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, rendement moyen du Sénégal ; année non précisée)."
+rendement_reference,national,ARACHIDE,,kg/ha,1336,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, rendement moyen du Sénégal ; année non précisée)."
+production_officielle,national,RIZ (IRRIGUÉ),,t,1409120,2023,,,SSA 2025-2034,26,,"Contradiction entre documents : la LPSAE donne 1 525 464 t (pages 20-21). Colonne « 2023 » du tableau 1, libellé « riz blanchi » faux (tonnes de paddy)."
+production_officielle,national,SORGHO,,t,363164,2023,,,SSA 2025-2034,26,,Contradiction entre documents : la LPSAE donne 364 577 t (pages 20-21). Colonne « 2023 » du tableau 1.
+production_officielle,national,MAÏS,,t,787750,2023,,,SSA 2025-2034,26,,Contradiction entre documents : la LPSAE donne 855 033 t (pages 20-21). Colonne « 2023 » du tableau 1.
+production_officielle,national,NIÉBÉ,,t,239194,2023,,,SSA 2025-2034,26,,"Contradiction entre documents : la LPSAE donne 221 798 t (pages 20-21). Colonne « 2023 » du tableau 1, identique à la colonne « 2022 » (recopiée)."
+rendement_reference_comparaison,national,MIL (SOUNA),,kg/ha,1900,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, colonne « Moyenne africaine » : 1,9 t/ha, convertie en kg/ha ; année non précisée)."
+rendement_reference_comparaison,national,SORGHO,,kg/ha,1900,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, colonne « Moyenne africaine » : « 1,9,t /Ha », convertie en kg/ha ; année non précisée)."
+rendement_reference_comparaison,national,MAÏS,,kg/ha,4964,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, colonne « Moyenne africaine » : 4 964 kg/ha, convertie en kg/ha ; année non précisée)."
+rendement_reference_comparaison,national,ARACHIDE,,kg/ha,2000,,,,SSA 2025-2034,52,,"Référence indiquée par la SSA, origine non précisée (tableau 8, colonne « Moyenne africaine » : 2000 kg/ha, convertie en kg/ha ; année non précisée)."

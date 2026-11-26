@@ -16,6 +16,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from .schemas.observatoire import ObjectifObservatoire, SerieObservatoire
 from .schemas import (
     Besoin,
     CadreHarmonise,
@@ -61,6 +62,11 @@ MARTS: dict[str, DefinitionMart] = {
         # ---- prix des intrants et Cadre harmonisé, facultatifs (routes 404 tant que dbt ne les a pas construits)
         DefinitionMart("prix", "DIM_PRIX_INTRANT", PrixIntrant, "campagne, code_intrant", "marts", False),
         DefinitionMart("cadre_harmonise", "MART_CADRE_HARMONISE_DEPARTEMENT", CadreHarmonise, "code_departement", "marts", False),
+        # ---- Observatoire Sénégal 2050 (nouveaux marts, facultatifs : routes /observatoire en 404 tant que dbt ne les a pas construits)
+        DefinitionMart("observatoire_series", "MART_OBSERVATOIRE_SERIES", SerieObservatoire,
+                       "serie, niveau, culture, code_zone, campagne_agricole", "marts", False),
+        DefinitionMart("observatoire_objectifs", "MART_OBSERVATOIRE_OBJECTIFS", ObjectifObservatoire,
+                       "indicateur, culture nulls first, annee_reference nulls first, document, page", "marts", False),
         # ---- modèles d'IA (ml/), facultatifs
         DefinitionMart("prev_saison", "PREVISION_SAISONNIERE", PrevisionSaison, "annee, code_departement", "ml", False),
         DefinitionMart("prev_rendement", "PREVISION_RENDEMENT", PrevisionRendement,

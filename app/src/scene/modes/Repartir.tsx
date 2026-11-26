@@ -100,7 +100,7 @@ export default function Repartir({ cadre, publier }: PropsMode) {
     const k = criteres.get(c)
     if (scenario.id === 'urgence') return [`CH ${k?.phase == null ? 'non compté' : `phase ${k.phase}`}`, k?.personnes_phase3_5 == null ? null : `${nombre(k.personnes_phase3_5)} pers. phases 3-5`, `vulnérabilité ${k?.vulnerabilite == null ? 'non notée' : nombre(k.vulnerabilite)}`].filter(Boolean).join(' · ')
     if (scenario.id === 'production') return k?.potentiel_adapte == null ? 'culture non « adaptée » ou potentiel non évalué : servi par besoin' : `potentiel +${nombre(k.potentiel_adapte)} kg/ha (${libelle(cultureParDep.get(c)).toLowerCase()}, valeur de zone)`
-    return `prorata multicritère · vulnérabilité ${k?.vulnerabilite == null ? 'non notée (médiane)' : nombre(k.vulnerabilite)}`
+    return `prorata multicritère · fragilité ${k?.vulnerabilite == null ? 'non notée (médiane)' : nombre(k.vulnerabilite)}`
   }
   // Sacs par département : entiers en unité « sacs », sinon au demi-sac supérieur (arrondi par département)
   const sacsDe = (t: number) => (sacs ? Math.round(t * 20) : sacsDeTonnes(t))
@@ -121,8 +121,8 @@ export default function Repartir({ cadre, publier }: PropsMode) {
     { etat: (couverture ?? 0) >= 100 ? 'ok' : 'attention', texte: `Le stock couvre **${pct(couvertureAffichee)}** du besoin` },
     { etat: 'info', texte: `**${entiers}** département${entiers > 1 ? 's' : ''} servi${entiers > 1 ? 's' : ''} entièrement, ${partiels} partiellement` },
     !couverte ? { etat: 'info', texte: `Date limite non disponible pour ${annee}` }
-      : !pret ? { etat: 'info', texte: 'Date limite : chargement' }
-        : premiere ? { etat: 'info', texte: `Première date limite : **${dates.get(premiere.code)!.date}** (${nomDep(premiere.code)})` } : { etat: 'info', texte: 'Date limite non disponible' },
+      : !pret ? { etat: 'info', texte: 'Date limite : en cours de chargement' }
+        : premiere ? { etat: 'info', texte: `À livrer en premier avant le **${dates.get(premiere.code)!.date}** (${nomDep(premiere.code)})` } : { etat: 'info', texte: 'Date limite non disponible' },
   ]
   const cleLignes = lignes.map((l) => l.texte).join('|')
 
@@ -209,18 +209,18 @@ export default function Repartir({ cadre, publier }: PropsMode) {
         {territoires && !demandes.length && <Avis>Aucun besoin calculé pour ce choix (doses à saisir) : rien à répartir.</Avis>}
         {demandes.length > 0 && !resultat && <p className="mt-2 text-sm text-white/70">Besoin connu : {quantite(besoinTotal)} sur {demandes.length} départements. Indiquez votre stock dans la puce « Stock ».</p>}
         {resultat && resultat.reste_t > 1e-6 && <Avis>Reste non distribué : {quantite(resultat.reste_t)}{sacs ? ' (arrondi aux sacs entiers compris)' : ' (le stock dépasse le besoin connu)'}.</Avis>}
-      </>}
-      detail={demandes.length ? <>
-        <Groupe titre={`Règle du scénario ${scenario.libelle.toLowerCase()}`}>
-          <p className="text-sm leading-relaxed text-white/75">{scenario.regle}</p>
           {scenario.id === 'proportionnel' && (
             <label className="mt-3 block text-2xs text-white/60">
-              <span className="flex justify-between"><span>Arbitrage : vulnérabilité ↔ rendement attendu</span><span className="text-sm font-medium text-white tabular-nums">{nomArbitrage(dossier.arbitrage)}</span></span>
+              <span className="flex justify-between"><span>Arbitrage : fragilité ↔ récolte attendue par hectare</span><span className="text-sm font-medium text-white tabular-nums">{nomArbitrage(dossier.arbitrage)}</span></span>
               <input type="range" className="glissiere mt-1 block h-11 w-full" min={0} max={100} step={5} value={dossier.arbitrage} onChange={(e) => majDossier({ arbitrage: Number(e.target.value) })} />
               <span className="flex justify-between text-white/60">{ARBITRAGES_NOMMES.map((a) => <button key={a.valeur} type="button" className="min-h-11 underline-offset-4 hover:underline" onClick={() => majDossier({ arbitrage: a.valeur })}>{a.libelle}</button>)}</span>
             </label>
           )}
-          {scenario.id === 'urgence' && !ch && <p className="mt-2 text-xs text-white/60">Cadre harmonisé non disponible : l'ordre suit la vulnérabilité.</p>}
+      </>}
+      detail={demandes.length ? <>
+        <Groupe titre={`Règle du scénario ${scenario.libelle.toLowerCase()}`}>
+          <p className="text-sm leading-relaxed text-white/75">{scenario.regle}</p>
+          {scenario.id === 'urgence' && !ch && <p className="mt-2 text-xs text-white/60">Cadre harmonisé non disponible : l'ordre suit la fragilité.</p>}
         </Groupe>
         {resultat && (
           <Groupe id={idTableau} titre="La répartition, département par département" complement={`${servis} servis sur ${demandes.length}`}>
@@ -246,7 +246,7 @@ export default function Repartir({ cadre, publier }: PropsMode) {
         )}
         <Methode>
           <p>Proposition indicative ({scenario.id === 'proportionnel' ? `${METHODE}, version ${VERSION}` : `remplissage dans l'ordre, scénario ${scenario.libelle.toLowerCase()}`}), calculée sur les besoins de référence. Une part ne dépasse jamais le besoin ; le reste non distribué est affiché.{sacs ? ' En sacs : chaque part est arrondie au sac entier inférieur.' : ''}</p>
-          <p>Date limite : premier jour de la décade de semis conseillée par le modèle 4 pour {culture ? libelle(culture).toLowerCase() : 'la culture de plus grande superficie de chaque département'} ({annee}). Aucun délai logistique n'est ajouté. Six appels au modèle 4 au plus : au-delà, « hors des cultures interrogées ». Culture non couverte par le modèle 4 ou année hors du modèle : « non disponible ».</p>
+          <p>Date limite : premier jour de la période de 10 jours de semis conseillée par l’estimation 4 pour {culture ? libelle(culture).toLowerCase() : 'la culture de plus grande superficie de chaque département'} ({annee}). Aucun délai logistique n'est ajouté. Six appels au estimation 4 au plus : au-delà, « hors des cultures interrogées ». Culture non couverte par l’estimation 4 ou année hors de l’estimation : « non disponible ».</p>
           <p>Potentiel de gain (scénario Production) : valeur de la zone agroécologique, non additive, seulement là où il est évalué et la culture « adaptée ».</p>
           {sansDose > 0 && <p>{sansDose} couples département × culture sans dose connue ne reçoivent rien : leur besoin n'est pas calculé, il n'est pas nul.</p>}
           <p>Besoin connu : {quantite(besoinTotal)} sur {demandes.length} départements. Dépôt : Dakar au départ ; touchez la carte hors d'un département pour le déplacer.</p>

@@ -55,7 +55,7 @@ function Recolte({ etat, ligne, annee, couverte }: { etat: EtatPrevision; ligne:
             <Fourchette bas={ligne.rendement_bas_kg_ha} haut={ligne.rendement_haut_kg_ha} valeur={ligne.rendement_median_kg_ha} repere={ligne.tendance_kg_ha} couleur="var(--color-soleil-500)"
               description={`Rendement entre ${nombre(ligne.rendement_bas_kg_ha)} et ${nombre(ligne.rendement_haut_kg_ha, { unite: 'kg/ha' })}, 8 chances sur 10 ; habituel ${nombre(ligne.tendance_kg_ha, { unite: 'kg/ha' })}`} />
           </div>
-          <p className="mt-1 mb-2 text-2xs text-white/60">Bande : année difficile à bonne année · trait : rendement habituel</p>
+          <p className="mt-1 mb-2 text-2xs text-white/60">Bande : année difficile à bonne année · trait : la récolte habituelle par hectare</p>
           <MarquesRendement ligne={ligne} quoi="rendement" />
         </>
       )}
@@ -126,10 +126,10 @@ export default function Semer({ cadre, publier }: PropsMode) {
   // Le bandeau de saison, tiré de la carte des opportunités (jaune : saison courte, vert : longue, bleu : contre-saison)
   const saison: LigneS[] = opportunite ? ([
     opportunite.couleur_fond === 'jaune' && { couleur: 'var(--color-soleil-500)', texte: opportunite.cycle_max_conseille_j !== null ? `Saison courte : un cycle de ${nombre(opportunite.cycle_max_conseille_j)} jours au plus.` : 'Saison courte : choisissez les variétés les plus précoces.' },
-    opportunite.couleur_fond === 'vert' && { couleur: 'var(--color-vert-500)', texte: 'Saison longue : un cycle long passe 4 années sur 5.' },
+    opportunite.couleur_fond === 'vert' && { couleur: 'var(--color-vert-500)', texte: 'Saison longue : une culture lente arrive au bout 4 années sur 5.' },
     opportunite.varietes_conseillees && { couleur: 'var(--color-brume)', texte: `Variétés : ${varietesLisibles(opportunite.varietes_conseillees)}.` },
     opportunite.couche_eau && { couleur: 'var(--color-ciel-vif)', texte: `Contre-saison possible : ${opportunite.conseil_agriculteur}`, lien: 'Contre-saison possible', suite: ` : ${opportunite.conseil_agriculteur}` },
-    opportunite.categorie_eau === 'non évaluée' && { couleur: 'var(--color-brume)', texte: 'Contre-saison : données sur l’eau en cours d’intégration.' },
+    opportunite.categorie_eau === 'non évaluée' && { couleur: 'var(--color-brume)', texte: 'Saison sèche : les informations sur l’eau arrivent bientôt.' },
   ] as (LigneS | false | '' | null)[]).filter((x): x is LigneS => Boolean(x)) : []
 
   const cible = conseillee?.culture ?? culture
@@ -223,7 +223,7 @@ export default function Semer({ cadre, publier }: PropsMode) {
             <Cle valeur={choix ? compte('déconseillée') : '—'} libelle="déconseillées" teinte={NIVEAUX['déconseillée'].couleur} />
           </Cles>
 
-          <LigneFiabilite parties={['Saisons des pluies 1991-2020 du département', 'niveaux indicatifs, à valider avec les conseillers agricoles']} />
+          <LigneFiabilite parties={['Saisons des pluies des 30 dernières années du département', 'niveaux indicatifs, à valider avec les conseillers agricoles']} />
 
           <Groupe titre="Cultures et cycles" complement="touchez une culture">
             {!choix && <Squelette lignes={6} />}
@@ -285,9 +285,9 @@ export default function Semer({ cadre, publier }: PropsMode) {
 
           <MethodeModele cibles={[{ modele: 'M3', moment: 'FIN_MAI', volet: 'rendement' }]} avertissements={rendements?.avertissements}>
             <p>« 4 années sur 5 » arrondit la part des années (1991-2020) où la saison des pluies couvre tout le cycle ; le pourcentage exact est dans le détail. Comparez les cycles sur cette part, pas sur le niveau.</p>
-            <p>Niveaux indicatifs, à valider avec les conseillers agricoles. Le mil ressort « déconseillé » dans le nord alors qu'il y est cultivé : calibration en cours.</p>
+            <p>Niveaux indicatifs, à valider avec les conseillers agricoles. Le mil apparaît « déconseillé » dans le nord alors qu’on l’y cultive : ce calcul est en cours de correction.</p>
             <p>Saison courte ou longue, contre-saison : carte des opportunités (seuil de 110 jours, à valider avec l'ANCAR).</p>
-            <p>Récolte attendue : fourchette du rendement, 8 chances sur 10, vue fin mai. Sauf mention « prévision de l'année », c'est la récolte habituelle du département, pas une prévision. Disponible pour l'arachide, le mil, le sorgho, le niébé et le maïs.</p>
+            <p>Récolte attendue : fourchette de la récolte par hectare, 8 chances sur 10, vue fin mai. Sauf mention « prévision de l'année », c'est la récolte habituelle du département, pas une prévision. Disponible pour l'arachide, le mil, le sorgho, le niébé et le maïs.</p>
           </MethodeModele>
         </>
       )} />

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router'
+import { Navigate, Route, Routes } from 'react-router'
 import { useAuth } from './auth/AuthContext'
 import { RouteProtegee } from './auth/RouteProtegee'
 import { BandeauCookies } from './consentement/BandeauCookies'
@@ -10,6 +10,8 @@ const Scene = lazy(() => import('./pages/Scene'))
 const APropos = lazy(() => import('./pages/site/APropos'))
 const Methode = lazy(() => import('./pages/site/Methode'))
 const Donnees = lazy(() => import('./pages/site/Donnees'))
+// Observatoire masqué (code conservé dans ./observatoire/)
+// const Observatoire = lazy(() => import('./observatoire/Observatoire'))
 const Contact = lazy(() => import('./pages/site/Contact'))
 const MentionsLegales = lazy(() => import('./pages/site/MentionsLegales'))
 const Confidentialite = lazy(() => import('./pages/site/Confidentialite'))
@@ -32,6 +34,7 @@ export function App() {
         <Route path="/a-propos" element={<APropos />} />
           <Route path="/methode" element={<Methode />} />
           <Route path="/donnees" element={<Donnees />} />
+          <Route path="/observatoire" element={<Navigate to="/" replace />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/mentions-legales" element={<MentionsLegales />} />
           <Route path="/confidentialite" element={<Confidentialite />} />

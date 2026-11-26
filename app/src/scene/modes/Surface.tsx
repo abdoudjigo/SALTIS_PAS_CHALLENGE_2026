@@ -119,7 +119,7 @@ export default function Surface({ cadre, publier }: PropsMode) {
   const achats = [engrais.length ? `${nombreSacs(nbSacs)} d’engrais` : null, semences ? `${nombre(semences.kgHa! * surface)} kg de semences` : null].filter(Boolean)
   const actions: Action[] = [
     ...(achats.length ? [{ texte: `Achetez ${achats.join(' et ')}${avant}.`, vers: fenetre ? undefined : { mode: 'semis', libelle: 'Quand semer ?' } }] : []),
-    ...(aConfirmer ? [{ texte: 'Demandez la dose exacte à votre conseiller : ces doses sont à confirmer.' }] : []),
+    ...(aConfirmer ? [{ texte: 'Demandez la bonne quantité à votre conseiller agricole : ces chiffres sont à confirmer.' }] : []),
   ]
   const resume = !departement ? 'Choisissez un département' : !ligne ? departement.departement
     : engrais.length ? `${ha} ha ${de}${nomCulture} : ${nombreSacs(nbSacs)} d’engrais` : `${ha} ha ${de}${nomCulture} : doses à saisir`
@@ -134,7 +134,7 @@ export default function Surface({ cadre, publier }: PropsMode) {
   const etatsEngrais = engrais.map(etatDose)
   const etatEngrais: LigneCheck['etat'] = etatsEngrais.includes('attention') ? 'attention' : etatsEngrais.includes('info') ? 'info' : 'ok'
   const lignesFiche: LigneCheck[] = !departement ? [CHOISIR] : !ligne ? [] : [
-    ...(!engrais.length ? [{ etat: 'info' as const, texte: 'Engrais : dose **à saisir**' }]
+    ...(!engrais.length ? [{ etat: 'info' as const, texte: 'Engrais : quantité **à saisir**' }]
       : lignesEngrais.length + ligneSemences.length > 3 ? [{ etat: etatEngrais, texte: `Engrais : **${nombreSacs(nbSacs)}** de 50 kg${etatEngrais === 'attention' ? ', à confirmer' : etatEngrais === 'info' ? ', votre dose' : ''}` }]
         : lignesEngrais),
     ...ligneSemences,
@@ -270,10 +270,10 @@ export default function Surface({ cadre, publier }: PropsMode) {
 
           <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }, { modele: 'M3', moment: 'FIN_MAI', culture: recolte?.culture, volet: 'rendement' }, { modele: 'M4' }]}
             avertissements={[...(saisonDonnees?.avertissements ?? []), ...(recolteDonnees?.avertissements ?? []), ...(semisDonnees?.avertissements ?? [])]}>
-            <p>Estimation indicative : doses de référence de la zone × votre surface, pas un conseil validé pour votre parcelle. Les doses ne changent pas avec l'année ; ce qui change, c'est la pluie, la récolte et la période de semis attendues.</p>
-            <p>Engrais en sacs de 50 kg, arrondis au demi-sac supérieur, chaque engrais à part ; le poids exact est entre parenthèses.</p>
-            <p>« Dose à saisir » : aucune dose n'est connue, le besoin n'est pas calculé, il n'est pas nul. Les doses « à confirmer » ou « non vérifiées » restent à valider par l'ISRA.</p>
-            <p>Production attendue = surface × fourchette de rendement du département (8 chances sur 10), en sacs de 100 kg.</p>
+            <p>C’est une estimation : la quantité conseillée dans votre zone, multipliée par votre surface. Ce n’est pas un conseil fait pour votre champ. Les quantités ne changent pas d’une année à l’autre ; ce qui change, c’est la pluie, la récolte et la date de semis.</p>
+            <p>Les engrais sont comptés en sacs de 50 kilos, arrondis au demi-sac au-dessus ; le poids exact est entre parenthèses.</p>
+            <p>« À saisir » : on ne connaît pas encore la quantité, donc le besoin n’est pas calculé (il n’est pas nul). Les quantités « à confirmer » doivent encore être validées par l’institut de recherche agricole (ISRA).</p>
+            <p>Récolte attendue : votre surface multipliée par la récolte habituelle d’un hectare dans le département, dans 8 cas sur 10. Elle est comptée en sacs de 100 kilos.</p>
           </MethodeModele>
         </>
       )} />
