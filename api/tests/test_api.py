@@ -1,6 +1,7 @@
 import asyncio
 import gzip
 import json
+import time
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
@@ -108,10 +109,13 @@ def test_administration(client, service):
     premiere = client.get(f"{V1}/systeme/cache", headers=ADMIN).json()["version_active"]
     r = client.post(url, headers={"X-Admin-Token": JETON})
     assert r.status_code == 202
-    for _ in range(100):  # la tâche de fond tourne dans la boucle du client de test
-        etat = client.get(f"{V1}/systeme/cache", headers=ADMIN).json()
-        if etat["version_active"] != premiere:
+    # La tâche de fond tourne dans la boucle du client de test. On attend sans passer par la route d'administration :
+    # elle est limitée à 10 appels par minute, et la construction (Observatoire compris) peut demander plus de tours.
+    for _ in range(600):
+        if client.portal.call(service.stockage.version_active) != premiere:
             break
+        time.sleep(0.05)
+    etat = client.get(f"{V1}/systeme/cache", headers=ADMIN).json()
     assert etat["versions_conservees"] == [etat["version_active"], premiere]
     retour = client.post(f"{V1}/systeme/cache/retour-arriere", headers={"X-Admin-Token": JETON}).json()
     assert retour["version_active"] == premiere
