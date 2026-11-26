@@ -9,6 +9,9 @@ import type {
   CarteOpportunite, Departement, Intrant, LigneBesoin, LigneCadreHarmonise, LigneCarte, LigneChoixCulture, LigneSuivi,
   LigneTerritoireAgrodistrib, LigneVulnerabilite, PhaseCadreHarmonise, PrixIntrant, Referentiels,
 } from '../types/marts'
+import type {
+  CarteDepartementObs, ClassementObs, FiltresObs, Indicateur as IndicateurObs, IndicateursObs, ObjectifsObs, ReponseObs, SerieObs,
+} from '../observatoire/types'
 import type { CodeModele, EvaluationModele, Moment, Prevision, PrevisionRendement, PrevisionSaison, RisqueSemis } from '../types/previsions'
 import { ApiError, requete, type OptionsRequete } from './client'
 
@@ -34,6 +37,11 @@ async function marts<T>(chemin: string, params?: OptionsRequete['params']): Prom
 }
 
 const enc = encodeURIComponent
+
+// Observatoire Sénégal 2050 (page publique) : API réelle seulement, même en démonstration (aucun chiffre inventé).
+// On garde `meta` (source et date de construction), affichée sous chaque graphique.
+const obs = <T,>(chemin: string, params?: OptionsRequete['params']) =>
+  requete<ReponseObs<T>>(`/api/v1/observatoire${chemin}`, { params, sansJeton: true })
 
 
 // Résultats des modèles d'IA (SALTIS.ML) : on garde `meta.avertissements`, les rappels d'affichage honnête.
@@ -159,6 +167,20 @@ export const api = {
     // 100 s au plus : l'API abandonne à 90 s (VOIX_SERVICE_DELAI_S) et le modèle est chargé dès le démarrage du
     // service « voix » (audit ARC-02). Au-delà, le texte wolof reste affiché
     requete<{ audio_wo_base64: string }>('/api/v1/voix/parler', { method: 'POST', body: { texte }, sansJeton: true, timeout: 100000 }),
+
+  // Observatoire Sénégal 2050 (api/routes/observatoire.py). `null` : pas de donnée pour cette zone (404)
+  observatoire: {
+    filtres: () => obs<FiltresObs>('/filtres'),
+    indicateurs: (annee: number, culture: string, zone: string) =>
+      ou404<ReponseObs<IndicateursObs> | null>(obs<IndicateursObs>('/indicateurs', { annee, culture, zone }), null),
+    serie: (culture: string, indicateur: IndicateurObs, zone: string) =>
+      ou404<ReponseObs<SerieObs> | null>(obs<SerieObs>('/serie', { culture, indicateur, zone }), null),
+    carte: (annee: number, culture: string, indicateur: IndicateurObs) =>
+      ou404<ReponseObs<CarteDepartementObs[]> | null>(obs<CarteDepartementObs[]>('/carte', { annee, culture, indicateur }), null),
+    classement: (annee: number, culture: string, indicateur: IndicateurObs) =>
+      ou404<ReponseObs<ClassementObs[]> | null>(obs<ClassementObs[]>('/classement', { annee, culture, indicateur }), null),
+    objectifs: (zone: string) => ou404<ReponseObs<ObjectifsObs> | null>(obs<ObjectifsObs>('/objectifs', { zone }), null),
+  },
 
   // Avis des ONG : envoyé à l'équipe par e-mail par l'API (rien n'est stocké)
   envoyerAvis: (avis: Record<string, string | number>) =>

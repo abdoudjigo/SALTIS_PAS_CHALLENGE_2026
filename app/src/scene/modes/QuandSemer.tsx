@@ -104,11 +104,11 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
     ? (sur ? `Semez ${article}${nomCulture} ${periodeDecades(decades[f.de].decade_semis, decades[f.a].decade_semis)}` : `Le moins risqué : ${periodeDecades(f.meilleure.decade_semis)}`)
     : departement.departement
   const lignesFiche: LigneCheck[] = !departement ? [CHOISIR] : !f ? [] : trierLignes([
-    ...(tot && tot.risque_faux_depart_pct !== null ? [{ etat: 'non' as const, texte: `Avant le ${debutDecade(decades[f.de].decade_semis)} : **${nombre(tot.risque_faux_depart_pct)} %** de faux départ` }] : []),
+    ...(tot && tot.risque_faux_depart_pct !== null ? [{ etat: 'non' as const, texte: `Avant le ${debutDecade(decades[f.de].decade_semis)} : **${nombre(tot.risque_faux_depart_pct)} %** de faux départ (la pluie s’arrête après les premières averses)` }] : []),
     sur
       ? { etat: 'ok' as const, texte: `Semez du **${debutDecade(decades[f.de].decade_semis)}** au **${finDate(decades[f.a].decade_semis)}**, après une pluie d’au moins ${PLUIE_SEMIS_MM} mm` }
       : { etat: 'attention' as const, texte: `Aucune période sûre : attendez une pluie d’au moins ${PLUIE_SEMIS_MM} mm et préférez un cycle court` },
-    ...(tard && tard.risque_fin_trop_tot_pct !== null ? [{ etat: 'non' as const, texte: `Après le ${finDate(decades[f.a].decade_semis)} : **${nombre(tard.risque_fin_trop_tot_pct)} %**, pluies finies tôt` }] : []),
+    ...(tard && tard.risque_fin_trop_tot_pct !== null ? [{ etat: 'non' as const, texte: `Après le ${finDate(decades[f.a].decade_semis)} : **${nombre(tard.risque_fin_trop_tot_pct)} %** de risque que les pluies s’arrêtent trop tôt` }] : []),
   ])
   const cleLignes = lignesFiche.map((l) => l.texte).join('|')
 
@@ -139,7 +139,7 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
       infobulle: (c) => {
         const l = parCode.get(c)
         const nom = cadre.ref.departements.find((d) => d.code_departement === c)?.departement ?? c
-        return { titre: nom, lignes: l ? [`${libelle(culture)} : ${periodeDecades(l.decade_semis)}`, `Risque : ${pct(l.risque_total_pct)}`] : ['Non disponible (pas de pluie décadaire)'] }
+        return { titre: nom, lignes: l ? [`${libelle(culture)} : ${periodeDecades(l.decade_semis)}`, `Risque : ${pct(l.risque_total_pct)}`] : ['Non disponible (pas de pluie par période de 10 jours)'] }
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignesFiche` est tiré de `f` et `decades`
@@ -179,7 +179,7 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
             </div>
           )}
 
-          {f && <LigneFiabilite parties={['Modèle 4', MODELES.M4.fiabilite, natureAnnee(annee, a.aVenir)]} />}
+          {f && <LigneFiabilite parties={['Estimation de la date de semis', MODELES.M4.fiabilite, natureAnnee(annee, a.aVenir)]} />}
 
 
           {detail && (
@@ -197,7 +197,7 @@ export default function QuandSemer({ cadre, publier }: PropsMode) {
           )}
 
           <MethodeModele cibles={[{ modele: 'M4' }]} avertissements={donnees?.avertissements}>
-            <p>Indicatif, à valider avec les agronomes. Le meilleur moment est la période de 10 jours au risque le plus bas, parmi celles où une pluie de semis arrive au moins une année sur deux. Le « bon moment » l'étend aux périodes voisines dont le risque reste strictement sous {RISQUE_BON_MOMENT} %.</p>
+            <p>À valider avec les agronomes. Le meilleur moment est la période de 10 jours où le risque est le plus faible, parmi celles où il pleut assez pour semer au moins une année sur deux. Le « bon moment » ajoute les périodes voisines où le risque reste sous {RISQUE_BON_MOMENT} %.</p>
             <p>Calculé avec la prévision de saison {annee}{a.tendance ? ' (prévision de tendance)' : ''}{detail?.proba_saison_seche_m1_pct != null ? ` : ${pct(detail.proba_saison_seche_m1_pct)} de chances d'une saison sèche` : ''}.</p>
           </MethodeModele>
         </>

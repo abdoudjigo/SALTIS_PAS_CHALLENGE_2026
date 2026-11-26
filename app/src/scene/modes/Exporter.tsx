@@ -39,7 +39,7 @@ export default function Exporter({ cadre, publier }: PropsMode) {
   const titre = 'Exporter le dossier'
   const lignes: LigneCheck[] = [
     { etat: 'info', texte: `Le dossier reprend les **${PARCOURS_ONG.length - 1}** étapes du parcours` },
-    { etat: 'info', texte: `Campagne **${cadre.annee}**, ${cadre.culture ? libelle(cadre.culture).toLowerCase() : 'toutes cultures'}, ${intrant?.nom_intrant ?? 'intrant non choisi'}` },
+    { etat: 'info', texte: `Campagne **${cadre.annee}**, ${cadre.culture ? libelle(cadre.culture).toLowerCase() : 'toutes cultures'}, ${intrant?.nom_intrant ?? 'produit non choisi'}` },
     { etat: 'info', texte: `Scénario **${scenario.libelle.toLowerCase()}** · ${prixSaisis.length} prix saisi${prixSaisis.length > 1 ? 's' : ''} par vous` },
   ]
   const cleLignes = lignes.map((l) => l.texte).join('|')

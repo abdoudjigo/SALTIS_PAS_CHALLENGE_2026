@@ -6,3 +6,5 @@
 torch
 transformers
 sentencepiece
+# Voix française des guides vocaux (Piper, modèle neuronal ONNX, ~60 Mo téléchargés au premier lancement)
+piper-tts==1.8.0

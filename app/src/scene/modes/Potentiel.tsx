@@ -35,16 +35,16 @@ export default function Potentiel({ cadre, publier }: PropsMode) {
   const nomDep = code ? cadre.ref.departements.find((d) => d.code_departement === code)?.departement : undefined
   const pourCulture = culture ? ` (${libelle(culture).toLowerCase()})` : ''
 
-  const titre = nomDep ?? (opportunites === null ? 'Fort potentiel : contre-saison non disponible' : opportunites ? `${eau.length} départements avec de l’eau pour la contre-saison` : 'Zones à fort potentiel')
+  const titre = nomDep ?? (opportunites === null ? 'Fort potentiel : contre-saison non disponible' : opportunites ? `${eau.length} départements avec de l’eau pour cultiver en saison sèche` : 'Zones à fort potentiel')
   const lignes: LigneCheck[] = nomDep ? [
-    !oppDep ? { etat: 'info', texte: 'Contre-saison : non disponible ici' }
-      : oppDep.couleur_carte === 'bleu' ? { etat: 'info', texte: `Contre-saison : **${oppDep.potentiel_contre_saison_ha === null ? 'surface non disponible' : `${nombre(oppDep.potentiel_contre_saison_ha)} ha`}**, ${oppDep.categorie_eau}` }
-        : { etat: 'info', texte: `Contre-saison : ${oppDep.categorie_eau}` },
-    gainDep ? { etat: 'info', texte: `Gain de rendement : **+${nombre(gainDep.potentiel_gain_kg_ha)} kg/ha** (${libelle(gainDep.culture).toLowerCase()})` } : { etat: 'info', texte: `Gain de rendement${pourCulture} : non repéré ici` },
+    !oppDep ? { etat: 'info', texte: 'Culture en saison sèche : non disponible ici' }
+      : oppDep.couleur_carte === 'bleu' ? { etat: 'info', texte: `Culture en saison sèche : **${oppDep.potentiel_contre_saison_ha === null ? 'surface non disponible' : `${nombre(oppDep.potentiel_contre_saison_ha)} ha`}**, ${oppDep.categorie_eau}` }
+        : { etat: 'info', texte: `Culture en saison sèche : ${oppDep.categorie_eau}` },
+    gainDep ? { etat: 'info', texte: `Récolte en plus possible : **+${nombre(gainDep.potentiel_gain_kg_ha)} kilos par hectare** (${libelle(gainDep.culture).toLowerCase()})` } : { etat: 'info', texte: `Récolte en plus${pourCulture} : non repérée ici` },
     { etat: 'info', texte: RAPPEL },
   ] : [
-    eau[0] ? { etat: 'info', texte: `Contre-saison : d’abord **${eau[0].departement}**${eau[0].potentiel_contre_saison_ha === null ? '' : `, ${nombre(eau[0].potentiel_contre_saison_ha)} ha`}` } : { etat: 'info', texte: 'Contre-saison : non disponible' },
-    gains[0] ? { etat: 'info', texte: `Gain de rendement : d’abord **${gains[0].departement}** (${libelle(gains[0].culture).toLowerCase()}), +${nombre(gains[0].potentiel_gain_kg_ha)} kg/ha` } : { etat: 'info', texte: `Gain de rendement${pourCulture} : non disponible` },
+    eau[0] ? { etat: 'info', texte: `Culture en saison sèche : d’abord **${eau[0].departement}**${eau[0].potentiel_contre_saison_ha === null ? '' : `, ${nombre(eau[0].potentiel_contre_saison_ha)} ha`}` } : { etat: 'info', texte: 'Contre-saison : non disponible' },
+    gains[0] ? { etat: 'info', texte: `Récolte en plus possible : d’abord **${gains[0].departement}** (${libelle(gains[0].culture).toLowerCase()}), +${nombre(gains[0].potentiel_gain_kg_ha)} kilos par hectare` } : { etat: 'info', texte: `Gain de rendement${pourCulture} : non disponible` },
     { etat: 'info', texte: RAPPEL },
   ]
   const cleLignes = lignes.map((l) => l.texte).join('|')
@@ -68,14 +68,14 @@ export default function Potentiel({ cadre, publier }: PropsMode) {
           <TableauDeBord titre={`Fort potentiel${pourCulture} · repérages indicatifs`} tuiles={[
             { valeur: opportunites ? eau.length : '—', libelle: 'départements avec de l’eau pour la contre-saison', etat: 'info' },
             { valeur: opportunites ? `${nombre(ha)} ha` : '—', libelle: 'cultivables en contre-saison (somme)', etat: 'info' },
-            { valeur: gains[0] ? `+${nombre(gains[0].potentiel_gain_kg_ha)}` : '—', libelle: gains[0] ? `kg/ha au mieux : ${gains[0].departement} (${libelle(gains[0].culture).toLowerCase()})` : 'gain de rendement non repéré', etat: 'info' },
+            { valeur: gains[0] ? `+${nombre(gains[0].potentiel_gain_kg_ha)}` : '—', libelle: gains[0] ? `kg/ha au mieux : ${gains[0].departement} (${libelle(gains[0].culture).toLowerCase()})` : 'gain de récolte par hectare non repéré', etat: 'info' },
             { valeur: gains.length, libelle: 'cultures × départements avec un gain repéré', etat: 'info' },
           ]}>
             <div className="grid gap-x-6 gap-y-3 md:grid-cols-2">
               <ClassementBarres titre="Contre-saison : surface (ha)" code={code} choisir={cadre.choisir} vide="Contre-saison non disponible"
                 elements={eau.slice(0, 6).map((o) => ({ code: o.code_departement, nom: o.departement, valeur: o.potentiel_contre_saison_ha, couleur: COULEURS_OPPORTUNITE.bleu,
                   texte: o.potentiel_contre_saison_ha === null ? 'n. d.' : `${nombre(o.potentiel_contre_saison_ha)} ha`, detail: `${o.categorie_eau}${o.potentiel_contre_saison_ha === null ? '' : `, ${nombre(o.potentiel_contre_saison_ha)} ha`}` }))} />
-              <ClassementBarres titre="Gain de rendement (kg/ha)" code={code} choisir={cadre.choisir} vide="Gain de rendement non repéré"
+              <ClassementBarres titre="Gain de rendement (kg/ha)" code={code} choisir={cadre.choisir} vide="Gain de récolte par hectare non repéré"
                 elements={gains.slice(0, 6).map((g) => ({ code: g.code_departement, nom: `${g.departement} · ${libelle(g.culture).toLowerCase()}`, valeur: g.potentiel_gain_kg_ha, couleur: 'var(--color-vert-500)',
                   texte: `+${nombre(g.potentiel_gain_kg_ha)}`, detail: `+${nombre(g.potentiel_gain_kg_ha)} kg/ha (${libelle(g.culture).toLowerCase()}, valeur de zone)` }))} />
             </div>
@@ -89,7 +89,7 @@ export default function Potentiel({ cadre, publier }: PropsMode) {
         const nom = cadre.ref.departements.find((d) => d.code_departement === c)?.departement ?? c
         return { titre: nom, lignes: [
           o ? `Eau : ${o.categorie_eau}${o.couleur_carte === 'bleu' && o.potentiel_contre_saison_ha !== null ? `, ${nombre(o.potentiel_contre_saison_ha)} ha` : ''}` : 'Eau : non disponible',
-          g ? `Gain de rendement : +${nombre(g.potentiel_gain_kg_ha)} kg/ha (${libelle(g.culture).toLowerCase()})` : 'Gain de rendement : non repéré',
+          g ? `Gain de récolte par hectare : +${nombre(g.potentiel_gain_kg_ha)} kg/ha (${libelle(g.culture).toLowerCase()})` : 'Gain de récolte par hectare : non repéré',
         ] }
       },
       etape: {
@@ -111,7 +111,7 @@ export default function Potentiel({ cadre, publier }: PropsMode) {
       teinte={nomDep ? undefined : COULEURS_OPPORTUNITE.bleu}
       puces={[puceCulture(cadre, cultures, culture, 'Toutes')]}
       etat={<>
-        <p className="mt-1.5 text-xs leading-relaxed text-white/60">Deux repérages côte à côte, jamais additionnés : l'eau disponible en saison sèche, et l'écart entre rendement atteignable et rendement moyen.</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-white/60">Deux repérages côte à côte, jamais additionnés : l'eau disponible en saison sèche, et l'écart entre récolte par hectare atteignable et récolte moyenne par hectare.</p>
         {(chargeOpp || !territoires) && <Squelette lignes={3} />}
       </>}
       detail={<>
@@ -128,7 +128,7 @@ export default function Potentiel({ cadre, publier }: PropsMode) {
         </Groupe>
         <Methode>
           <p>Contre-saison : départements « bleus » de la carte des opportunités (eau de surface peu exploitée ou nappe accessible), classés par rang d'opportunité eau ; surface en hectares de la carte.</p>
-          <p>Gain de rendement : écart entre rendement atteignable et rendement moyen de la zone agroécologique (valeur de zone, non additive), seulement là où il est évalué (pas de rendement national recopié) et où la culture est « adaptée ». Il ne distingue pas les départements d'une même zone.</p>
+          <p>Gain de récolte par hectare : écart entre récolte par hectare atteignable et récolte moyenne par hectare de la zone agroécologique (valeur de zone, non additive), seulement là où il est évalué (pas de récolte par hectare national recopié) et où la culture est « adaptée ». Il ne distingue pas les départements d'une même zone.</p>
           <p>{RAPPEL}.</p>
         </Methode>
       </>} />

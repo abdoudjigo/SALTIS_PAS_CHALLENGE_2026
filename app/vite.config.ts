@@ -66,7 +66,8 @@ function prechargerLesPolices(): Plugin {
 // page HTML par adresse (a-propos.html, methode.html…, 404.html), copie de index.html avec son titre, sa
 // description, ses balises de partage et son adresse canonique. Le contenu reste rendu par React dans le navigateur.
 // Valeurs : src/lib/pages.ts. Service : deploy/Caddyfile (et cleanUrls de vercel.json).
-const TOUTES_LES_PAGES: InfosPage[] = [ACCUEIL, ...Object.values(PAGES)]
+// Observatoire masqué : ni page générée ni entrée du plan du site
+const TOUTES_LES_PAGES: InfosPage[] = [ACCUEIL, ...Object.values(PAGES).filter((p) => p.chemin !== '/observatoire')]
 
 const echapper = (t: string) => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 
@@ -179,7 +180,9 @@ export default defineConfig(({ mode }) => {
       plansDuSite(urlSite),
       prechargerLesPolices(),
       VitePWA({
-        registerType: 'prompt',
+        // Nouvelle version déployée : installée et activée tout de suite, la page se recharge seule (src/main.tsx).
+        // Avant (« prompt »), l'ancienne version restait servie jusqu'à un Ctrl+Maj+R.
+        registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
         manifest: {
           name: 'Assaman & Suuf — Ciel & Terre',
@@ -199,6 +202,9 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
+          skipWaiting: true,
+          clientsClaim: true,
+          cleanupOutdatedCaches: true,
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
           // Mapbox (~1,7 Mo) n'est pas préchargé : connexions faibles. Il est mis en cache à la première ouverture de la carte.
           // Polices : seuls les jeux latins (français, wolof) sont préchargés

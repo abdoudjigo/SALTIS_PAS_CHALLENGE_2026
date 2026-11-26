@@ -55,14 +55,14 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
         : ne ? `Pas d'alerte fiable : ${pluriel(ne)} à risque habituel élevé`
           : 'Aucune alerte récolte'
   const lignes: LigneCheck[] = etat !== 'ok' ? [] : fiche ? [
-    { etat: etatRisque(fiche), texte: `Risque de chute : **${pct(fiche.proba_chute_pct)}** (${libelle(fiche.culture).toLowerCase()})` },
-    { etat: 'info', texte: `Risque habituel : **${pct(fiche.proba_chute_reference_pct)}** · rang ${classement.indexOf(fiche) + 1} sur ${classement.length}` },
-    fiche.alerte_fiable ? { etat: 'ok', texte: 'Alerte fiable à ce moment de la saison' } : { etat: 'info', texte: 'Risque habituel : pas encore une prévision de l’année' },
+    { etat: etatRisque(fiche), texte: `Risque que la récolte baisse beaucoup : **${pct(fiche.proba_chute_pct)}** (${libelle(fiche.culture).toLowerCase()})` },
+    { etat: 'info', texte: `D’habitude : **${pct(fiche.proba_chute_reference_pct)}** · classé ${classement.indexOf(fiche) + 1} sur ${classement.length}` },
+    fiche.alerte_fiable ? { etat: 'ok', texte: 'Cette alerte est sûre à ce moment de la saison' } : { etat: 'info', texte: 'C’est le risque d’une année ordinaire : pas encore de prévision pour cette année' },
   ] : [
-    n ? { etat: 'attention', texte: `**${pluriel(n)}** en alerte (prévision fiable, risque ≥ ${SEUIL_ALERTE_PCT} %)` }
-      : { etat: 'info', texte: `Aucune alerte fiable pour ${annee} : le modèle ne prévoit pas encore cette récolte` },
-    ...(ne ? [{ etat: 'info' as const, texte: `**${pluriel(ne)}** au risque habituel élevé (≥ ${SEUIL_ALERTE_PCT} %), sans prévision de l’année` }] : []),
-    ...(classement.length ? [{ etat: 'info' as const, texte: `En tête : ${(alertes.length ? alertes : classement).slice(0, 3).map((l) => `${l.departement} (**${pct(l.proba_chute_pct)}**)`).join(', ')}` }] : []),
+    n ? { etat: 'attention', texte: `**${pluriel(n)}** en alerte : la récolte risque de baisser beaucoup (au moins ${SEUIL_ALERTE_PCT} %)` }
+      : { etat: 'info', texte: `Pas d’alerte sûre pour ${annee} : il est encore trop tôt pour prévoir cette récolte` },
+    ...(ne ? [{ etat: 'info' as const, texte: `**${pluriel(ne)}** où la récolte baisse souvent (au moins ${SEUIL_ALERTE_PCT} %), sans prévision pour cette année` }] : []),
+    ...(classement.length ? [{ etat: 'info' as const, texte: `Les plus touchés : ${(alertes.length ? alertes : classement).slice(0, 3).map((l) => `${l.departement} (**${pct(l.proba_chute_pct)}**)`).join(', ')}` }] : []),
     ...(premier ? [{ etat: etatRisque(premier), texte: `${premier.departement} : **${pct(premier.proba_chute_pct)}**, contre ${pct(premier.proba_chute_reference_pct)} d’habitude` }] : []),
   ]
   const cleLignes = lignes.map((l) => l.texte).join('|')
@@ -86,10 +86,10 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
         const haut = Math.max(SEUIL_ALERTE_PCT + 10, ...classement.map((l) => l.proba_chute_pct ?? 0))
         return (
           <TableauDeBord titre={`Récolte ${annee} · risque de chute, vu à ${nomMoment(moment)}`} tuiles={[
-            { valeur: n, libelle: `départements en alerte (prévision fiable, risque ≥ ${SEUIL_ALERTE_PCT} %)`, etat: n ? 'non' : 'ok' },
+            { valeur: n, libelle: `départements en alerte : la récolte risque de baisser beaucoup (au moins ${SEUIL_ALERTE_PCT} %)`, etat: n ? 'non' : 'ok' },
             { valeur: ne, libelle: 'au risque habituel élevé, sans prévision de l’année', etat: ne ? 'attention' : 'ok' },
             { valeur: premier ? pct(premier.proba_chute_pct) : '—', libelle: premier ? `risque le plus haut : ${premier.departement} (${libelle(premier.culture).toLowerCase()})` : 'aucun risque calculé', etat: premier && estAlerte(premier) ? 'non' : 'info' },
-            { valeur: classement.length, libelle: `départements avec une série de rendement (${sansSerie.length} sans)`, etat: 'info' },
+            { valeur: classement.length, libelle: `départements avec une série de récolte par hectare (${sansSerie.length} sans)`, etat: 'info' },
           ]}>
             <ColonnesDepartements code={code} choisir={cadre.choisir} max={haut}
               seuil={{ valeur: SEUIL_ALERTE_PCT, libelle: `seuil d'alerte (${SEUIL_ALERTE_PCT} %)` }}
@@ -99,7 +99,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
               elements={[
                 ...classement.map((l) => ({ code: l.code_departement, nom: l.departement, valeur: l.proba_chute_pct, couleur: couleurChute(l.proba_chute_pct), marque: estAlerte(l),
                   detail: `${pct(l.proba_chute_pct)} de risque (${libelle(l.culture).toLowerCase()}), habituel ${pct(l.proba_chute_reference_pct)}${estAlerte(l) ? ' · ALERTE fiable' : risqueHabituelEleve(l) ? ' · risque habituel élevé' : ''}` })),
-                ...sansSerie.map((d) => ({ code: d.code_departement, nom: d.departement, valeur: null, couleur: NON_DISPONIBLE, detail: 'pas de série de rendement' })),
+                ...sansSerie.map((d) => ({ code: d.code_departement, nom: d.departement, valeur: null, couleur: NON_DISPONIBLE, detail: 'pas de série de récolte par hectare' })),
               ]} />
           </TableauDeBord>
         )
@@ -110,12 +110,12 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
         departements: requete.data ? new Map(cadre.ref.departements.map((d) => [d.code_departement, { couleur: parCode.has(d.code_departement) ? eclaircir(couleurChute(parCode.get(d.code_departement)!.proba_chute_pct), 0.5) : NON_DISPONIBLE }])) : null,
       },
       legende: <Degrade titre="Risque de chute de récolte" gauche="5 %" droite="65 %" degrade={degrade((v) => eclaircir(couleurChute(v), 0.5), 5, 65)}
-        note={`Rouge qui bat : alerte, risque d'au moins ${SEUIL_ALERTE_PCT} % avec une prévision fiable. Sans prévision fiable, la couleur montre le risque habituel. Gris : pas de série de rendement.`} />,
+        note={`Rouge qui bat : alerte, risque d'au moins ${SEUIL_ALERTE_PCT} % avec une prévision fiable. Sans prévision fiable, la couleur montre le risque habituel. Gris : pas de série de récolte par hectare.`} />,
       infobulle: (c) => {
         const l = parCode.get(c)
         const nom = cadre.ref.departements.find((d) => d.code_departement === c)?.departement ?? c
         const statut = l && estAlerte(l) ? 'ALERTE · ' : l && risqueHabituelEleve(l) ? 'Risque habituel élevé · ' : ''
-        return { titre: nom, lignes: l ? [`${statut}${libelle(l.culture)} : ${pct(l.proba_chute_pct)} de risque`, `Habituel : ${pct(l.proba_chute_reference_pct)}`] : ['Pas de série de rendement'] }
+        return { titre: nom, lignes: l ? [`${statut}${libelle(l.culture)} : ${pct(l.proba_chute_pct)} de risque`, `Habituel : ${pct(l.proba_chute_reference_pct)}`] : ['Pas de série de récolte par hectare'] }
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` est résumé par `cleLignes`
@@ -132,9 +132,9 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
       teinte={fiche ? teinteChute(fiche.proba_chute_pct) : undefined}
       etat={<>
         <p className="mt-1.5 text-xs leading-relaxed text-white/60">Récolte {annee}, vu à {nomMoment(moment)} : risque d'au moins {SEUIL_ALERTE_PCT} % de chuter sous 80 % de l'habituel.</p>
-        {cadre.culture && culture === TOUTES && <p className="mt-1 text-xs text-white/60">{libelle(cadre.culture)} n'est pas couvert par le modèle 3 : culture la plus exposée.</p>}
+        {cadre.culture && culture === TOUTES && <p className="mt-1 text-xs text-white/60">{libelle(cadre.culture)} n'est pas couvert par l’estimation 3 : culture la plus exposée.</p>}
         <Attente etat={etat} objet={`la récolte ${annee}`} lignes={4} />
-        {etat === 'ok' && code && !fiche && <p className="mt-2 text-sm text-white/60">Pas de série de rendement dans ce département pour cette sélection.</p>}
+        {etat === 'ok' && code && !fiche && <p className="mt-2 text-sm text-white/60">Pas de série de récolte par hectare dans ce département pour cette sélection.</p>}
       </>}
       detail={classement.length > 0 ? <>
         {fiche && (
@@ -148,7 +148,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
             <Groupe titre={`Récolte attendue · ${libelle(fiche.culture).toLowerCase()}`}>
               <Fourchette bas={fiche.rendement_bas_kg_ha} haut={fiche.rendement_haut_kg_ha} valeur={fiche.rendement_median_kg_ha} repere={fiche.tendance_kg_ha} couleur="var(--color-soleil-500)"
                 description={`Rendement entre ${nombre(fiche.rendement_bas_kg_ha)} et ${nombre(fiche.rendement_haut_kg_ha, { unite: 'kg/ha' })} ; habituel ${nombre(fiche.tendance_kg_ha, { unite: 'kg/ha' })}`} />
-              <p className="mt-1.5 mb-2 text-2xs text-white/60">Bande : année difficile à bonne année · trait : rendement habituel</p>
+              <p className="mt-1.5 mb-2 text-2xs text-white/60">Bande : année difficile à bonne année · trait : la récolte habituelle par hectare</p>
               <Lignes>
                 <Ligne libelle="Fourchette" valeur={fiche.rendement_bas_kg_ha === null || fiche.rendement_haut_kg_ha === null ? 'non disponible' : `${nombre(fiche.rendement_bas_kg_ha)} – ${nombre(fiche.rendement_haut_kg_ha, { unite: 'kg/ha' })}`} detail="8 chances sur 10" />
                 <Ligne libelle="Rendement habituel" valeur={fiche.tendance_kg_ha === null ? 'non disponible' : nombre(fiche.tendance_kg_ha, { unite: 'kg/ha' })} detail="10 campagnes précédentes" />
@@ -182,7 +182,7 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
         )}
         {!fiche && ne > 0 && (
           <Groupe titre="Risque habituel élevé" complement={`${ne}`}>
-            <p className="mb-2 text-2xs leading-snug text-white/60">Vu à {nomMoment(moment)}, le modèle ne fait pas mieux que la fréquence passée : c'est le risque habituel de ces départements, pas une alerte pour {annee}.</p>
+            <p className="mb-2 text-2xs leading-snug text-white/60">Vu à {nomMoment(moment)}, l’estimation ne fait pas mieux que la fréquence passée : c'est le risque habituel de ces départements, pas une alerte pour {annee}.</p>
             <ul className="-mx-2">
               {eleves.map((l) => (
                 <li key={l.code_departement}>
@@ -209,8 +209,8 @@ export default function AlerteRecolte({ cadre, publier }: PropsMode) {
         </Groupe>
         {fiche && <div className="mt-3"><Lien onClick={() => cadre.choisir(null)}>Revenir aux alertes du pays</Lien></div>}
         <MethodeModele cibles={[{ modele: 'M3', moment, culture: culture === TOUTES ? null : culture, volet: 'alerte' }]} avertissements={requete.data?.avertissements}>
-          <p>Indicatif. Alerte : risque d'au moins {SEUIL_ALERTE_PCT} % que le rendement passe sous 80 % de l'habituel (moyenne des 10 campagnes précédentes), <strong>et</strong> prévision fiable : le modèle fait mieux que la fréquence passée pour cette culture à ce moment. Sinon, le risque affiché est le risque habituel du département : il n'est jamais présenté comme une alerte.</p>
-          <p>Le classement vient surtout du niveau et de l'irrégularité des rendements passés. Depuis 2022, aucune récolte observée ne permet de vérifier ces projections.</p>
+          <p>Indicatif. Alerte : risque d'au moins {SEUIL_ALERTE_PCT} % que la récolte par hectare passe sous 80 % de l'habituel (moyenne des 10 campagnes précédentes), <strong>et</strong> prévision fiable : l’estimation fait mieux que la fréquence passée pour cette culture à ce moment. Sinon, le risque affiché est le risque habituel du département : il n'est jamais présenté comme une alerte.</p>
+          <p>Le classement vient surtout du niveau et de l'irrégularité les récoltes passées par hectare. Depuis 2022, aucune récolte observée ne permet de vérifier ces projections.</p>
         </MethodeModele>
       </> : undefined} />
   )

@@ -197,7 +197,7 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
   const lignesFiche: LigneCheck[] = !departement ? [{ etat: 'info', texte: 'Ou choisissez votre département dans la liste, ou touchez votre champ sur la carte' }] : [
     ...(sol && jours !== null ? [{ etat: 'info' as const, texte: jours === 0 ? 'Le sol garde l’eau **moins de 5 jours** sans pluie' : `Le sol garde l’eau **${jours} jours** sans pluie` }] : []),
     ...(tAttendue ? [{ etat: (tAttendue.classe === 'sèche' ? 'attention' : 'ok') as LigneCheck['etat'], texte: `Saison ${annee} : plutôt **${tAttendue.classe}**` }] : []),
-    ...(sol?.amendement_ph_recommande ? [{ etat: 'attention' as const, texte: 'Sol : **amendement du pH** recommandé' }] : []),
+    ...(sol?.amendement_ph_recommande ? [{ etat: 'attention' as const, texte: 'Sol : **à corriger avant de semer** (son acidité ne convient pas aux cultures)' }] : []),
   ]
   const titreFiche = departement ? titre : 'Où est votre champ ?'
   const texteEcoute = aLire(titreFiche, lignesFiche).join('\n')
@@ -294,7 +294,7 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
 
           <LigneFiabilite parties={['Valeurs du département, pas de votre champ au mètre près', natureAnnee(annee, a.aVenir, attendue)]} />
 
-          <Groupe titre={`Campagne ${annee}, selon les modèles`}>
+          <Groupe titre={`Campagne ${annee}, selon les estimations`}>
             {etats.every((e) => e === 'non-chargee') ? <Attente etat="non-chargee" /> : (
               <dl className="-my-2 divide-y divide-white/[0.07]">
                 <Morceau modele="M1" libelle="Saison" valeur={attendue ? `${tendance(attendue)?.texte ?? 'non disponible'}${tendance(attendue) ? `, ${nombre(tendance(attendue)!.proba)} %` : ''}` : vide(etats[0])}>
@@ -337,7 +337,7 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
               <Ligne libelle="Vulnérabilité" valeur={vulnerabilite?.classe_vulnerabilite ? libelle(vulnerabilite.classe_vulnerabilite) : 'non évaluée'}
                 teinte={vulnerabilite?.score_vulnerabilite != null ? teinteVulnerabilite(vulnerabilite.score_vulnerabilite) : undefined} />
               <Ligne libelle="Saisons en alerte sécheresse" valeur={pct(vulnerabilite?.freq_alerte_secheresse_pct)} detail="sur 1991-2020" />
-              <Ligne libelle="Séquence sèche de 15 jours" valeur={pct(vulnerabilite?.proba_sequence_seche_15j_pct)} detail="probabilité par saison" />
+              <Ligne libelle="Séquence sèche de 15 jours" valeur={pct(vulnerabilite?.proba_sequence_seche_15j_pct)} detail="chance par saison" />
               <Ligne libelle={`Saison ${anneeObservee ?? ''} observée`} valeur={saison?.classe_saison ? libelle(saison.classe_saison) : 'non disponible'}
                 detail={saison?.anomalie_pluie_saison_pct != null ? `${nombre(saison.anomalie_pluie_saison_pct, { unite: '%', signe: true })} de pluie` : undefined} />
             </Lignes>
@@ -353,10 +353,10 @@ export default function Parcelle({ cadre, publier }: PropsMode) {
           <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }, { modele: 'M4' }, { modele: 'M3', moment: 'FIN_MAI', culture: recolte?.culture, volet: 'rendement' }]}
             avertissements={[...(saisonDonnees?.avertissements ?? []), ...(semisDonnees?.avertissements ?? []), ...(recolteDonnees?.avertissements ?? [])]}>
             <p>Sol et risques sont des valeurs du département {departement.departement} (SoilGrids, CHIRPS) : elles ne décrivent pas votre parcelle au mètre près.</p>
-            <p>Le pourcentage d'une culture est la part des années (1991-2020) où la saison des pluies couvre tout son cycle.</p>
-            <p>La vulnérabilité est relative entre départements et indicative.</p>
+            <p>Le pourcentage d'une culture est la part des années (des 30 dernières années) où la saison des pluies couvre tout son cycle.</p>
+            <p>La fragilité est relative entre départements et indicative.</p>
             <p>{position ? `Position : ${position[1].toFixed(4)}° N, ${Math.abs(position[0]).toFixed(4)}° O.` : `Département choisi dans la liste (${departement.departement}), sans position précise du champ.`}</p>
-            <p>Les trois lignes « selon les modèles » viennent de modèles différents, de fiabilité différente : elles se lisent séparément. Semis et récolte portent sur la culture conseillée (celle choisie, sinon la mieux adaptée). Récolte : année difficile à bonne année, 8 chances sur 10, vue fin mai.</p>
+            <p>Les trois lignes « selon les estimations » viennent de estimations différents, de fiabilité différente : elles se lisent séparément. Semis et récolte portent sur la culture conseillée (celle choisie, sinon la mieux adaptée). Récolte : année difficile à bonne année, 8 chances sur 10, vue fin mai.</p>
           </MethodeModele>
         </>
       } />

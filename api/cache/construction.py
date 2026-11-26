@@ -135,6 +135,11 @@ class Index(BaseModel):
     a_opportunites: bool = False
     campagnes_prix: list[int] = []
     a_cadre_harmonise: bool = False
+    # Observatoire (vides tant que MART_OBSERVATOIRE_SERIES n'est pas construit)
+    a_observatoire: bool = False
+    cultures_observatoire: list[str] = []
+    annees_observatoire: list[int] = []
+    zones_observatoire: dict[str, list[str]] = {}  # culture -> codes de zone (pays, régions, départements) ayant des données
 
     def resoudre_culture(self, texte: str) -> str | None:
         cible = normaliser(texte)
@@ -477,6 +482,10 @@ def construire(
     _construire_opportunites(b, opportunites)
     _construire_prix(b, prix)
     _construire_cadre_harmonise(b, cadre)
+    if marts.get("observatoire_series"):
+        from .observatoire import construire_observatoire
+
+        construire_observatoire(b, marts["observatoire_series"], marts.get("observatoire_objectifs", []), index)
     _construire_previsions(b, prefixe_ml or f"{prefixe_source.split('.')[0]}.ML", prev_saison, prev_rendement, semis,
                            evaluation)
     return b.c

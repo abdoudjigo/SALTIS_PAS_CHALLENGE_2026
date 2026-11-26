@@ -2,12 +2,12 @@
 // les icônes grossissent sous le pointeur et chacune ouvre une bulle. Téléphone : une rangée en haut.
 // L'agriculteur lit des questions (« Que semer ? ») ; la fonctionnalité ouverte y ajoute sa réponse en une ligne.
 import clsx from 'clsx'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import type { Fonctionnalite } from '../cadre'
 
 const PORTEE_PX = 120
 
-export function Dock({ fonctionnalites, actif, onChoisir, reponse }: { fonctionnalites: Fonctionnalite[]; actif: string; onChoisir: (id: string) => void; reponse?: string }) {
+export function Dock({ fonctionnalites, actif, onChoisir, reponse, guide, guideCompact, avantDock }: { fonctionnalites: Fonctionnalite[]; actif: string; onChoisir: (id: string) => void; reponse?: string; /** en tête du dock (ONG) : le guide vocal */ guide?: ReactNode; guideCompact?: ReactNode; /** au-dessus du dock (agriculteur) : les deux voix */ avantDock?: ReactNode }) {
   const boutons = useRef(new Map<string, HTMLButtonElement>())
   const intitule = (f: Fonctionnalite) => f.question ?? f.titre
   const reponseDe = (f: Fonctionnalite) => (f.id === actif && reponse ? reponse : null)
@@ -36,12 +36,14 @@ export function Dock({ fonctionnalites, actif, onChoisir, reponse }: { fonctionn
   return (
     <>
       {/* Grand écran */}
-      <nav aria-label="Fonctionnalités" className="pointer-events-none absolute inset-y-0 left-0 z-30 hidden items-center md:flex">
+      <nav aria-label="Fonctionnalités" className="pointer-events-none absolute inset-y-0 left-0 z-30 hidden flex-col items-start justify-center gap-2 md:flex">
+        {avantDock}
         <ul
           className="dock verre-scene pointer-events-auto ml-3 flex flex-col gap-2 rounded-2xl p-2"
           onMouseMove={(e) => grossir(e.clientY)}
           onMouseLeave={() => grossir(null)}
         >
+          {guide}
           {fonctionnalites.map((f, i) => (
             <li key={f.id} className="dock-item relative flex items-center" style={{ animationDelay: `${0.25 + i * 0.06}s` }}>
               <button
@@ -69,6 +71,7 @@ export function Dock({ fonctionnalites, actif, onChoisir, reponse }: { fonctionn
 
       {/* Téléphone */}
       <nav aria-label="Fonctionnalités" className="absolute inset-x-0 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.5rem)] z-30 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] md:hidden">
+        {guideCompact}
         {fonctionnalites.map((f) => (
           <button key={f.id} type="button" onClick={() => onChoisir(f.id)} aria-current={f.id === actif ? 'true' : undefined} aria-label={etiquette(f)}
             className={clsx('verre-scene inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition', f.id === actif ? 'border-soleil-500! bg-soleil-500! text-encre-nuit' : 'text-white')}>

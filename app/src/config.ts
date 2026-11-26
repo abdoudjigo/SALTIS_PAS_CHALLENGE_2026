@@ -29,4 +29,6 @@ export const config = {
   ],
   /** Campagne proposée par défaut dans AgroDistrib : dernière campagne avec des données */
   campagneParDefaut: 2026,
+  /** Année de prévision ouverte par défaut sur la carte (jamais avant la première année à venir) */
+  anneePrevisionParDefaut: 2027,
 } as const

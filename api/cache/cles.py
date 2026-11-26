@@ -113,3 +113,28 @@ def prix_intrants(campagne: int | None) -> str:
 
 def cadre_harmonise(code: str | None) -> str:
     return f"cadre-harmonise:{code or TOUTES}"
+
+
+# ---- Observatoire Sénégal 2050
+def obs_filtres() -> str:
+    return "obs:filtres"
+
+
+def obs_indicateurs(annee: int, culture: str, zone: str) -> str:
+    return f"obs:indicateurs:{annee}:{culture}:{zone}"
+
+
+def obs_serie(culture: str, zone: str, indicateur: str) -> str:
+    return f"obs:serie:{culture}:{zone}:{indicateur}"
+
+
+def obs_carte(annee: int, culture: str, indicateur: str) -> str:
+    return f"obs:carte:{annee}:{culture}:{indicateur}"
+
+
+def obs_classement(annee: int, culture: str, indicateur: str) -> str:
+    return f"obs:classement:{annee}:{culture}:{indicateur}"
+
+
+def obs_objectifs(culture: str | None, national: bool) -> str:
+    return f"obs:objectifs:{culture or TOUTES}:{'pays' if national else 'infra'}"

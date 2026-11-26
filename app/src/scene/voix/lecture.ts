@@ -8,6 +8,7 @@
 //   les voix robotiques (eSpeak).
 import { useSyncExternalStore } from 'react'
 import { api } from '../../api'
+import { config } from '../../config'
 import { ApiError } from '../../api/client'
 import { suivre } from '../../lib/mesure'
 
@@ -61,27 +62,81 @@ export function decouper(texte: string): string[] {
   })
 }
 
-/** Lit les phrases données, après avoir arrêté toute lecture en cours. */
-export function lire(phrases: string[]) {
-  if (!lectureDisponible) return
+// ---- Voix française : Piper sur le serveur (modèle neuronal, même voix sur tous les navigateurs) ----
+// Phrase par phrase : la phrase suivante est demandée pendant que la première est dite ; une phrase déjà dite est
+// gardée par le navigateur (Cache-Control immutable). Serveur muet ou trop lent : voix du navigateur, sans coupure.
+
+const DELAI_PREMIERE_PHRASE_MS = 6000
+const PAUSE_SERVEUR_MS = 5 * 60_000 // après un échec, on ne réessaie le serveur qu'après ce délai
+let serveurMuetJusqua = 0
+let jeton = 0
+
+export const urlVoixFr = (phrase: string) => `${config.apiUrl}/api/v1/voix/francais?texte=${encodeURIComponent(phrase)}`
+
+/** Demande d'avance une phrase au serveur (elle sera dite sans attente). */
+export function prechargerFr(phrase: string) {
+  if (Date.now() < serveurMuetJusqua || !phrase) return
+  void fetch(urlVoixFr(phrase), { mode: 'no-cors' }).catch(() => undefined)
+}
+
+function lireNavigateur(morceaux: string[], t: number) {
+  if (!lectureDisponible || t !== jeton) return notifier(null)
   const synth = window.speechSynthesis
-  arreter() // une seule voix : coupe aussi le wolof en cours, d'où qu'il vienne (mascotte ou pied de fenêtre)
-  const morceaux = phrases.flatMap(decouper)
-  if (!morceaux.length) return notifier(null)
-  suivre('voix_lue', { langue: 'fr', resultat: 'ok' })
   const voix = meilleureVoix()
   morceaux.forEach((texte, i) => {
     const u = new SpeechSynthesisUtterance(texte)
     u.lang = voix?.lang ?? 'fr-FR'
     if (voix) u.voice = voix
-    u.rate = 0.98
-    if (i === morceaux.length - 1) {
-      u.onend = () => notifier(null)
-      u.onerror = () => notifier(null)
-    }
+    u.rate = 1
+    if (i === morceaux.length - 1) u.onend = u.onerror = () => t === jeton && notifier(null)
     synth.speak(u)
   })
+}
+
+/** Lit les phrases données (déjà écrites pour l'oreille), après avoir arrêté toute lecture en cours. */
+export function lire(phrases: string[]) {
+  arreter() // une seule voix : coupe aussi le wolof en cours, d'où qu'il vienne
+  const morceaux = phrases.flatMap(decouper)
+  if (!morceaux.length) return notifier(null)
+  const t = ++jeton
+  suivre('voix_lue', { langue: 'fr', resultat: 'ok' })
   notifier('fr')
+  if (Date.now() < serveurMuetJusqua) return lireNavigateur(morceaux, t)
+
+  // Un seul élément audio, créé dans le clic : les navigateurs mobiles le laissent ensuite enchaîner les phrases
+  const el = new Audio()
+  audio = el
+  let i = 0
+  let demarre = false
+  const repli = () => {
+    if (t !== jeton) return
+    serveurMuetJusqua = Date.now() + PAUSE_SERVEUR_MS
+    el.onended = el.onerror = el.onplaying = null
+    el.pause()
+    if (audio === el) audio = null
+    lireNavigateur(morceaux.slice(i), t)
+  }
+  const minuteur = window.setTimeout(() => !demarre && repli(), DELAI_PREMIERE_PHRASE_MS)
+  const dire = () => {
+    el.src = urlVoixFr(morceaux[i])
+    if (morceaux[i + 1]) prechargerFr(morceaux[i + 1])
+    void el.play().catch(() => t === jeton && repli())
+  }
+  el.onplaying = () => {
+    demarre = true
+    clearTimeout(minuteur)
+  }
+  el.onended = () => {
+    if (t !== jeton) return
+    i += 1
+    if (i < morceaux.length) dire()
+    else {
+      audio = null
+      notifier(null)
+    }
+  }
+  el.onerror = () => repli()
+  dire()
 }
 
 /** Adresse jouable d'une voix en base64 : mp3 (Space, Adia TTS) ou wav (service « voix » du serveur), reconnus à leurs
@@ -138,9 +193,13 @@ export function surArret(f: () => void) {
 }
 
 export function arreter() {
+  jeton += 1
   autresArrets.forEach((f) => f())
   if (lectureDisponible) window.speechSynthesis.cancel()
-  audio?.pause()
+  if (audio) {
+    audio.onended = audio.onerror = null
+    audio.pause()
+  }
   audio = null
   notifier(null)
 }
@@ -188,20 +247,46 @@ export const culture = {
   },
 }
 
-/** Remplace les sigles et abréviations que la synthèse vocale lit mal. */
+/** Écrit pour l'oreille : unités, sigles, symboles et nombres que la synthèse vocale lit mal (« 65 j » → « 65 jours »,
+ *  « 12 t » → « 12 tonnes », « ≥ 20 % » → « au moins 20 pour cent », « 1 409 120 » lu comme un seul nombre). */
 export function pourLOreille(texte: string): string {
+  const pl = (n: string, un: string, plusieurs: string) => (/^[01](?:,\d+)?$/.test(n) ? un : plusieurs)
   return texte
+    .replace(/\*\*/g, '')
+    .replace(/[«»"]/g, '')
+    // Milliers séparés par des espaces (y compris insécables) : un seul nombre
+    .replace(/(\d)[\s  ](?=\d{3}(?!\d))/g, '$1')
+    .replace(/(\d)[\s  ](?=\d{3}(?!\d))/g, '$1')
+    // Signes et symboles
+    .replace(/≥\s?/g, 'au moins ').replace(/≤\s?/g, 'au plus ').replace(/±\s?/g, 'plus ou moins ')
+    .replace(/\s?×\s?/g, ' fois ').replace(/\s?→\s?/g, ', puis ').replace(/\s?[·•|]\s?/g, ', ')
+    .replace(/(^|[\s(])\+(\d)/g, '$1plus $2').replace(/(^|[\s(])[-−–](\d)/g, '$1moins $2')
+    .replace(/\b(1[89]\d\d|20\d\d)\s?[-–]\s?(1[89]\d\d|20\d\d)\b/g, '$1 à $2')
+    .replace(/(\d)\s?[-–]\s?(\d)/g, '$1 à $2')
+    // Sigles
     .replace(/NPK 15-15-15/g, 'N P K quinze quinze quinze')
-    .replace(/\bNPK\b/g, 'N P K')
-    .replace(/\bDAP\b/g, 'D A P')
-    .replace(/\bONG\b/g, 'O N G')
+    .replace(/\bNPK\b/g, 'N P K').replace(/\bDAP\b/g, 'D A P').replace(/\bONG\b/g, 'O N G').replace(/\bPDF\b/g, 'P D F')
+    .replace(/\bIA\b/g, 'I A').replace(/\bPIA\b/g, 'P I A').replace(/\bCH\b/g, 'Cadre harmonisé').replace(/\bISRA\b/g, 'Isra')
+    .replace(/\bF ?CFA\b/g, 'francs C F A')
+    // Abréviations
+    .replace(/\bn\. ?d\./g, 'non disponible').replace(/\bpers\./g, 'personnes').replace(/\benv\./g, 'environ')
+    .replace(/\bN°\s?/g, 'numéro ').replace(/\b1er\b/g, 'premier').replace(/\b1re\b/g, 'première')
+    // Unités après un nombre
     .replace(/(\d)\s?%/g, '$1 pour cent')
-    .replace(/(\d)\s?mm\b/g, '$1 millimètres')
-    .replace(/(\d)\s?kg\/ha\b/g, '$1 kilos par hectare')
-    .replace(/(\d)\s?kg\b/g, '$1 kilos')
-    // « 1 ha », « 0,5 ha » : hectare au singulier (moins de 2)
-    .replace(/(^|[^\d,])([01](?:,\d+)?)\s?ha\b/g, '$1$2 hectare')
-    .replace(/(\d)\s?ha\b/g, '$1 hectares')
-    .replace(/\s?·\s?/g, ', ')
-    .replace(/\s*\(([^)]+)\)/g, ' $1') // « Mil (souna) » → « Mil souna »
+    .replace(/(\d+(?:,\d+)?)\s?kg\s?\/\s?ha\b/g, '$1 kilos par hectare')
+    .replace(/(\d+(?:,\d+)?)\s?t\s?\/\s?ha\b/g, (_, n) => `${n} ${pl(n, 'tonne', 'tonnes')} par hectare`)
+    .replace(/(\d+(?:,\d+)?)\s?L\s?\/\s?s\b/g, (_, n) => `${n} ${pl(n, 'litre', 'litres')} par seconde`)
+    .replace(/(\d+(?:,\d+)?)\s?m³/g, (_, n) => `${n} ${pl(n, 'mètre cube', 'mètres cubes')}`)
+    .replace(/(\d+(?:,\d+)?)\s?mm\b/g, (_, n) => `${n} ${pl(n, 'millimètre', 'millimètres')}`)
+    .replace(/(\d+(?:,\d+)?)\s?km\b/g, (_, n) => `${n} ${pl(n, 'kilomètre', 'kilomètres')}`)
+    .replace(/(\d+(?:,\d+)?)\s?kg\b/g, (_, n) => `${n} ${pl(n, 'kilo', 'kilos')}`)
+    .replace(/(\d+(?:,\d+)?)\s?ha\b/g, (_, n) => `${n} ${pl(n, 'hectare', 'hectares')}`)
+    .replace(/(\d+(?:,\d+)?)\s?t\b/g, (_, n) => `${n} ${pl(n, 'tonne', 'tonnes')}`)
+    .replace(/(\d+(?:,\d+)?)\s?j\b/g, (_, n) => `${n} ${pl(n, 'jour', 'jours')}`)
+    .replace(/(\d+(?:,\d+)?)\s?h\b/g, (_, n) => `${n} ${pl(n, 'heure', 'heures')}`)
+    .replace(/(\d+(?:,\d+)?)\s?min\b/g, '$1 minutes')
+    .replace(/(\d+(?:,\d+)?)\s?°C/g, '$1 degrés')
+    .replace(/\s?\/\s?100\b/g, ' sur 100').replace(/\s?\/\s?sac\b/g, ' par sac')
+    .replace(/\s*\(([^)]+)\)/g, ', $1,') // « Mil (souna) » → « Mil, souna, » : une petite pause, pas de parenthèse lue
+    .replace(/,\s*([.!?;:])/g, '$1').replace(/\s{2,}/g, ' ').trim()
 }

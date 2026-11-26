@@ -54,12 +54,12 @@ export default function BesoinsPays({ cadre, publier }: PropsMode) {
   const lignes: LigneCheck[] = !territoires ? [] : sansSurface ? [
     { etat: 'info', texte: `${libelleSansSurface} : besoin et budget non calculés` },
   ] : [
-    besoinVu === null ? { etat: 'attention', texte: 'Besoin non calculé : dose à saisir' } : { etat: 'info', texte: `Besoin : **${nombre(nbSacs)} sacs** de 50 kg, soit ${tonnes(besoinVu)}` },
+    besoinVu === null ? { etat: 'attention', texte: 'Besoin non calculé : la quantité par hectare manque' } : { etat: 'info', texte: `Besoin : **${nombre(nbSacs)} sacs** de 50 kg, soit ${tonnes(besoinVu)}` },
     prix.saisi !== null ? { etat: 'info', texte: `Budget à votre prix : **${fcfa(budget(nbSacs, prix.saisi))}** (saisi par vous)` }
-      : prix.cession !== null ? { etat: 'info', texte: `Budget : **${fcfa(budget(nbSacs, prix.cession))}** subventionné, ${fcfa(budget(nbSacs, prix.reel))} en coût réel` }
+      : prix.cession !== null ? { etat: 'info', texte: `Budget : **${fcfa(budget(nbSacs, prix.cession))}** au prix subventionné (${fcfa(budget(nbSacs, prix.reel))} sans l’aide de l’État)` }
         : { etat: 'attention', texte: `Prix ${nom} à saisir : budget non calculé` },
-    couverture === null ? { etat: 'info', texte: 'Pas de superficie de référence ici' }
-      : { etat: couverture >= 100 ? 'ok' : 'attention', texte: `Doses connues pour **${pct(couverture >= 100 ? 100 : Math.floor(couverture))}** des surfaces` },
+    couverture === null ? { etat: 'info', texte: 'Surface cultivée inconnue ici' }
+      : { etat: couverture >= 100 ? 'ok' : 'attention', texte: `Quantité par hectare connue pour **${pct(couverture >= 100 ? 100 : Math.floor(couverture))}** des champs` },
   ]
   const cleLignes = lignes.map((l) => l.texte).join('|')
 
@@ -143,15 +143,6 @@ export default function BesoinsPays({ cadre, publier }: PropsMode) {
         <p className="mt-1.5 text-xs leading-relaxed text-white/60">Besoins de référence (superficies habituelles × doses), pas des besoins prévisionnels.</p>
         {!territoires && <Squelette lignes={4} />}
         {territoires && !connus.length && <Avis>Aucune dose connue pour ce choix : le besoin n'est pas calculé. Il n'est pas nul.</Avis>}
-      </>}
-      detail={territoires ? <>
-        <Groupe titre={`Prix du ${intrant?.nom_intrant ?? 'produit'}`} complement="sac de 50 kg">
-          <Lignes>
-            <Ligne libelle="Prix de cession (subventionné)" valeur={prix.cession === null ? 'à saisir' : fcfa(prix.cession)} />
-            <Ligne libelle="Coût réel (cession + subvention)" valeur={prix.reel === null ? 'à saisir' : fcfa(prix.reel)} />
-            <Ligne libelle="Statut" valeur={prix.statut ? STATUT_PRIX[prix.statut] : 'non disponible'} detail={prix.campagne === null ? 'aucun prix publié' : prix.campagne === annee ? `campagne ${prix.campagne}` : `campagne ${prix.campagne}, dernier prix connu`} />
-          </Lignes>
-          {prix.source && <p className="mt-2 text-2xs leading-snug text-white/60">Source : {prix.source}</p>}
           <Champ libelle="Votre prix d'achat (FCFA / sac de 50 kg)" className="mt-3">
             <input className="champ-scene tabular-nums" inputMode="decimal" placeholder="à saisir" value={saisi ?? ''} aria-invalid={Boolean(saisi?.trim()) && prix.saisi === null}
               onChange={(e) => {
@@ -163,6 +154,15 @@ export default function BesoinsPays({ cadre, publier }: PropsMode) {
                 majDossier({ prix: suite })
               }} />
           </Champ>
+      </>}
+      detail={territoires ? <>
+        <Groupe titre={`Prix du ${intrant?.nom_intrant ?? 'produit'}`} complement="sac de 50 kg">
+          <Lignes>
+            <Ligne libelle="Prix de cession (subventionné)" valeur={prix.cession === null ? 'à saisir' : fcfa(prix.cession)} />
+            <Ligne libelle="Coût réel (cession + subvention)" valeur={prix.reel === null ? 'à saisir' : fcfa(prix.reel)} />
+            <Ligne libelle="Statut" valeur={prix.statut ? STATUT_PRIX[prix.statut] : 'non disponible'} detail={prix.campagne === null ? 'aucun prix publié' : prix.campagne === annee ? `campagne ${prix.campagne}` : `campagne ${prix.campagne}, dernier prix connu`} />
+          </Lignes>
+          {prix.source && <p className="mt-2 text-2xs leading-snug text-white/60">Source : {prix.source}</p>}
           {Boolean(saisi?.trim()) && prix.saisi === null && <p role="alert" className="mt-2 text-xs text-soleil-500">Tapez un prix positif, par exemple 15 000.</p>}
           {prix.saisi !== null && <p className="mt-2 flex items-center gap-2 text-xs text-white/70"><Marque>saisi par vous</Marque>Gardé pour la session et repris dans le dossier exporté.</p>}
           {prix.saisi !== null && nbSacs !== null && (

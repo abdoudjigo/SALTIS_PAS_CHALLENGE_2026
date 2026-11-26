@@ -1,4 +1,4 @@
-# Service « voix » : synthèse wolof SpeechT5 sur le processeur, dans son propre conteneur (audit, constat ARC-02).
+# Service « voix » : synthèse wolof SpeechT5 et française Piper sur le processeur, dans son propre conteneur (audit, constat ARC-02).
 # Seule l'API l'appelle (réseau interne, aucun port publié) : voir api/voix/service.py.
 FROM python:3.12-slim
 
@@ -12,7 +12,7 @@ RUN pip install fastapi "uvicorn[standard]" numpy -r requirements-voix.txt
 
 # Seulement ce qu'il faut pour dire un texte : ni données, ni Snowflake, ni secrets
 COPY api/__init__.py ./api/__init__.py
-COPY api/voix/__init__.py api/voix/tts_local.py api/voix/service.py api/voix/locuteur_wolof.npy ./api/voix/
+COPY api/voix/__init__.py api/voix/tts_local.py api/voix/tts_fr.py api/voix/service.py api/voix/locuteur_wolof.npy ./api/voix/
 
 # Même utilisateur (uid 1000) que l'ancienne image de l'API : le volume des modèles déjà téléchargés est réutilisé
 RUN useradd --create-home saltis && mkdir -p /donnees && chown -R saltis /donnees

@@ -21,7 +21,7 @@ export function Attente({ etat, objet = 'cette sélection', lignes = 4 }: { etat
       <CloudOff className="mt-0.5 size-4 shrink-0 text-white/60" aria-hidden />
       <div>
         <p className="text-sm font-medium text-white">Prévisions pas encore chargées</p>
-        <p className="mt-1 text-xs leading-relaxed text-white/70">Les résultats des modèles ne sont pas encore disponibles ici. Le reste de la plateforme fonctionne normalement.</p>
+        <p className="mt-1 text-xs leading-relaxed text-white/70">Les résultats des estimations ne sont pas encore disponibles ici. Le reste de la plateforme fonctionne normalement.</p>
       </div>
     </div>
   )

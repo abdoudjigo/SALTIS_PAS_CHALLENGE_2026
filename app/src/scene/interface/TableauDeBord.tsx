@@ -3,9 +3,11 @@
 // Le tableau complet reste dans la fenêtre : c'est la vue texte (lecteurs d'écran, chiffres exacts).
 import clsx from 'clsx'
 import { ChevronDown, ChevronUp, LayoutDashboard } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
+import { SignalTableau } from './signalTableau'
 
-const CLE_REDUIT = 'assaman.tableauDeBord.reduit'
+// Jamais ouvert : la barre repliée appelle (pastille qui pulse) jusqu'au premier clic
+const CLE_OUVERT = 'assaman.tableauDeBord.ouvert'
 
 export type EtatTuile = 'non' | 'attention' | 'ok' | 'info'
 const TEINTE_TUILE: Record<EtatTuile, string> = {
@@ -18,9 +20,9 @@ export interface Tuile {
   etat?: EtatTuile
 }
 
-function lireReduit(): boolean {
+function dejaOuvert(): boolean {
   try {
-    return localStorage.getItem(CLE_REDUIT) === '1'
+    return localStorage.getItem(CLE_OUVERT) === '1'
   } catch {
     return false
   }
@@ -37,23 +39,28 @@ function TuileChiffre({ valeur, libelle, etat = 'info' }: Tuile) {
 }
 
 export function TableauDeBord({ titre, tuiles, children }: { titre: string; tuiles: Tuile[]; children?: ReactNode }) {
-  const [reduit, setReduit] = useState(lireReduit)
+  // Replié à l'ouverture de chaque écran
+  const [reduit, setReduit] = useState(true)
+  const [appel, setAppel] = useState(() => !dejaOuvert())
+  const departement = useContext(SignalTableau)
   const basculer = () => {
-    setReduit((r) => {
-      try {
-        localStorage.setItem(CLE_REDUIT, r ? '0' : '1')
-      } catch {
-        /* stockage indisponible : le choix vaut pour la visite */
-      }
-      return !r
-    })
+    setReduit((r) => !r)
+    if (!appel) return
+    setAppel(false)
+    try {
+      localStorage.setItem(CLE_OUVERT, '1')
+    } catch {
+      /* stockage indisponible : l'appel s'arrête pour la visite */
+    }
   }
 
   if (reduit)
     return (
       <button type="button" onClick={basculer} aria-expanded={false}
         className="verre-scene pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-xl px-3.5 text-sm font-medium text-white/85 transition hover:text-white">
-        <LayoutDashboard className="size-4" aria-hidden />Tableau de bord<ChevronUp className="size-4" aria-hidden />
+        {/* key : la pastille rejoue son appel quand le département change */}
+        <span key={departement ?? ''} className={clsx('size-2.5 rounded-full bg-soleil-500', appel ? 'tdb-appel' : 'tdb-une')} aria-hidden />
+        <LayoutDashboard className="size-4" aria-hidden />Tableau de bord du département<ChevronUp className="size-4" aria-hidden />
       </button>
     )
 
@@ -62,7 +69,7 @@ export function TableauDeBord({ titre, tuiles, children }: { titre: string; tuil
       <div className="flex items-center gap-2">
         <LayoutDashboard className="size-3.5 text-white/55" aria-hidden />
         <h2 className="text-2xs font-semibold tracking-etiquette text-white/60 uppercase">{titre}</h2>
-        <button type="button" onClick={basculer} aria-expanded aria-label="Réduire le tableau de bord" title="Réduire le tableau de bord"
+        <button type="button" onClick={basculer} aria-expanded aria-label="Replier le tableau de bord" title="Replier le tableau de bord"
           className="-my-2 -mr-2 ml-auto grid size-11 place-items-center rounded-lg text-white/55 transition hover:text-white">
           <ChevronDown className="size-4" aria-hidden />
         </button>

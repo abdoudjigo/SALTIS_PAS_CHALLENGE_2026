@@ -117,7 +117,7 @@ export const SOUS_TITRE: [RegExp, string][] = [[/O N G/g, 'ONG']]
 
 export const REGLAGES = {
   /** Débit de la voix du navigateur (1 = normal) */
-  debit: 0.9,
+  debit: 1,
   /** Langue demandée à la voix du navigateur */
   langueVoix: 'fr-FR',
   /** Attente maximale de la synthèse wolof du serveur avant de passer à la voix française (elle continue en

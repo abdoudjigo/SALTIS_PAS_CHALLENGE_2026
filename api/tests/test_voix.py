@@ -169,7 +169,7 @@ def test_service_voix(monkeypatch):
     monkeypatch.setenv("VOIX_PRECHARGER", "0")
     monkeypatch.setattr(tts_local, "parler", lambda texte: "UklGRg==" if texte != "échec" else None)
     with TestClient(service.app) as c:
-        assert c.get("/sante").json() == {"pret": False}
+        assert c.get("/sante").json() == {"pret": False, "pret_fr": False}
         assert c.post("/dire", json={"texte": "Nawet bi."}).json() == {"audio_wo_base64": "UklGRg=="}
         assert c.post("/dire", json={"texte": "échec"}).status_code == 503
         assert c.post("/dire", json={"texte": "x" * 701}).status_code == 422

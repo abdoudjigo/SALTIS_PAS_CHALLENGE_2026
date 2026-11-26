@@ -32,7 +32,7 @@ const ECART_PLUIE_PCT = 5
 /** Le niveau d'un signal en pastille de la fiche. */
 const ETAT_NIVEAU: Record<Niveau, EtatLigne> = { rouge: 'non', orange: 'attention', calme: 'ok', inconnu: 'info' }
 type VueEtape = 'priorite' | 'vulnerabilite' | 'ch'
-const VUES: { id: VueEtape; libelle: string }[] = [{ id: 'priorite', libelle: 'Voir : priorité' }, { id: 'vulnerabilite', libelle: 'Voir : vulnérabilité' }, { id: 'ch', libelle: 'Voir : Cadre harmonisé' }]
+const VUES: { id: VueEtape; libelle: string }[] = [{ id: 'priorite', libelle: 'Voir : priorité' }, { id: 'vulnerabilite', libelle: 'Voir : fragilité' }, { id: 'ch', libelle: 'Voir : Cadre harmonisé' }]
 
 interface Dossier {
   code: string
@@ -53,7 +53,7 @@ function raisons(d: Dossier): string[] {
   const r: string[] = []
   if (d.niveaux.ch === 'rouge') r.push(`Cadre harmonisé en ${nomPhase(d.ch)}`)
   if (d.niveaux.recolte === 'rouge' && d.recolte) r.push(`récolte en alerte (${pct(d.recolte.proba_chute_pct)})`)
-  if (d.niveaux.vulnerabilite === 'rouge') r.push('vulnérabilité très élevée')
+  if (d.niveaux.vulnerabilite === 'rouge') r.push('fragilité très élevée')
   if (d.niveaux.pluie === 'rouge') r.push('pluie nettement sous la normale')
   return r
 }
@@ -116,7 +116,7 @@ function ApercuClassements({ priorites, classement, code, choisir }: {
               {topVulnerabilites.map((v, i) => (
                 <li key={v.code_departement}>
                   <button type="button" onClick={() => choisir(v.code_departement)} aria-current={v.code_departement === code ? 'true' : undefined}
-                    aria-label={`${i + 1}. ${v.departement}, score de vulnérabilité ${nombre(v.score_vulnerabilite)} sur 100`}
+                    aria-label={`${i + 1}. ${v.departement}, niveau de fragilité du département ${nombre(v.score_vulnerabilite)} sur 100`}
                     title={v.departement}
                     className={clsx('flex min-h-11 w-full flex-col justify-center gap-1 rounded px-1 text-left transition hover:bg-white/[0.06]', v.code_departement === code && 'bg-white/[0.09] shadow-[inset_2px_0_0_var(--color-soleil-500)]')}>
                     <span className="flex w-full min-w-0 items-center gap-1">
@@ -267,17 +267,17 @@ export default function Campagne({ cadre, publier }: PropsMode) {
   const titre = fiche ? fiche.nom : etat === 'ok' ? `${pluriel(aSurveiller.length, 'département')} à surveiller en ${annee}` : `Campagne ${annee}`
   const lignes: LigneCheck[] = fiche ? [
     !fiche.ch ? { etat: 'info', texte: 'Cadre harmonisé non disponible ici' }
-      : { etat: etatPhase(fiche.ch.phase_retenue), texte: `Cadre harmonisé : **${nomPhase(fiche.ch)}**${fiche.ch.population_phase3_5_retenue !== null ? `, ${nombre(fiche.ch.population_phase3_5_retenue)} pers. en phases 3 à 5` : ''}` },
-    ficheVuln?.score_vulnerabilite == null ? { etat: 'info', texte: 'Vulnérabilité non notée (données insuffisantes)' }
-      : { etat: ETAT_NIVEAU[fiche.niveaux.vulnerabilite], texte: `Vulnérabilité : **${nombre(ficheVuln.score_vulnerabilite)} / 100**${ficheVuln.classe_vulnerabilite ? `, ${libelle(ficheVuln.classe_vulnerabilite).toLowerCase()}` : ''}` },
+      : { etat: etatPhase(fiche.ch.phase_retenue), texte: `Faim (Cadre harmonisé) : **${nomPhase(fiche.ch)}**${fiche.ch.population_phase3_5_retenue !== null ? `, ${nombre(fiche.ch.population_phase3_5_retenue)} personnes qui manquent de nourriture` : ''}` },
+    ficheVuln?.score_vulnerabilite == null ? { etat: 'info', texte: 'Fragilité : non disponible (pas assez de données)' }
+      : { etat: ETAT_NIVEAU[fiche.niveaux.vulnerabilite], texte: `Fragilité : **${nombre(ficheVuln.score_vulnerabilite)} / 100**${ficheVuln.classe_vulnerabilite ? `, ${libelle(ficheVuln.classe_vulnerabilite).toLowerCase()}` : ''}` },
     etat !== 'ok' ? { etat: 'info', texte: `Signaux ${annee} non disponibles` }
       : { etat: fiche.rouges ? 'non' : fiche.oranges ? 'attention' : 'ok', texte: fiche.rouges ? `**${fiche.rouges}** au rouge : ${raisons(fiche).join(', ')}` : fiche.oranges ? `**${fiche.oranges}** ${fiche.oranges > 1 ? 'signaux' : 'signal'} à l’orange, aucun au rouge` : 'Aucun signal au rouge ni à l’orange' },
   ] : [
     !ch ? { etat: 'info', texte: 'Cadre harmonisé non disponible' }
-      : { etat: etatPhase(pirePhase as LigneCadreHarmonise['phase_retenue']), texte: `**${pluriel(crises.length, 'département')}** en phase ${PHASE_CRISE} ou plus ; **${nombre(totalPersonnes)}** personnes en phases 3 à 5${tete.length ? `, surtout ${tete.map((l) => l.departement).join(', ')}` : ''}` },
+      : { etat: etatPhase(pirePhase as LigneCadreHarmonise['phase_retenue']), texte: `**${pluriel(crises.length, 'département')}** en crise alimentaire ou pire (phase ${PHASE_CRISE} ou plus) ; **${nombre(totalPersonnes)}** personnes qui manquent de nourriture${tete.length ? `, surtout ${tete.map((l) => l.departement).join(', ')}` : ''}` },
     etatAlerte !== 'ok' ? { etat: 'info', texte: `Alerte récolte non disponible pour ${annee}` }
-      : nbAlertes ? { etat: 'attention', texte: `**${pluriel(nbAlertes, 'département')}** en alerte récolte (prévision fiable, risque ≥ ${SEUIL_ALERTE_PCT} %)` }
-        : { etat: 'info', texte: `Aucune alerte récolte fiable pour ${annee} : risque habituel seulement` },
+      : nbAlertes ? { etat: 'attention', texte: `**${pluriel(nbAlertes, 'département')}** où la récolte risque de baisser beaucoup` }
+        : { etat: 'info', texte: `Pas d’alerte récolte sûre pour ${annee}` },
     !t ? { etat: 'info', texte: `Saison ${annee} non disponible` }
       : { etat: t.classe === 'sèche' ? 'attention' : 'ok', texte: `Saison la plus probable : **${t.classe}** (${pct(t.proba)} de chances)` },
   ]
@@ -295,7 +295,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
         return [d.code_departement, { couleur: couleurPhase(phases, l?.phase_retenue) }]
       })) : null)
         : etat === 'ok' ? new Map(dossiers.map((d) => [d.code, Object.values(d.niveaux).every((n) => n === 'inconnu') ? { couleur: NON_DISPONIBLE } : { couleur: CARTE[rang(d)], hauteur: 4000 + rang(d) * 22000 }])) : null
-    const legende = vueCarte === 'vulnerabilite' ? { titre: 'Score de vulnérabilité', entrees: vuln.entrees }
+    const legende = vueCarte === 'vulnerabilite' ? { titre: 'Niveau de fragilité du département', entrees: vuln.entrees }
       : vueCarte === 'ch' ? { titre: `Cadre harmonisé · ${periode}`, entrees: entreesCH } : { titre: `À surveiller en ${annee}`, entrees: entreesPriorite }
     return {
       aEcouter: aLire(titre, lignes),
@@ -314,7 +314,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
           `Cadre harmonisé : ${nomPhase(d.ch)}`,
           `Pluie attendue : ${d.pluie ? mm(d.pluie.pluie_prevue_mm) : 'non disponible'}`,
           `Récolte : ${d.recolte ? `${pct(d.recolte.proba_chute_pct)} de risque (${libelle(d.recolte.culture).toLowerCase()})` : 'non disponible'}`,
-          `Vulnérabilité : ${d.vulnerabilite === null ? 'non notée' : `${nombre(d.vulnerabilite)} / 100`}`,
+          `Fragilité : ${d.vulnerabilite === null ? 'non notée' : `${nombre(d.vulnerabilite)} / 100`}`,
         ] }
       },
       // Sur la scène : chiffres clés du pays et matrice des signaux des 45 départements
@@ -335,7 +335,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
       ) : undefined,
       etape: {
         titre, question: questionOng('campagne'), lignes, legende,
-        tableau: { colonnes: ['Département', 'Signaux au rouge', 'Cadre harmonisé', 'Vulnérabilité (/100)'], lignes: aSurveiller.map((d) => [d.nom, raisons(d).join(', ') || '—', nomPhase(d.ch), d.vulnerabilite === null ? 'non notée' : nombre(d.vulnerabilite)]) },
+        tableau: { colonnes: ['Département', 'Signaux au rouge', 'Cadre harmonisé', 'Fragilité (/100)'], lignes: aSurveiller.map((d) => [d.nom, raisons(d).join(', ') || '—', nomPhase(d.ch), d.vulnerabilite === null ? 'non notée' : nombre(d.vulnerabilite)]) },
       },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lignes` est résumé par `cleLignes`
@@ -365,7 +365,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
       <thead>
         <tr className="border-b border-white/[0.09] text-2xs leading-tight text-white/60">
           <th scope="col" className="pb-1.5 text-left font-normal">Département</th>
-          {['Phase CH', 'Pluie attendue (mm)', 'Risque récolte', 'Vulnérabilité (/100)'].map((t) => <th key={t} scope="col" className="w-[3.9rem] px-1 pb-1.5 text-right font-normal">{t}</th>)}
+          {['Phase CH', 'Pluie attendue (mm)', 'Risque récolte', 'Fragilité (/100)'].map((t) => <th key={t} scope="col" className="w-[3.9rem] px-1 pb-1.5 text-right font-normal">{t}</th>)}
         </tr>
       </thead>
       <tbody>{dossiers.map(ligne)}</tbody>
@@ -386,7 +386,7 @@ export default function Campagne({ cadre, publier }: PropsMode) {
       puces={[puceAnnee(cadre, a, fiche?.pluie), puceCulture(cadre, cadre.ref.cultures, cadre.culture, 'Toutes'), puceChoix('vue', 'Voir', VUES, vueCarte, setVue)]}
       etat={<>
         <p className="mt-1.5 text-xs leading-relaxed text-white/60">Cadre harmonisé : {periode}{ch && !chCompteAnnee ? ` · cycle ${cycleCH ?? 'non disponible'}, non compté dans les signaux de ${annee}` : ''}.</p>
-        {cadre.culture && !cultureM3 && <p className="mt-1 text-xs text-white/60">{libelle(cadre.culture)} n'est pas couvert par le modèle 3 : risque de récolte de la culture la plus exposée.</p>}
+        {cadre.culture && !cultureM3 && <p className="mt-1 text-xs text-white/60">{libelle(cadre.culture)} n'est pas couvert par l’estimation 3 : risque de récolte de la culture la plus exposée.</p>}
         <Attente etat={etat} objet={`la campagne ${annee}`} lignes={4} />
       </>}
       detail={<>
@@ -431,8 +431,8 @@ export default function Campagne({ cadre, publier }: PropsMode) {
         {fiche && <div className="mt-3"><Lien onClick={() => cadre.choisir(null)}>Revenir à la liste du pays</Lien></div>}
         <MethodeModele cibles={[{ modele: 'M1', tendance: a.tendance }, { modele: 'M3', moment: 'FIN_MAI', volet: 'alerte' }]} avertissements={[...(saison.data?.avertissements ?? []), ...(alerte.data?.avertissements ?? [])]}>
           <p>Indicatif, à valider avec les techniciens. Les signaux n'ont pas la même fiabilité : ils sont montrés côte à côte et jamais fondus en un seul chiffre. Le classement compte les signaux au rouge.</p>
-          <p>Au rouge : pluie attendue au moins {2 * ECART_PLUIE_PCT} % sous la normale ; risque de chute de récolte d'au moins {SEUIL_ALERTE_PCT} % avec une prévision fiable ; vulnérabilité « très élevée » (relative) ; Cadre harmonisé en phase {PHASE_CRISE} ou plus, compté seulement pour l'année de son cycle. À l'orange : pluie {ECART_PLUIE_PCT} % sous la normale, risque de récolte au-dessus de l'habituel ou d'au moins {SEUIL_ALERTE_PCT} % sans prévision fiable (vu fin mai, c'est le risque habituel du département), vulnérabilité « élevée », phase 2 « sous pression ».</p>
-          <p>Vulnérabilité : score relatif et indicatif (méthode v1), aléa sécheresse 60 %, sensibilité des rendements 40 %.</p>
+          <p>Au rouge : pluie attendue au moins {2 * ECART_PLUIE_PCT} % sous la normale ; risque de chute de récolte d'au moins {SEUIL_ALERTE_PCT} % avec une prévision fiable ; fragilité « très élevée » (relative) ; Cadre harmonisé en phase {PHASE_CRISE} ou plus, compté seulement pour l'année de son cycle. À l'orange : pluie {ECART_PLUIE_PCT} % sous la normale, risque de récolte au-dessus de l'habituel ou d'au moins {SEUIL_ALERTE_PCT} % sans prévision fiable (vu fin mai, c'est le risque habituel du département), vulnérabilité « élevée », phase 2 « sous pression ».</p>
+          <p>Fragilité : score relatif et indicatif (méthode v1), aléa sécheresse 60 %, sensibilité des récoltes par hectare 40 %.</p>
         </MethodeModele>
       </>} />
   )

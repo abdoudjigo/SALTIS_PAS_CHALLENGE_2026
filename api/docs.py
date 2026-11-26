@@ -19,6 +19,7 @@ Plateforme d'aide à la décision agricole au Sénégal — **équipe AKAI**, SA
 | **C** · Besoins | Combien d'intrants, à quel prix ? | `/besoins`, `/prix-intrants` |
 | **D** · AgroDistrib | Comment répartir les intrants ? | `/agrodistrib`, `/vulnerabilite` |
 | **F** · Cadre harmonisé | Où l'insécurité alimentaire est-elle forte ? | `/cadre-harmonise` |
+| **G** · Observatoire | Que produit le Sénégal, où, et où en est-il des objectifs ? | `/observatoire` |
 | **E** · Opportunités | Où semer court ou long, où produire toute l'année, où investir ? | `/opportunites` |
 
 ### Comment les données sont servies
@@ -65,6 +66,10 @@ TAGS = [
     {"name": "F · Cadre harmonisé", "description": "Phase d'insécurité alimentaire (CILSS) par département, dernier cycle "
      "(`MART_CADRE_HARMONISE_DEPARTEMENT`, facultatif : 404 `cadre_harmonise_indisponible`). Licence CC BY. "
      "Couleurs : `/referentiels/phases-cadre-harmonise`."},
+    {"name": "G · Observatoire", "description": "Observatoire Sénégal 2050 : production, superficie et rendement par département, région "
+     "et pays (1981-2021), rendement national FAOSTAT en série distincte, objectifs officiels (SSA, LPSAE). "
+     "`MART_OBSERVATOIRE_SERIES` et `MART_OBSERVATOIRE_OBJECTIFS`, facultatifs : 404 `observatoire_indisponible`. "
+     "Valeur absente = null, jamais 0 ; aucune prévision."},
     {"name": "IA · Prévisions", "description": "Résultats des 3 modèles d'IA (`SALTIS.ML`) : saison qui vient, "
      "rendement et alerte récolte, date de semis, et leur fiabilité. Voir `ml/MODELES.md`."},
     {"name": "IA · Voix", "description": "Question parlée (wolof) ou écrite (français) → réponse courte tirée des données, "
