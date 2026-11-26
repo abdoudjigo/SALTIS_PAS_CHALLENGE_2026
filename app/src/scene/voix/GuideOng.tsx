@@ -2,11 +2,11 @@
 // écoutée, puis à chaque écran ouvert pas encore expliqué. Rien n'est lu sans appui ; un appui pendant la lecture
 // l'arrête. ONG : une voix française. Agriculteur : deux voix côte à côte, française (Garçon) et wolof (Fille).
 import clsx from 'clsx'
-import { Loader2, Square } from 'lucide-react'
+import { Loader2, Pointer, Square } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { EXPLICATION_AGRI } from './guideAgri'
 import { EXPLICATION_ONG, INTRO_ONG } from './guideOng'
-import { arreter, decouper, lectureDisponible, lire, lireWolof, pourLOreille, prechargerFr, useQuiParle } from './lecture'
+import { arreter, decouper, lectureDisponible, lire, lireWolof, phrasesWo, pourLOreille, prechargerFr, prechargerWo, useQuiParle } from './lecture'
 import { Fille, Garcon } from './Mascottes'
 import { MESSAGES } from './voiceMessages'
 
@@ -40,9 +40,11 @@ interface PropsGuide {
   titre: string
   nom: string
   compact?: boolean
+  /** un doigt animé pointe vers le guide tant qu'il a quelque chose de nouveau à dire (agriculteur, wolof) */
+  doigt?: boolean
 }
 
-function Guide({ langue, cleIntro, intro: texteIntro, explication, resume, actif, titre, nom, compact = false }: PropsGuide) {
+function Guide({ langue, cleIntro, intro: texteIntro, explication, resume, actif, titre, nom, compact = false, doigt = false }: PropsGuide) {
   const qui = useQuiParle()
   const [intro, setIntro] = useState(() => lu(cleIntro))
   const [explique, setExplique] = useState<string | null>(null)
@@ -58,15 +60,19 @@ function Guide({ langue, cleIntro, intro: texteIntro, explication, resume, actif
   const Tete = langue === 'fr' ? Garcon : Fille
   const libelle = parle ? `Arrêter ${nom}` : attente ? `${nom} : la voix se prépare` : !intro ? `${nom} : écouter l’introduction` : `${nom} : écouter « ${titre} »`
 
-  // Français : les deux premières phrases de ce qui sera dit au prochain appui sont demandées d'avance au serveur,
-  // pour que la voix parte dès l'appui (et le modèle est chargé avant)
-  const prochain = langue === 'fr' ? (intro ? aDire : texteIntro).slice(0, 2).map(pourLOreille).flatMap(decouper).slice(0, 2) : []
+  // Les deux premières phrases de ce qui sera dit au prochain appui sont demandées d'avance au serveur, pour que la
+  // voix parte dès l'appui. Wolof : toute l'introduction (fixe, calculée une fois pour tous les visiteurs) ; les
+  // résumés changent avec chaque choix, les calculer d'avance occuperait le serveur pour rien.
+  const prochain = langue === 'fr'
+    ? (intro ? aDire : texteIntro).slice(0, 2).map(pourLOreille).flatMap(decouper).slice(0, 2)
+    : intro ? [] : phrasesWo(texteIntro.join(' '))
   const clePrechargement = prochain.join('|')
   useEffect(() => {
     if (!clePrechargement) return
-    const minuteur = window.setTimeout(() => clePrechargement.split('|').forEach(prechargerFr), 800)
+    const phrases = clePrechargement.split('|')
+    const minuteur = window.setTimeout(() => (langue === 'fr' ? phrases.forEach(prechargerFr) : prechargerWo(phrases)), 800)
     return () => clearTimeout(minuteur)
-  }, [clePrechargement])
+  }, [clePrechargement, langue])
 
   const appuyer = async () => {
     if (parle) {
@@ -99,6 +105,11 @@ function Guide({ langue, cleIntro, intro: texteIntro, explication, resume, actif
       <span className="relative inline-flex size-3 rounded-full bg-soleil-500" />
     </span>
   )
+  // Le doigt bouge tant que le guide a du nouveau (introduction pas écoutée, ou écran pas encore lu) ; il disparaît
+  // dès l'appui, et revient quand on ouvre une autre fonctionnalité
+  const main = doigt && signal && !parle && !attente && (
+    <Pointer className={clsx('doigt-guide pointer-events-none shrink-0 -rotate-90 text-soleil-500 drop-shadow', compact ? 'size-5' : 'absolute top-1/2 left-full ml-2 size-7 -translate-y-1/2')} aria-hidden />
+  )
   const voile = (parle || attente) && (
     <span className="absolute inset-0 grid place-items-center bg-encre-nuit/55">
       {attente ? <Loader2 className="size-4 animate-spin text-white" /> : <Square className="size-3 fill-white text-white" />}
@@ -111,7 +122,7 @@ function Guide({ langue, cleIntro, intro: texteIntro, explication, resume, actif
       <button type="button" onClick={() => void appuyer()} disabled={!pret && !parle} aria-label={libelle} title={echec ? 'La voix wolof ne répond pas pour le moment.' : libelle}
         className={clsx('verre-scene relative inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg py-1 pr-3.5 pl-1.5 text-sm font-medium text-white disabled:opacity-40', parle && 'ecoute-en-cours')}>
         <span className="relative size-8 overflow-hidden rounded-full"><Tete />{voile}</span>
-        {nom}{pastille}
+        {nom}{pastille}{main}
       </button>
     )
 
@@ -122,6 +133,7 @@ function Guide({ langue, cleIntro, intro: texteIntro, explication, resume, actif
         <span className="relative size-10 overflow-hidden rounded-full"><Tete />{voile}</span>
         {badge}{pastille}
       </button>
+      {main}
       {echec && <span role="status" className="verre-scene absolute top-0 left-[calc(100%+1.25rem)] z-10 w-56 rounded-lg px-3.5 py-2.5 text-xs text-white/85">La voix wolof ne répond pas pour le moment. Réessayez dans un instant.</span>}
     </div>
   )
@@ -136,7 +148,7 @@ const bulle = (titre: string, texte: string) => (
 
 /** ONG : une voix française, en tête de la liste du dock (compact : en tête de la rangée du téléphone). */
 export function GuideOng({ actif, titre, resume, compact = false }: { actif: string; titre: string; resume?: string[]; compact?: boolean }) {
-  const guide = <Guide langue="fr" cleIntro="assaman.ong.intro.entendue" intro={INTRO_ONG} explication={EXPLICATION_ONG[actif as keyof typeof EXPLICATION_ONG] ?? []} resume={resume} actif={actif} titre={titre} nom="Guide" compact={compact} />
+  const guide = <Guide langue="fr" cleIntro="assaman.ong.intro.entendue" intro={INTRO_ONG} explication={EXPLICATION_ONG[actif as keyof typeof EXPLICATION_ONG] ?? []} resume={resume} actif={actif} titre={titre} nom="Guide" compact={compact} doigt />
   if (compact) return guide
   return (
     <li className="dock-item relative flex items-center border-b border-white/[0.09] pb-2">
@@ -151,7 +163,7 @@ export function GuidesAgri({ actif, titre, fr, wo, compact = false }: { actif: s
   const commun = { actif, titre, compact }
   const voixFr = <Guide langue="fr" cleIntro="assaman.agri.intro.fr" intro={MESSAGES.agriculteur.fr?.phrases ?? []} explication={EXPLICATION_AGRI[actif] ?? []} resume={fr} nom="Français" {...commun} />
   // Wolof : l'introduction est traduite à l'avance ; les écrans sont lus par leur résumé wolof
-  const voixWo = <Guide langue="wo" cleIntro="assaman.agri.intro.wo" intro={MESSAGES.agriculteur.wo?.phrases ?? []} explication={[]} resume={wo} nom="Wolof" {...commun} />
+  const voixWo = <Guide langue="wo" cleIntro="assaman.agri.intro.wo" intro={MESSAGES.agriculteur.wo?.phrases ?? []} explication={[]} resume={wo} nom="Wolof" doigt {...commun} />
   if (compact) return <>{voixFr}{voixWo}</>
   return (
     <div className="dock-item group relative ml-3 flex items-center gap-2 rounded-2xl p-2 verre-scene pointer-events-auto">

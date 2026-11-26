@@ -165,3 +165,19 @@ L'audio est transcrit puis oublié : ni l'API ni le Space ne le conservent. La r
 
 ## Crédits
 M-Kiriku-ASR : AI Hub Senegal (Apache 2.0). Adia TTS : CONCREE (Apache 2.0).
+
+## Guides vocaux : lecture phrase par phrase (français et wolof)
+
+Les guides du dock (agriculteur : Français et Wolof ; ONG : Guide) parlent au clic seulement.
+
+| Langue | Modèle (serveur, processeur) | Route |
+|---|---|---|
+| Français | Piper `fr_FR-siwis-medium` (`VOIX_FR_MODELE`) : ~0,3 à 1 s par phrase | `GET /api/v1/voix/francais?texte=` |
+| Wolof | SpeechT5 wolof `bilalfaye/speecht5_tts-wolof-v0.2` (`VOIX_WO_MODELE`), 2 fils (`VOIX_WO_FILS`) : à peu près au rythme de la parole | `GET /api/v1/voix/wolof?texte=` |
+
+- **Une phrase par requête** (WAV) : la voix part dès la première phrase, au lieu d'attendre le texte entier (avant : ~40 s de calcul pour l'introduction wolof avant le premier mot).
+- **Dans l'ordre** : les phrases suivantes sont demandées d'affilée, l'une après l'autre, pendant que la première est dite.
+- **Cache** : une phrase dite est gardée sur le serveur (`voix/cache`, `wo-*.wav`, `fr-*.wav`) et par le navigateur (`Cache-Control: immutable`). L'introduction wolof est demandée dès l'ouverture de l'espace : après le tout premier visiteur, elle part sans attente.
+- **Même voix à chaque fois** : graine fixe pour SpeechT5 ; durée bornée par phrase (coupe les fins qui traînent).
+- **Testé** (essais mesurés, novembre 2026) : la compression int8 du modèle wolof coupait les phrases (rejetée) ; Adia TTS est trop lent sur processeur ; Kiriku TTS est en accès restreint.
+- **Français, serveur muet** : la voix du navigateur prend le relais. **Wolof, serveur muet** : un message le dit, le texte reste à l'écran.

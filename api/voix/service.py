@@ -5,6 +5,7 @@ Dans le même processus que l'API, elle ralentissait la carte et les fiches pour
 plafonnée (cpus, mem_limit dans docker-compose.prod.yml) et l'API ne fait plus que l'appeler, avec un délai court.
 
     POST /dire   {texte}  → {audio_wo_base64}   une synthèse à la fois ; 503 si occupée ou impossible
+    GET  /dire_wo?texte=  → audio/wav           une phrase wolof (SpeechT5), lecture phrase par phrase
     GET  /dire_fr?texte=  → audio/wav           voix française Piper (deux synthèses à la fois, rapides)
     GET  /sante           → {pret, pret_fr}     modèles déjà chargés en mémoire
 
@@ -40,6 +41,7 @@ app = FastAPI(title="Voix wolof (service interne)", docs_url=None, redoc_url=Non
 _une_a_la_fois = asyncio.Semaphore(1)
 # Français : phrases courtes et rapides, deux à la fois (la phrase dite et la suivante), indépendantes du wolof
 _francais = asyncio.Semaphore(2)
+_wolof = asyncio.Semaphore(2)
 TEXTE_FR_MAX = 400
 
 
@@ -50,6 +52,19 @@ class Texte(BaseModel):
 @app.get("/sante")
 def sante() -> dict:
     return {"pret": tts_local.charge(), "pret_fr": tts_fr.charge()}
+
+
+TEXTE_WO_PHRASE_MAX = 200
+
+
+@app.get("/dire_wo")
+async def dire_wo(texte: str = Query(min_length=1, max_length=TEXTE_WO_PHRASE_MAX)) -> Response:
+    # File d'attente courte : la phrase dite et la suivante (le front ne demande pas plus loin)
+    async with _wolof:
+        audio = await asyncio.to_thread(tts_local.dire_phrase, texte)
+    if not audio:
+        raise HTTPException(503, "echec")
+    return Response(audio, media_type="audio/wav")
 
 
 @app.get("/dire_fr")
