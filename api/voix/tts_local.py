@@ -11,13 +11,20 @@ Les modèles sont téléchargés au premier appel puis gardés en mémoire.
 import base64
 import io
 import logging
+import os
 import threading
 import wave
 from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-MODELE = "bilalfaye/speecht5_tts-wolof"
+# v0.2 : même voix, affinée sur le wolof ET le français (mieux pour « engrais », « conseiller agricole », les mois)
+MODELE = os.environ.get("VOIX_WO_MODELE", "bilalfaye/speecht5_tts-wolof-v0.2")
+# Cœurs de calcul : 2 rend la voix ~1,4 fois plus rapide qu'un seul (mesuré) ; à accorder avec « cpus » du conteneur
+FILS = int(os.environ.get("VOIX_WO_FILS", "2"))
+# Durée maximale d'une phrase, en trames par caractère : coupe le « bafouillage » de fin que SpeechT5 produit parfois
+# (une phrase de 117 caractères dite en 9 s pouvait durer 13 s). 10 laisse environ 0,16 s par caractère.
+DUREE_MAX = 10.0
 VOCODEUR = "microsoft/speecht5_hifigan"
 LOCUTEUR = Path(__file__).with_name("locuteur_wolof.npy")
 FREQUENCE = 16000  # SpeechT5 produit du 16 kHz
@@ -25,6 +32,7 @@ LONGUEUR_PHRASE = 180  # caractères par morceau (limite de texte du modèle)
 
 _modeles = None
 _verrou = threading.Lock()
+_calcul = threading.Lock()  # une synthèse à la fois : les deux cœurs servent la même phrase
 
 
 def disponible() -> bool:
@@ -62,6 +70,7 @@ def _charger():
                 SpeechT5Processor,
             )
 
+            torch.set_num_threads(FILS)
             processeur = SpeechT5Processor.from_pretrained(MODELE)
             modele = SpeechT5ForTextToSpeech.from_pretrained(MODELE).eval()
             vocodeur = SpeechT5HifiGan.from_pretrained(VOCODEUR).eval()
@@ -99,20 +108,38 @@ def _wav(signal) -> bytes:
     return tampon.getvalue()
 
 
+def _signal(phrase: str):
+    """Une phrase → signal 16 kHz. Graine fixe : la même phrase donne toujours la même voix (SpeechT5 tire au sort à
+    chaque pas de décodage), donc le cache sert toujours la même prise."""
+    import numpy as np
+    import torch
+
+    processeur, modele, vocodeur, locuteur = _charger()
+    entree = processeur(text=phrase, return_tensors="pt")
+    with _calcul, torch.inference_mode():
+        # Graine 1 : la prise la plus nette des essais (fin de phrase sans traîne, mesuré sur les phrases d'accueil)
+        torch.manual_seed(1)
+        son = modele.generate_speech(entree["input_ids"], locuteur, vocoder=vocodeur, maxlenratio=DUREE_MAX)
+    # Un court silence au début et à la fin : les phrases s'enchaînent sans se coller
+    blanc = np.zeros(int(0.12 * FREQUENCE), dtype=np.float32)
+    return np.concatenate([blanc, son.numpy(), blanc])
+
+
+def dire_phrase(phrase: str) -> bytes | None:
+    """Une phrase wolof → WAV (lecture phrase par phrase du front). None si la synthèse échoue."""
+    try:
+        return _wav(_signal(phrase.strip()))
+    except Exception as exc:  # noqa: BLE001 — la voix est facultative : le texte wolof reste affiché
+        log.warning("Voix wolof locale impossible : %s", exc)
+        return None
+
+
 def parler(texte: str) -> str | None:
-    """Texte wolof → wav en base64 (None si la synthèse échoue)."""
+    """Texte wolof entier → wav en base64 (ancienne route POST /voix/parler). None si la synthèse échoue."""
     try:
         import numpy as np
-        import torch
 
-        processeur, modele, vocodeur, locuteur = _charger()
-        pause = np.zeros(int(0.3 * FREQUENCE), dtype=np.float32)
-        morceaux = []
-        for phrase in decouper(texte):
-            entree = processeur(text=phrase, return_tensors="pt")
-            with torch.inference_mode():
-                son = modele.generate_speech(entree["input_ids"], locuteur, vocoder=vocodeur)
-            morceaux += [son.numpy(), pause]
+        morceaux = [_signal(phrase) for phrase in decouper(texte)]
         if not morceaux:
             return None
         return base64.b64encode(_wav(np.concatenate(morceaux))).decode()

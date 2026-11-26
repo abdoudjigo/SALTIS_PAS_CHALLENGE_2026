@@ -81,7 +81,8 @@ services:
       start_period: 180s
 
   # Voix wolof (SpeechT5 sur le processeur), à part de l'API : une synthèse ne peut plus ralentir la carte et les fiches.
-  # Un cœur au plus (le VPS en a 2), mémoire bornée, aucun port publié : seule l'API l'appelle (audit, constat ARC-02).
+  # 1,6 cœur au plus (le VPS en a 2) : le wolof calcule sur 2 fils (~1,4 fois plus vite qu'un seul), en laissant de la
+  # marge à l'API, qui sert surtout son cache. Mémoire bornée, aucun port publié : seule l'API l'appelle (ARC-02).
   voix:
     <<: *durcissement
     build:
@@ -93,7 +94,7 @@ services:
     # Réseau « voix » non interne : le premier démarrage télécharge les modèles depuis Hugging Face
     networks: [voix]
     cap_drop: [ALL]
-    cpus: 1.0
+    cpus: 1.6
     mem_limit: 3g
     pids_limit: 200
     healthcheck:

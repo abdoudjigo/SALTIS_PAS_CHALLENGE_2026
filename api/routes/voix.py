@@ -259,3 +259,47 @@ async def parler_francais(request: Request, texte: Annotated[str, Query(min_leng
             vieux.unlink(missing_ok=True)
         fichier.write_bytes(audio)
     return Response(audio, media_type="audio/wav", headers=ENTETES_FR)
+
+
+# ---- Voix wolof phrase par phrase (guides vocaux) -----------------------------------------------------------------
+TEXTE_WO_PHRASE_MAX = 200  # une phrase : le front découpe (lecture.ts, decouper)
+_wolof_phrases = asyncio.Semaphore(2)
+
+
+@voix.get("/wolof", response_class=Response, responses={**reponses_erreurs(429, 503), 200: {"content": {"audio/wav": {}}}},
+          summary="Dire une phrase en wolof (guides vocaux, SpeechT5 wolof)")
+async def parler_wolof_phrase(request: Request, texte: Annotated[str, Query(min_length=1, max_length=TEXTE_WO_PHRASE_MAX)]):
+    """Une phrase wolof en WAV. Le front lit phrase par phrase et demande la suivante pendant que la première est dite :
+    la voix part après une seule phrase calculée, au lieu du texte entier."""
+    nom = tts_local.MODELE.split("/")[-1]
+    fichier = CACHE_VOIX / f"wo-{nom}-{hashlib.sha256(texte.encode()).hexdigest()[:32]}.wav"
+    if fichier.exists():
+        fichier.touch()
+        return Response(fichier.read_bytes(), media_type="audio/wav", headers=ENTETES_FR)
+    limiter(request, "voix_francais")  # même limite que le français : une requête par phrase
+    p = request.app.state.parametres
+    if p.voix_service_url:
+        url = f"{p.voix_service_url.rstrip('/')}/dire_wo"
+
+        def produire(t: str) -> bytes | None:
+            try:
+                with urllib.request.urlopen(f"{url}?{urllib.parse.urlencode({'texte': t})}", timeout=p.voix_service_delai_s) as r:
+                    return r.read()
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                log.warning("Service voix (wolof) injoignable : %s", exc)
+                return None
+    elif tts_local.disponible():
+        produire = tts_local.dire_phrase
+    else:
+        raise ErreurApi(503, "voix_indisponible", "La voix wolof n'est pas installée sur ce serveur. Le texte wolof reste lisible.")
+    async with _wolof_phrases:
+        audio = await asyncio.to_thread(produire, texte)
+    if not audio:
+        raise ErreurApi(503, "voix_indisponible", "La voix wolof n'a pas pu être produite. Réessayez dans un instant.")
+    if p.voix_cache_max_fichiers > 0:
+        CACHE_VOIX.mkdir(parents=True, exist_ok=True)
+        gardes = sorted(CACHE_VOIX.glob("wo-*.wav"), key=lambda f: f.stat().st_mtime)
+        for vieux in gardes[: max(0, len(gardes) - p.voix_cache_max_fichiers + 1)]:
+            vieux.unlink(missing_ok=True)
+        fichier.write_bytes(audio)
+    return Response(audio, media_type="audio/wav", headers=ENTETES_FR)
