@@ -6,12 +6,14 @@ Une donnée absente est dite absente (« non disponible »), jamais inventée ni
 
 import gzip
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from ..cache import cles
 from ..cache.construction import Index
-from .comprendre import Intention
+from . import bulletins as bt
+from .comprendre import Intention, normaliser
 from .nombres import en_lettres
 
 SEUIL_ALERTE_PCT = 40  # même seuil que l'écran « Alerte récolte »
@@ -39,6 +41,8 @@ class Reponse:
     annee: int | None = None
     nature: str | None = None  # prévision océan, de tendance, année passée
     vue: dict[str, Any] = field(default_factory=dict)
+    sources: list[dict[str, str]] = field(default_factory=list)
+    redige_par_ia: bool = False
 
     def en_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -88,10 +92,25 @@ def _demander_departement(i: Intention) -> Reponse:
                    "Ban departemaa ? Waxal ma ko, ni « Kaolack ».", annee=i.annee)
 
 
-async def repondre(i: Intention, index: Index, lecteur: Lecteur) -> Reponse:
+# Rédaction d'une question libre par le modèle de langue (fournie par la route : clé et débit vérifiés), ou None
+Rediger = Callable[[str, list[dict[str, str]]], Awaitable[str | None]]
+
+
+async def repondre(i: Intention, index: Index, lecteur: Lecteur, rediger: Rediger | None = None) -> Reponse:
+    nom = index.departements.get(i.code_departement or "")
+    if i.fonctionnalite in ("aide", "hors_champ", "bulletin", "libre"):
+        if i.fonctionnalite == "aide":
+            r = _aide(i)
+        elif i.fonctionnalite == "hors_champ":
+            r = _hors_champ()
+        elif i.fonctionnalite == "bulletin":
+            r = _bulletin(i, nom)
+        else:
+            r = await _libre(i, rediger)
+        r.vue = {"mode": None, "code_departement": r.code_departement, "culture": r.culture, "annee": r.annee}
+        return _saluer(r, i)
     annee = i.annee or annee_a_venir(index)
     i.annee = annee
-    nom = index.departements.get(i.code_departement or "")
     r: Reponse
     if i.fonctionnalite == "alerte":
         r = await _alerte(i, lecteur)
@@ -104,7 +123,7 @@ async def repondre(i: Intention, index: Index, lecteur: Lecteur) -> Reponse:
     else:
         r = await _saison(i, nom, lecteur)
     r.vue = {"mode": MODES[r.fonctionnalite], "code_departement": r.code_departement, "culture": r.culture, "annee": r.annee}
-    return r
+    return _saluer(r, i)
 
 
 async def _saison(i: Intention, nom: str | None, lecteur: Lecteur) -> Reponse:
@@ -233,3 +252,168 @@ async def _alerte(i: Intention, lecteur: Lecteur) -> Reponse:
         wo = f"Atum {en_lettres(i.annee)}, amul departemaa bu ngóob mi mën a wàññiku lool."
         nature = "projection : risque habituel, pas encore une prévision de l'année"
     return Reponse("alerte", fr, wo, None, None, i.culture, i.annee, nature)
+
+
+# ---- Conversation, bulletins de l'ANACIM, question libre ----
+# Phrases wolof À FAIRE RELIRE par un locuteur de l'équipe.
+
+# Exemples proposés : uniquement des écrans de la plateforme (saison, semis, besoins)
+EXEMPLES_FR = "« Quand semer l'arachide à Kaolack ? », « Comment sera la saison ? », « Combien d'engrais pour 1 hectare de mil à Kaolack ? »"
+EXEMPLES_WO = "« Kañ laa wara ji gerte ci Kaolack ? », « Nawet bi, naka lay mel ? », « Ñaata ndawal laa soxla ngir benn ektaar dugub ci Kaolack ? »"
+
+
+SUJETS_FR = "la saison, les semis, les cultures, les engrais ou les derniers bulletins de l'ANACIM"
+SUJETS_WO = "nawet bi, ji gi, tool yi, ndawal yi walla bulletin yu mujj yi ANACIM génne"
+AIDER_FR = f"Comment puis-je vous aider sur {SUJETS_FR} ?"
+AIDER_WO = f"Lan laa la mana dimbali ci {SUJETS_WO} ?"
+
+
+def _salut_wo(salut: str | None) -> str:
+    return "Maalekum salaam" if salut == "Maalekum salaam" else "Salaam aleekum"
+
+
+def _aide(i: Intention) -> Reponse:
+    """Bonnes manières : on rend le salut, on répond à « ça va ? », on remercie, puis on propose son aide en une phrase."""
+    salut = i.salut or "Bonjour"
+    rendu_fr = f"{i.salut} ! " if i.salut else ""  # « Bonjour, ça va ? » : on rend d'abord le bonjour
+    rendu_wo = f"{_salut_wo(i.salut)} ! " if i.salut else ""
+    if i.politesse == "ca_va":
+        return Reponse("aide", f"{rendu_fr}Je vais bien, merci ! Et vous ? {AIDER_FR}",
+                       f"{rendu_wo}Maa ngi fi rekk, alxamdulilaa ! Yow nag ? {AIDER_WO}")
+    if i.politesse == "merci":
+        return Reponse("aide", "Avec plaisir ! N'hésitez pas si vous avez une autre question.",
+                       "Ñoo ko bokk ! Su am nga beneen laaj, laajal ma.")
+    if i.politesse == "au_revoir":
+        return Reponse("aide", "Au revoir, et bonne saison ! Je reste là si vous avez une question.",
+                       "Ba beneen yoon ! Nawet bu baax. Maa ngi fi su am nga laaj.")
+    if i.politesse == "accord":
+        return Reponse("aide", "Très bien ! Avez-vous une autre question ?", "Baax na ! Am nga beneen laaj ?")
+    if i.politesse == "qui":
+        return Reponse("aide",
+                       f"{rendu_fr}Je suis l'assistant d'Assaman & Suuf. Je réponds à partir des données de la plateforme et des "
+                       "bulletins de l'ANACIM : la saison, la date de semis, la culture à choisir, les besoins en semences et en "
+                       f"engrais, les alertes récolte. Demandez par exemple : {EXEMPLES_FR}.",
+                       f"{rendu_wo}Maa ngi di ndimbalkat bu Assaman & Suuf. Maa ngi tontu ak xibaar yi ci platefoorm bi ak bulletin "
+                       f"yu ANACIM : nawet bi, ji gi, tool yi, ndawal yi, ngóob mi. Laajal ma ni : {EXEMPLES_WO}.")
+    return Reponse("aide", f"{salut}, {AIDER_FR[0].lower()}{AIDER_FR[1:]}", f"{_salut_wo(i.salut)} ! {AIDER_WO}")
+
+
+def _saluer(r: Reponse, i: Intention) -> Reponse:
+    """« Bonjour, quand semer l'arachide ? » : on rend le salut avant de répondre."""
+    if i.salut and r.fonctionnalite != "aide":
+        r.texte_fr = f"{i.salut} ! {r.texte_fr}"
+        r.texte_wo = f"{_salut_wo(i.salut)} ! {r.texte_wo}"
+    return r
+
+
+def _hors_champ() -> Reponse:
+    return Reponse("hors_champ",
+                   "Ce sujet n'est pas couvert par Assaman & Suuf (ravageurs, élevage, fleuves et marchés n'en font pas partie). "
+                   "Je réponds sur la saison des pluies, la date de semis, la culture à choisir, les besoins en semences et en "
+                   f"engrais, et les alertes récolte. Par exemple : {EXEMPLES_FR}.",
+                   "Assaman & Suuf du wax ci loolu. Maa ngi tontu ci nawet bi, ji gi, tool yi, ndawal yi ak ngóob mi. "
+                   f"Laajal ma ni : {EXEMPLES_WO}.")
+
+
+def _source(b: bt.Bulletin, theme: str) -> dict[str, str]:
+    return {"titre": f"Bulletin agrométéorologique de l'ANACIM, décade {b.periode_fr}", "theme": theme, "fichier": b.fichier}
+
+
+# Mots de date : ils choisissent le bulletin, ils ne disent pas de quoi parler
+MOTS_DATE = frozenset(normaliser(m) for m in (*bt.MOIS_FR, *bt.MOIS_WO, "premiere", "deuxieme", "troisieme", "debut", "milieu"))
+
+
+def _precis(question: str) -> set[str]:
+    return {m for m in bt.mots_precis(question) if m not in MOTS_DATE and not m.isdigit()}
+
+
+def _racine(mot: str) -> str:
+    """« chenilles » → « chenill » : le pluriel et le singulier se retrouvent."""
+    return mot[: max(5, len(mot) - 2)]
+
+
+def _phrases_precises(b: bt.Bulletin, theme: str | None, precis: set[str]) -> list[str]:
+    """Les phrases qui citent les mots rares de la question, les plus proches d'abord (« Bakel » pèse plus que « fleuve »)."""
+    sections = bt.THEMES[theme][1] if theme else tuple(b.sections)
+    notees = []
+    for rang, p in enumerate(x for s in sections for x in bt.phrases_gardees(b, s)):
+        texte = normaliser(p)
+        cites = {m for m in precis if _racine(m) in texte}
+        if cites:
+            notees.append((-bt.rarete(cites), rang, p))
+    return [p for *_, p in sorted(notees)]
+
+
+def _bulletin(i: Intention, nom: str | None) -> Reponse:
+    t = normaliser(i.texte)
+    if not bt.disponibles():
+        return Reponse("bulletin", "Les bulletins de l'ANACIM ne sont pas installés sur ce serveur.",
+                       "Bulletin yu ANACIM yi nekkuñu ci serwëer bi.")
+    theme, mois, decade = bt.trouver_theme(t), bt.trouver_mois(t), bt.trouver_decade(t)
+    annee = i.annee_citee
+    b = bt.choisir(annee, mois, decade)
+    if b is None:
+        quand = " ".join(x for x in (bt.MOIS_FR[mois - 1] if mois else "", str(annee) if annee else "") if x) or "cette période"
+        return Reponse("bulletin", f"Pas de bulletin de l'ANACIM pour {quand} : la base couvre {bt.etendue_fr()}.",
+                       f"Amul bulletin ANACIM ci {quand}. Bulletin yi am nañu {bt.etendue_fr()}.", annee=annee)
+    lieux = (nom,) if nom else ()
+    # Les mots du thème lui-même (« conseils », « pluie ») ne précisent rien : tout le thème en parle
+    mots_du_theme = {normaliser(m) for m in bt.THEMES[theme][0]} if theme else set()
+    precis = {m for m in _precis(i.texte) if not any(m.startswith(x) or x.startswith(m) for x in mots_du_theme)}
+    texte = ""
+    if precis:  # « sauteriaux », « chenille légionnaire » : les phrases qui en parlent, du bulletin demandé ou du plus récent qui en parle
+        date_dite = annee is not None or mois is not None or decade is not None
+        candidats = [b] if date_dite else [b, *reversed([x for x in bt.charger() if x is not b])][:12]
+        for c in candidats:
+            precises = _phrases_precises(c, theme, precis)
+            if precises:
+                b, texte = c, bt.couper(precises)
+                break
+    if not texte:
+        theme, texte = bt.extrait(b, theme, lieux)
+    libelle = bt.THEMES_FR.get(theme or "sommaire", "l'essentiel") if theme != "lieu" else (nom or "le lieu demandé")
+    theme_wo = bt.THEMES_WO.get(theme or "sommaire", "li ëpp solo") if theme != "lieu" else (nom or "")
+    entete = f"Bulletin de l'ANACIM du {b.periode_fr.removeprefix('du ')}, {libelle}"
+    if not texte:
+        fr = f"{entete} : rien n'est signalé sur ce sujet."
+    else:
+        fr = f"{entete} : {texte}"
+    wo = (f"Bulletin ANACIM bi ci {b.mois_wo} {b.annee} (décade {b.decade}) wax na ci {theme_wo}. "
+          "Li mu wax ci farañse la bind : déglul ko ci farañse walla jàng ko ci suuf.")
+    return Reponse("bulletin", fr, wo, i.code_departement if nom else None, nom, None, b.annee,
+                   "bulletin ANACIM, texte cité", sources=[_source(b, theme or "sommaire")])
+
+
+COUVERTURE_MIN = 0.5  # part (pondérée par la rareté) des mots précis de la question que le passage doit contenir
+
+
+def _couvre(question: str, passage: str) -> bool:
+    """« Qui a gagné la coupe du monde ? » ne doit pas tomber sur « accessibles à tout le monde » : un seul mot commun
+    ne suffit pas, le passage doit contenir l'essentiel des mots rares de la question."""
+    precis = _precis(question)
+    if not precis:
+        return False
+    texte = normaliser(passage)
+    trouves = {m for m in precis if _racine(m) in texte}
+    return bool(trouves) and bt.rarete(trouves) >= COUVERTURE_MIN * bt.rarete(precis)
+
+
+async def _libre(i: Intention, rediger: Rediger | None) -> Reponse:
+    trouves = [(note, p) for note, p in bt.chercher(i.texte, n=8) if _couvre(i.texte, p.texte)][:4]
+    if not trouves:
+        return Reponse("libre",
+                       "Je n'ai pas trouvé de réponse à cette question dans les données de la plateforme ni dans les bulletins "
+                       f"de l'ANACIM. Essayez par exemple : {EXEMPLES_FR}.",
+                       f"Gisuma tontu laaj boobu ci xibaar yi ma am. Laajal ma ni : {EXEMPLES_WO}.")
+    passages = [{**_source(p.bulletin, p.theme), "extrait": p.texte} for _, p in trouves]
+    sources = list({(x["titre"], x["theme"]): {k: v for k, v in x.items() if k != "extrait"} for x in passages}.values())
+    premier = trouves[0][1]
+    wo = (f"Bulletin ANACIM bi ci {premier.bulletin.mois_wo} {premier.bulletin.annee} wax na ci {bt.THEMES_WO.get(premier.theme, premier.theme)}. "
+          "Tontu bi ci farañse la bind : déglul ko ci farañse walla jàng ko ci suuf.")
+    redige = await rediger(i.texte, passages) if rediger else None
+    if redige:
+        return Reponse("libre", redige, wo, annee=premier.bulletin.annee, nature="rédigé à partir des bulletins ANACIM",
+                       sources=sources, redige_par_ia=True)
+    fr = (f"D'après le bulletin de l'ANACIM du {premier.bulletin.periode_fr.removeprefix('du ')} "
+          f"({bt.THEMES_FR.get(premier.theme, premier.theme)}) : {bt.couper(bt.phrases(premier.texte)) or premier.texte}")
+    return Reponse("libre", fr, wo, annee=premier.bulletin.annee, nature="bulletin ANACIM, texte cité", sources=sources)

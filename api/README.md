@@ -258,7 +258,7 @@ Pour les mettre dans Snowflake (facultatif pour tester) :
 | `POST /voix/question?code_departement=&annee=` | l'audio brut en wolof (30 s au plus) | la transcription, la réponse, et la réponse parlée en wolof |
 | `POST /voix/parler` | `{texte}` : le texte wolof de la fiche affichée, **700 caractères au plus** | la voix wolof (wav, base64) |
 
-`/voix/texte` et `/voix/question` sont **coupées par défaut** (`VOIX_QUESTIONS=false`, réponse `404 fonction_inactive`) : aucun écran ne s'en sert encore. Les ouvrir quand un client existe (site, WhatsApp, serveur vocal).
+`/voix/texte` et `/voix/question` sont **ouvertes par défaut** : l'assistant de la scène (bulle en bas à droite, `docs/technique/assistant.md`) s'en sert. `VOIX_QUESTIONS=false` les coupe (réponse `404 fonction_inactive`). Débit limité par adresse (`LIMITE_VOIX_TEXTE_PAR_MINUTE`, `LIMITE_VOIX_SYNTHESE_PAR_MINUTE`).
 
 `/voix/parler` produit **une voix à la fois** (synthèse locale ou Space), avec au plus 6 demandes en attente (`503 voix_occupee` au-delà), 20 voix nouvelles par minute et par adresse, et un délai de 120 s vers le Space. Les voix produites sont gardées sur disque (`VOIX_CACHE_MAX_FICHIERS`, 400 par défaut) ; au-delà, les moins récemment utilisées sont supprimées.
 

@@ -27,7 +27,8 @@ def test_comprendre_wolof_et_francais():
     i = comprendre("Il me faut combien d'engrais pour 3 hectares de mil à Kolda ?", DEPARTEMENTS)
     assert (i.fonctionnalite, i.culture, i.surface_ha) == ("besoins", "MIL (SOUNA)", 3.0)
     assert comprendre("Quels départements sont en alerte ?", DEPARTEMENTS).fonctionnalite == "alerte"
-    assert comprendre("bonjour", DEPARTEMENTS).fonctionnalite == "saison"  # par défaut : la question centrale
+    assert comprendre("bonjour", DEPARTEMENTS).fonctionnalite == "aide"  # salutation : ce que sait faire l'assistant
+    assert comprendre("Et pour Kolda ?", DEPARTEMENTS).fonctionnalite == "saison"  # un lieu seul : la question centrale
 
 
 def test_texte_saison_et_departement_de_l_ecran(client_ml):  # noqa: F811
