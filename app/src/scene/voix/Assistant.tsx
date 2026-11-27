@@ -1,4 +1,4 @@
-// Assistant de la scène : on pose une question (écrite, ou dite en français au micro du navigateur), en français ou
+// Assistant de la scène : on pose une question (écrite, ou dite au micro : français reconnu par le navigateur, wolof transcrit par le serveur, micro.ts), en français ou
 // en wolof ; la réponse vient des données de la plateforme et des bulletins de l'ANACIM (api/voix/), jamais inventée.
 // Elle est lue à voix haute : français par la voix du navigateur, wolof par la voix de synthèse du serveur (lecture.ts).
 import clsx from 'clsx'
@@ -9,6 +9,7 @@ import { suivre } from '../../lib/mesure'
 import type { ReponseAssistant } from '../../types/assistant'
 import { arreter, decouper, lectureDisponible, lire, lireWolof, pourLOreille, useQuiParle } from './lecture'
 import { langueDe } from './accueil'
+import { DUREE_MAX_MS, enregistrer, microDisponible, type Enregistrement } from './micro'
 import { Fille, Garcon } from './Mascottes'
 import type { ProfilAccueil } from './voiceMessages'
 
@@ -40,8 +41,19 @@ const EXEMPLES: Record<Langue, (lieu: string | null) => string[]> = {
   ],
 }
 const LIBELLES = {
-  fr: { titre: 'Poser une question', placeholder: 'Votre question…', bonjour: 'Bonjour ! Posez votre question sur la saison, les semis, les cultures, les engrais ou les derniers bulletins de l’ANACIM.', envoyer: 'Envoyer', micro: 'Dicter la question', ecouter: 'Écouter la réponse', francais: 'En français' },
-  wo: { titre: 'Laaj ma', placeholder: 'Sa laaj…', bonjour: 'Salaam aleekum ! Laajal ma ci nawet bi, ji gi, tool yi, ndawal yi walla xibaar yu mujj yi ANACIM génne.', envoyer: 'Yónnee', micro: 'Wax sa laaj', ecouter: 'Déglu tontu bi', francais: 'Ci farañse' },
+  fr: { titre: 'Poser une question', placeholder: 'Votre question…', bonjour: 'Bonjour ! Posez votre question sur la saison, les semis, les cultures, les engrais ou les derniers bulletins de l’ANACIM.', envoyer: 'Envoyer', micro: 'Dicter la question', ecouter: 'Écouter la réponse', francais: 'En français',
+    jecoute: 'Je vous écoute…', pasEntendu: 'Je n’ai pas bien entendu. Parlez près du micro, ou écrivez la question.',
+    microIndisponible: 'Le micro ne marche pas pour le moment. Écrivez la question.',
+    microRefuse: 'Le micro n’est pas autorisé. Autorisez-le dans le navigateur, ou écrivez la question.',
+    voixOccupee: 'La voix wolof est très demandée : réessayez dans un instant. Réponse lue en français.',
+    voixMuette: 'La voix wolof ne répond pas pour le moment. Réponse lue en français.' },
+  wo: { titre: 'Laaj ma', placeholder: 'Sa laaj…', bonjour: 'Salaam aleekum ! Laajal ma ci nawet bi, ji gi, tool yi, ndawal yi walla xibaar yu mujj yi ANACIM génne.', envoyer: 'Yónnee', micro: 'Wax sa laaj', ecouter: 'Déglu tontu bi', francais: 'Ci farañse',
+    // Wolof À FAIRE RELIRE par un locuteur
+    jecoute: 'Maa ngi lay déglu… Bësal ko ngir yónnee.', pasEntendu: 'Dégguma la bu baax. Wax ci wetu micro bi, walla bindal sa laaj.',
+    microIndisponible: 'Micro bi doxul léegi. Bindal sa laaj.',
+    microRefuse: 'Micro bi amul ndigal. May ko ci navigateur bi, walla bindal sa laaj.',
+    voixOccupee: 'Baat wolof bi dafa xat léegi, jéemaatal ci kanam. Dinañu ko jàng ci farañse.',
+    voixMuette: 'Baat wolof bi tontuwul léegi. Dinañu ko jàng ci farañse.' },
 } as const
 
 const lireStock = (cle: string) => {
@@ -59,7 +71,8 @@ const stocker = (cle: string, valeur: string) => {
   }
 }
 
-// Reconnaissance vocale du navigateur (Chrome, Edge, Safari) : français seulement, le wolof n'y est pas proposé
+// Reconnaissance vocale du navigateur (Chrome, Edge, Safari) : français seulement, le wolof n'y est pas proposé.
+// En wolof, le micro enregistre et le serveur transcrit (micro.ts)
 type Reconnaissance = { lang: string; interimResults: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void }
 const Reconnaisseur = typeof window !== 'undefined'
   ? ((window as unknown as { SpeechRecognition?: new () => Reconnaissance; webkitSpeechRecognition?: new () => Reconnaissance }).SpeechRecognition
@@ -120,10 +133,13 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
   const [ecoute, setEcoute] = useState(false)
   const [lectureWo, setLectureWo] = useState<number | null>(null) // message dont la voix wolof se prépare
   const [enLecture, setEnLecture] = useState<number | null>(null)
+  const [voixEnPanne, setVoixEnPanne] = useState<{ id: number; texte: string } | null>(null) // pourquoi le wolof n'a pas été dit
   const qui = useQuiParle()
   const fil = useRef<HTMLDivElement>(null)
   const champ = useRef<HTMLInputElement>(null)
   const reconnaissance = useRef<Reconnaissance | null>(null)
+  const enregistrement = useRef<Enregistrement | null>(null)
+  const finEnregistrement = useRef<number | undefined>(undefined)
   const compteur = useRef(0)
   const t = LIBELLES[langue]
 
@@ -144,6 +160,10 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
     if (ouvert) champ.current?.focus()
     else {
       reconnaissance.current?.stop()
+      clearTimeout(finEnregistrement.current)
+      // fenêtre fermée pendant un enregistrement wolof : rien n'est envoyé, le micro est rendu
+      void enregistrement.current?.annuler().then(() => setEcoute(false))
+      enregistrement.current = null
       arreter()
     }
   }, [ouvert])
@@ -151,12 +171,15 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
     if (!m.reponse) return
     if (enLecture === m.id && qui) return arreter()
     setEnLecture(m.id)
+    setVoixEnPanne(null)
     if (l === 'wo') {
       try {
         await lireWolof(m.reponse.texte_wo, () => setLectureWo(m.id))
         return
-      } catch {
-        // voix wolof indisponible (API ou service « voix ») : la réponse est dite en français
+      } catch (e) {
+        // voix wolof indisponible (API ou service « voix ») : on dit pourquoi, et la réponse est dite en français
+        const code = e instanceof ApiError ? (e.details as { erreur?: { code?: string } } | null)?.erreur?.code : undefined
+        setVoixEnPanne({ id: m.id, texte: code === 'voix_occupee' || (e instanceof ApiError && e.status === 429) ? LIBELLES.wo.voixOccupee : LIBELLES.wo.voixMuette })
       } finally {
         setLectureWo(null)
       }
@@ -165,24 +188,36 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
     else setEnLecture(null)
   }, [enLecture, qui])
 
-  const poser = useCallback(async (texte: string) => {
+  /** Une question écrite (texte), ou dite en wolof (wav : le serveur la transcrit, la transcription s'affiche). */
+  const poser = useCallback(async (texte: string, wav?: Blob) => {
     const question = texte.trim()
-    if (question.length < 2 || attente) return
+    if ((!wav && question.length < 2) || attente) return
     arreter()
     const idQuestion = ++compteur.current
-    setMessages((ms) => [...ms, { id: idQuestion, de: 'moi', texte: question }])
+    setMessages((ms) => [...ms, { id: idQuestion, de: 'moi', texte: wav ? '🎤 …' : question }])
     setSaisie('')
     setAttente(true)
     const id = ++compteur.current
+    const lieu = { code_departement: contexte.codeDepartement, annee: contexte.annee }
     try {
-      const reponse = await api.voixTexte({ texte: question, code_departement: contexte.codeDepartement, annee: contexte.annee })
+      const reponse = wav ? await api.voixQuestion(wav, lieu) : await api.voixTexte({ texte: question, ...lieu })
+      if (wav) {
+        // ce que le serveur a entendu : l'utilisateur voit s'il a été bien compris
+        const entendu = reponse.transcription?.trim()
+        setMessages((ms) => ms.map((m) => (m.id === idQuestion ? { ...m, texte: entendu ? `🎤 ${entendu}` : '🎤' } : m)))
+      }
       const message: Message = { id, de: 'assistant', texte: langue === 'wo' ? reponse.texte_wo : reponse.texte_fr, reponse }
       setMessages((ms) => [...ms, message])
       suivre('assistant_question', { langue, sujet: reponse.fonctionnalite, resultat: 'ok', ia: reponse.redige_par_ia })
       if (voix) void ecouter(message, langue)
     } catch (e) {
+      if (wav) setMessages((ms) => ms.map((m) => (m.id === idQuestion ? { ...m, texte: '🎤' } : m)))
       const texteErreur = e instanceof ApiError && e.status === 429
         ? 'Beaucoup de questions en peu de temps : réessayez dans une minute.'
+        : wav && e instanceof ApiError && e.status === 422
+          ? t.pasEntendu
+        : wav && e instanceof ApiError && e.status === 503
+          ? t.microIndisponible
         : e instanceof ApiError && e.status === 404
           ? 'L’assistant n’est pas ouvert sur ce serveur.'
           : 'L’assistant ne répond pas pour le moment (serveur injoignable). Les écrans de la carte restent disponibles.'
@@ -191,9 +226,32 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
     } finally {
       setAttente(false)
     }
-  }, [attente, contexte.codeDepartement, contexte.annee, langue, voix, ecouter])
+  }, [attente, contexte.codeDepartement, contexte.annee, langue, voix, ecouter, t])
+
+  // Wolof : on enregistre (micro.ts) et le serveur transcrit. Second clic, ou 15 s : on envoie
+  const dicterWolof = async () => {
+    if (enregistrement.current) {
+      const enreg = enregistrement.current
+      enregistrement.current = null
+      clearTimeout(finEnregistrement.current)
+      setEcoute(false)
+      const wav = await enreg.arreter().catch(() => null)
+      if (wav) void poser('', wav)
+      return
+    }
+    arreter()
+    try {
+      enregistrement.current = await enregistrer()
+    } catch {
+      setMessages((ms) => [...ms, { id: ++compteur.current, de: 'assistant', texte: t.microRefuse, erreur: true }])
+      return
+    }
+    setEcoute(true)
+    finEnregistrement.current = window.setTimeout(() => void dicterWolof(), DUREE_MAX_MS)
+  }
 
   const dicter = () => {
+    if (langue === 'wo') return void dicterWolof()
     if (!Reconnaisseur) return
     if (ecoute) return reconnaissance.current?.stop()
     arreter()
@@ -259,7 +317,7 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
               <p key={m.id} className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-pluie-500/80 px-3 py-2 text-sm leading-relaxed">{m.texte}</p>
             ) : (
               <MessageAssistant key={m.id} message={m} langue={langue} ecrans={contexte.ecrans} parle={enLecture === m.id && qui !== null}
-                prepare={lectureWo === m.id} onEcouter={() => void ecouter(m, langue)} onVoir={onVoir} libelleEcouter={t.ecouter} libelleFrancais={t.francais} />
+                prepare={lectureWo === m.id} panne={voixEnPanne?.id === m.id ? voixEnPanne.texte : null} onEcouter={() => void ecouter(m, langue)} onVoir={onVoir} libelleEcouter={t.ecouter} libelleFrancais={t.francais} />
             ))}
             {attente && <p className="flex items-center gap-2 text-xs text-white/60"><Loader2 className="size-3.5 animate-spin" aria-hidden />Je cherche dans les données…</p>}
           </div>
@@ -267,9 +325,9 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
           <form onSubmit={envoyer} className="flex items-center gap-1.5 border-t border-white/10 p-2">
             <label htmlFor="assistant-question" className="sr-only">{t.placeholder}</label>
             <input id="assistant-question" ref={champ} value={saisie} onChange={(e) => setSaisie(e.target.value)} maxLength={500}
-              placeholder={ecoute ? 'Je vous écoute…' : t.placeholder} autoComplete="off" enterKeyHint="send"
+              placeholder={ecoute ? t.jecoute : t.placeholder} autoComplete="off" enterKeyHint="send"
               className="min-h-11 min-w-0 flex-1 rounded-xl border border-white/15 bg-encre-nuit/40 px-3 text-sm text-white placeholder:text-white/45 focus:border-white/50 focus:outline-none" />
-            {Reconnaisseur && langue === 'fr' && (
+            {(langue === 'fr' ? Reconnaisseur : microDisponible) && (
               <button type="button" onClick={dicter} aria-pressed={ecoute} aria-label={t.micro} title={t.micro}
                 className={clsx('grid size-11 place-items-center rounded-xl transition', ecoute ? 'ecoute-en-cours bg-alerte-500 text-white' : 'text-white/75 hover:bg-white/10 hover:text-white')}>
                 <Mic className="size-4" aria-hidden />
@@ -284,12 +342,14 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
   )
 }
 
-function MessageAssistant({ message: m, langue, ecrans, parle, prepare, onEcouter, onVoir, libelleEcouter, libelleFrancais }: {
+function MessageAssistant({ message: m, langue, ecrans, parle, prepare, panne, onEcouter, onVoir, libelleEcouter, libelleFrancais }: {
   message: Message
   langue: Langue
   ecrans: string[]
   parle: boolean
   prepare: boolean
+  /** la voix wolof n'a pas pu dire la réponse : pourquoi */
+  panne: string | null
   onEcouter: () => void
   onVoir: (vue: ReponseAssistant['vue']) => void
   libelleEcouter: string
@@ -325,6 +385,7 @@ function MessageAssistant({ message: m, langue, ecrans, parle, prepare, onEcoute
           {r.redige_par_ia && <span title="Texte rédigé par un modèle de langue à partir des extraits cités">· rédigé par IA</span>}
         </div>
       )}
+      {panne && <p role="status" className="pl-1 text-2xs text-soleil-100">{panne}</p>}
       {r?.sources.length ? (
         <p className="pl-1 text-2xs text-white/50">Source : {r.sources[0].titre}{r.sources.length > 1 ? ` (et ${r.sources.length - 1} autre${r.sources.length > 2 ? 's' : ''})` : ''}</p>
       ) : null}

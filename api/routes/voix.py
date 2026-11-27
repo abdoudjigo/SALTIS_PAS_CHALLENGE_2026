@@ -4,7 +4,7 @@ tirée des données de la plateforme, avec la vue de la carte à afficher.
     POST /voix/texte      {texte, code_departement?, annee?}            → réponse (français et wolof)
     POST /voix/question   corps = audio (webm, wav…) ; ?code_departement   → transcription + réponse + voix wolof
 
-La compréhension et les phrases sont dans api/voix/ ; la reconnaissance et la synthèse du wolof dans le Space voix/space/.
+La compréhension et les phrases sont dans api/voix/ ; la reconnaissance et la synthèse du wolof sur le serveur (asr_local, tts_local, service « voix ») ou, si configuré, dans le Space voix/space/.
 """
 
 import asyncio
@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from ..erreurs import ErreurApi, reponses_erreurs
 from ..securite import adresse_client, limiter, lire_corps
-from ..voix import redaction, tts_fr, tts_local
+from ..voix import asr_local, redaction, tts_fr, tts_local
 from ..voix.comprendre import comprendre
 from ..voix.espace import EspaceVoix, VoixIndisponible
 from ..voix.repondre import Lecteur, repondre
@@ -106,6 +106,56 @@ async def question_texte(request: Request, q: QuestionTexte):
     return await _repondre(request, q.texte, q.code_departement, q.annee)
 
 
+_transcriptions = asyncio.Semaphore(1)  # une à la fois : le processeur du serveur n'en tient pas plus
+
+
+async def _transcrire(request: Request, espace: EspaceVoix, audio: bytes, suffixe: str) -> str:
+    """Wolof parlé → texte : par le Space s'il est configuré, sinon par le service « voix » (prod), sinon par l'API
+    elle-même (asr_local, développement)."""
+    p = request.app.state.parametres
+    if p.voix_space:
+        try:
+            return await asyncio.to_thread(espace.transcrire, audio, suffixe)
+        except VoixIndisponible as exc:
+            raise ErreurApi(503, "voix_indisponible", str(exc), "Le texte reste possible : écrivez la question.") from None
+    if suffixe != ".wav":
+        raise ErreurApi(422, "audio_illisible", "Audio WAV attendu.")
+    if p.voix_service_url:
+        url = f"{p.voix_service_url.rstrip('/')}/transcrire_wo"
+
+        def produire(octets: bytes) -> str | None:
+            req = urllib.request.Request(url, data=octets, headers={"Content-Type": "audio/wav"}, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=p.voix_service_delai_s) as r:
+                    return json.loads(r.read())["texte"]
+            except urllib.error.HTTPError as exc:
+                if exc.code == 422:
+                    raise ErreurApi(422, "audio_illisible", "Audio illisible : WAV attendu.") from None
+                log.warning("Service voix (transcription) en erreur : %s", exc)
+                return None
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
+                log.warning("Service voix (transcription) injoignable : %s", exc)
+                return None
+    elif asr_local.disponible():
+        def produire(octets: bytes) -> str | None:
+            try:
+                return asr_local.transcrire(octets)
+            except asr_local.AudioIllisible as exc:
+                raise ErreurApi(422, "audio_illisible", str(exc)) from None
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Reconnaissance wolof locale impossible : %s", exc)
+                return None
+    else:
+        raise ErreurApi(503, "voix_indisponible", "La reconnaissance du wolof n'est pas installée sur ce serveur. Écrivez la question.")
+    if _transcriptions.locked():
+        raise ErreurApi(503, "voix_occupee", "Le micro wolof est très demandé. Réessayez dans un instant.", entetes={"Retry-After": "10"})
+    async with _transcriptions:
+        texte = await asyncio.to_thread(produire, audio)
+    if texte is None:
+        raise ErreurApi(503, "voix_indisponible", "Le wolof parlé n'a pas pu être compris pour le moment. Écrivez la question.")
+    return texte
+
+
 @voix.post("/question", response_model=ReponseVoix, responses=reponses_erreurs(413, 422, 429, 503),
            summary="Répondre à une question parlée en wolof")
 async def question_audio(
@@ -114,8 +164,8 @@ async def question_audio(
     annee: Annotated[int | None, Query(ge=1981, le=2035)] = None,
     parler: Annotated[bool, Query(description="Renvoyer aussi la réponse parlée en wolof")] = True,
 ):
-    """Corps de la requête : l'audio brut (`Content-Type: audio/webm`, `audio/wav`…), 30 s au plus.
-    L'audio est transcrit par le Space « voix wolof » puis oublié : rien n'est conservé."""
+    """Corps de la requête : l'audio brut, 30 s au plus. `audio/wav` (PCM 16 bits, ce qu'envoie le chatbot) partout ;
+    les autres formats (`audio/webm`…) seulement avec le Space. L'audio est transcrit puis oublié : rien n'est conservé."""
     _exiger_questions(request)
     limiter(request, "voix_synthese")
     audio = await lire_corps(request, TAILLE_MAX_AUDIO,
@@ -125,10 +175,7 @@ async def question_audio(
     suffixe = {"audio/wav": ".wav", "audio/x-wav": ".wav", "audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/mp4": ".m4a"}.get(
         request.headers.get("content-type", "").split(";")[0], ".webm")
     espace = _espace(request)
-    try:
-        transcription = await asyncio.to_thread(espace.transcrire, audio, suffixe)
-    except VoixIndisponible as exc:
-        raise ErreurApi(503, "voix_indisponible", str(exc), "Voir voix/README.md : déployer le Space et renseigner VOIX_SPACE.") from None
+    transcription = await _transcrire(request, espace, audio, suffixe)
     if not transcription:
         raise ErreurApi(422, "rien_entendu", "Je n'ai rien entendu. Rapprochez-vous du micro et réessayez.")
     reponse = await _repondre(request, transcription, code_departement, annee)

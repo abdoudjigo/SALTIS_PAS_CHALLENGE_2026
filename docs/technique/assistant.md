@@ -1,7 +1,8 @@
 # Assistant de la scène (questions en français ou en wolof)
 
-Bulle flottante en bas à droite de la carte (agriculteur et ONG, `AssistantFlottant`, montée par `pages/Scene.tsx`) ; sur téléphone elle se place au-dessus du tiroir. On écrit une question, ou on la dicte en français
-(reconnaissance vocale du navigateur) ; la réponse s'affiche et se lit à voix haute : français par la voix du navigateur,
+Bulle flottante en bas à droite de la carte (agriculteur et ONG, `AssistantFlottant`, montée par `pages/Scene.tsx`) ; sur téléphone elle se place au-dessus du tiroir. On écrit une question, ou on la dit au micro :
+en français, reconnaissance vocale du navigateur ; en wolof, le navigateur enregistre (`scene/voix/micro.ts`, WAV 16 kHz)
+et le serveur transcrit (`POST /api/v1/voix/question`, `api/voix/asr_local.py`). La transcription s'affiche (« 🎤 … ») ; la réponse s'affiche et se lit à voix haute : français par la voix du navigateur,
 wolof par la voix de synthèse du serveur (`POST /api/v1/voix/parler`, voir `voix/README.md`). Repli en français si la voix
 wolof ne répond pas. Préférences gardées dans le navigateur : `assaman.assistant.langue`, `assaman.assistant.voix`.
 
@@ -37,7 +38,11 @@ Le département et l'année de l'écran servent quand la question n'en cite pas 
   `bulletins.MOTS_HORS_CHAMP`), questions orientées vers `hors_champ` (`comprendre.MOTS_HORS_CHAMP`). Un mot oublié peut laisser
   passer une phrase : compléter ces listes.
 - Recherche par mots : une question vague peut tomber sur un passage voisin. La source est toujours affichée.
-- Pas de dictée en wolof : la reconnaissance du navigateur ne le connaît pas (`/voix/question` existe côté API, via le Space).
+- Micro wolof : modèle `asr-africa/wav2vec2-xls-r-wolof-kallaama-fleurs-51-hours` (Apache 2.0, ~1,3 Go, processeur),
+  dans le service « voix » en production (`/transcrire_wo`), dans l'API en développement. ~3 à 5 s par question sur 2 cœurs, ~6 à 8 s sur le cœur unique du service « voix » en production.
+  Erreurs fréquentes sur les noms de lieux (« Kaolack » → « kaolaat ») : le département affiché à l'écran sert alors.
+  Banc d'essai du 27/11/2026 : Whisper-small wolof aussi juste mais ~25 s par question ; HuBERT (AGPL) et MMS-300m
+  (non commercial) écartés pour leur licence ; Kiriku (Whisper large) trop lourd sans carte graphique.
 - `VOIX_QUESTIONS` est `true` par défaut (audit BE-02 : rouvert depuis que l'assistant existe) ; `false` coupe l'assistant,
   qui répond alors « pas ouvert sur ce serveur ». Débit limité par adresse (`LIMITE_VOIX_TEXTE_PAR_MINUTE`) ; la rédaction par le modèle
   partage la limite `llm` des PDF (au-delà : passage cité).

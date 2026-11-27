@@ -66,14 +66,16 @@ export async function requete<T>(chemin: string, { method = 'GET', params, body,
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = sessionStore.token()
   if (token && !sansJeton) headers.Authorization = `Bearer ${token}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // Un Blob (audio du micro) part tel quel, avec son type ; le reste en JSON
+  const brut = typeof Blob !== 'undefined' && body instanceof Blob
+  if (body !== undefined) headers['Content-Type'] = brut ? body.type || 'application/octet-stream' : 'application/json'
 
   let reponse: Response
   try {
     reponse = await fetch(construireUrl(chemin, params), {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: brut ? body : body !== undefined ? JSON.stringify(body) : undefined,
       signal: controleur.signal,
     })
   } catch (e) {

@@ -172,6 +172,12 @@ export const api = {
   // Assistant de la scène (api/routes/voix.py) : question écrite en français ou en wolof → réponse dans les deux langues
   voixTexte: (q: { texte: string; code_departement: string | null; annee: number | null }) =>
     requete<ReponseAssistant>('/api/v1/voix/texte', { method: 'POST', body: q, sansJeton: true, timeout: 30000 }),
+  // Question parlée en wolof (WAV du micro, micro.ts) → ce que le serveur a entendu + la réponse. La voix de la réponse
+  // est lue ensuite phrase par phrase (lecture.ts), d'où parler=false
+  voixQuestion: (wav: Blob, q: { code_departement: string | null; annee: number | null }) =>
+    requete<ReponseAssistant>('/api/v1/voix/question', {
+      method: 'POST', body: wav, params: { ...q, parler: false }, sansJeton: true, timeout: 60000,
+    }),
 
   // Observatoire Sénégal 2050 (api/routes/observatoire.py). `null` : pas de donnée pour cette zone (404)
   observatoire: {
