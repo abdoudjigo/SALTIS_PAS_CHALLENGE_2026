@@ -27,6 +27,7 @@ import { anneeAVenir } from '../types/previsions'
 import { suivre } from '../lib/mesure'
 import { BandeauAccueil } from '../scene/voix/BandeauAccueil'
 import { GuideOng, GuidesAgri } from '../scene/voix/GuideOng'
+import { codeCulture } from '../observatoire/outils'
 
 // La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
 // données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
@@ -295,6 +296,7 @@ export default function Scene() {
         className="absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+7.25rem)] z-40 md:inset-x-auto md:z-30 md:top-24 md:left-24 md:w-[min(32rem,calc(100vw-336px-10rem))]" />
 
       <Dock fonctionnalites={liste} actif={actif.id} onChoisir={ouvrir} reponse={sortie.resume}
+        lienDonnees={`/observatoire?${new URLSearchParams({ zone: selection ?? 'SEN', ...(culture ? { culture: codeCulture(culture) } : {}) })}`}
         guide={profilAccueil === 'organisation' && large ? <GuideOng actif={actif.id} titre={actif.titre} resume={ecranSortie === actif.id ? sortie.aEcouter : undefined} /> : undefined}
         guideCompact={!large ? (profilAccueil === 'organisation'
           ? <GuideOng compact actif={actif.id} titre={actif.titre} resume={ecranSortie === actif.id ? sortie.aEcouter : undefined} />

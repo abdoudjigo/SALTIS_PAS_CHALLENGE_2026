@@ -66,8 +66,7 @@ function prechargerLesPolices(): Plugin {
 // page HTML par adresse (a-propos.html, methode.html…, 404.html), copie de index.html avec son titre, sa
 // description, ses balises de partage et son adresse canonique. Le contenu reste rendu par React dans le navigateur.
 // Valeurs : src/lib/pages.ts. Service : deploy/Caddyfile (et cleanUrls de vercel.json).
-// Observatoire masqué : ni page générée ni entrée du plan du site
-const TOUTES_LES_PAGES: InfosPage[] = [ACCUEIL, ...Object.values(PAGES).filter((p) => p.chemin !== '/observatoire')]
+const TOUTES_LES_PAGES: InfosPage[] = [ACCUEIL, ...Object.values(PAGES)]
 
 const echapper = (t: string) => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 

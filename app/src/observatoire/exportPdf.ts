@@ -16,7 +16,7 @@ export const nomFichierObservatoire = (e: EtatObservatoire) =>
   `Observatoire_${slug(e.selection.culture)}_${slug(e.libelles.zone)}_${e.selection.annee}.pdf`
 
 /** SVG -> PNG (XMLSerializer, Image, canvas) ; styles calculés recopiés car le SVG sérialisé perd les feuilles de style. */
-async function svgVersPng(svg: SVGSVGElement, largeurPx = 1100): Promise<string | null> {
+export async function svgVersPng(svg: SVGSVGElement, largeurPx = 1100): Promise<string | null> {
   try {
     const cadre = svg.viewBox.baseVal && svg.viewBox.baseVal.width > 0
       ? { w: svg.viewBox.baseVal.width, h: svg.viewBox.baseVal.height }

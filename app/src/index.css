@@ -325,12 +325,3 @@
 .tdb-appel { animation: tdb-pulse 1.2s ease-in-out 3, tdb-rappel 8s ease-in-out 3.6s infinite; }
 .tdb-une { animation: tdb-pulse 1.2s ease-in-out 1; }
 @media (prefers-reduced-motion: reduce) { .tdb-appel, .tdb-une { animation: none; } }
-
-/* Doigt qui pointe vers le guide wolof (agriculteur) : un petit va-et-vient vers le bouton. L'icône est tournée
-   de -90° (rotate, appliqué avant transform) : dans son repère, « vers le haut de l'icône » = vers la gauche à l'écran */
-@keyframes doigt-guide {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-.doigt-guide { animation: doigt-guide 0.9s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .doigt-guide { animation: none; } }

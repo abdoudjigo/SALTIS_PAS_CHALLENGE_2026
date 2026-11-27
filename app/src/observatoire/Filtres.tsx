@@ -12,7 +12,9 @@ function etatAnnee(culture: CultureObs, annee: number) {
   return culture.faostat_annees.includes(annee) ? 'faostat' : 'vide'
 }
 
-export function Filtres({ filtres, selection, culture, zone, changer }: {
+export function Filtres({ filtres, selection, culture, zone, changer, sansAnnee = false }: {
+  /** page « 45 ans » : pas de choix d'année (toute la période est montrée) */
+  sansAnnee?: boolean
   filtres: FiltresObs
   selection: Selection
   culture: CultureObs
@@ -39,7 +41,7 @@ export function Filtres({ filtres, selection, culture, zone, changer }: {
     }
   }, [filtres.zones, recherche, selection.zone])
 
-  const resume = `${selection.annee} · ${nomCulture(culture.culture)} · ${zone.nom}`
+  const resume = `${sansAnnee ? '' : `${selection.annee} · `}${nomCulture(culture.culture)} · ${zone.nom}`
 
   return (
     <div className="obs-barre-filtres" role="region" aria-label="Filtres de l'observatoire">
@@ -51,7 +53,7 @@ export function Filtres({ filtres, selection, culture, zone, changer }: {
         </button>
         <div id={`${id}-filtres`} className={`${ouverte ? 'grid' : 'hidden'} gap-3 pt-3 md:grid md:grid-cols-12 md:items-start md:gap-5 md:pt-0`}>
           {/* Année */}
-          <div className="md:col-span-5">
+          {!sansAnnee && <div className="md:col-span-5">
             <label htmlFor={`${id}-annee`} className="flex items-baseline justify-between text-xs font-semibold tracking-wide uppercase obs-doux">
               <span>Année</span>
               <span className="text-lg font-semibold tracking-normal normal-case" style={{ color: 'var(--obs-marine)' }}>{selection.annee}</span>
@@ -71,10 +73,10 @@ export function Filtres({ filtres, selection, culture, zone, changer }: {
             <p id={`${id}-aide-annee`} className="mt-1 min-h-4 text-xs obs-doux">
               {aideAnnee ?? `${annees[0]} → ${annees[annees.length - 1]} ; par département jusqu'en ${filtres.derniere_annee_departements}`}
             </p>
-          </div>
+          </div>}
 
           {/* Culture */}
-          <div className="md:col-span-3">
+          <div className={sansAnnee ? 'md:col-span-5' : 'md:col-span-3'}>
             <label htmlFor={`${id}-culture`} className="text-xs font-semibold tracking-wide uppercase obs-doux">Culture</label>
             <select id={`${id}-culture`} className="obs-champ" value={selection.culture} aria-describedby={`${id}-aide-culture`}
               onChange={(e) => changer({ culture: e.target.value })}>
@@ -86,7 +88,7 @@ export function Filtres({ filtres, selection, culture, zone, changer }: {
           </div>
 
           {/* Zone, avec recherche */}
-          <div className="md:col-span-4">
+          <div className={sansAnnee ? 'md:col-span-7' : 'md:col-span-4'}>
             <label htmlFor={`${id}-zone`} className="text-xs font-semibold tracking-wide uppercase obs-doux">Zone</label>
             <div className="flex gap-2">
               <input type="search" className="obs-champ max-w-[40%]" placeholder="Rechercher" value={recherche}
