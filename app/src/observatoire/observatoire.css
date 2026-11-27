@@ -92,3 +92,18 @@
   .obs-entree { animation: none; }
   .obs-dep, .obs-barre { transition: none; }
 }
+
+/* Page « 45 ans de données » : les blocs apparaissent en douceur, l'un après l'autre */
+@keyframes c45-entree { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.c45-entree { animation: c45-entree 0.5s ease-out both; }
+.c45-case { transition: opacity 0.15s; }
+.c45-grille:hover .c45-case { opacity: 0.55; }
+.c45-grille .c45-case:hover { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .c45-entree { animation: none; } .c45-case { transition: none; } }
+/* Cartes en relief : elles se soulèvent sous la souris ; l'année choisie ressort de la frise */
+.c45-relief { box-shadow: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 1px 2px rgb(31 68 102 / 0.06), 0 8px 24px -12px rgb(31 68 102 / 0.25); transition: transform 0.2s, box-shadow 0.2s; }
+.c45-relief:hover { transform: translateY(-3px); box-shadow: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 2px 4px rgb(31 68 102 / 0.08), 0 18px 36px -14px rgb(31 68 102 / 0.35); }
+.c45-annee { transition: transform 0.15s, box-shadow 0.15s; }
+.c45-annee:hover { transform: translateY(-3px) scale(1.08); }
+.c45-annee[aria-pressed='true'] { transform: translateY(-5px) scale(1.18); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1f4466, 0 10px 18px -6px rgb(31 68 102 / 0.5); z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .c45-relief, .c45-relief:hover, .c45-annee, .c45-annee:hover { transition: none; transform: none; } }

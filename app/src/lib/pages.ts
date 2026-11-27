@@ -48,8 +48,8 @@ export const PAGES = {
   },
   observatoire: {
     chemin: '/observatoire',
-    titre: 'Observatoire Sénégal 2050',
-    description: "Production, superficie et rendement des cultures du Sénégal par département depuis 1981, et objectifs officiels de souveraineté alimentaire.",
+    titre: "45 ans de climat et d'agriculture au Sénégal (1981-2025)",
+    description: "La pluie de chaque saison dans les 45 départements du Sénégal depuis 1981, les saisons sèches et la récolte par hectare.",
     priorite: '0.9',
   },
   contact: {
