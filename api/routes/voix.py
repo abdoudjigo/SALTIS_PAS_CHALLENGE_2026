@@ -21,8 +21,8 @@ from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from ..erreurs import ErreurApi, reponses_erreurs
-from ..securite import limiter, lire_corps
-from ..voix import tts_fr, tts_local
+from ..securite import adresse_client, limiter, lire_corps
+from ..voix import redaction, tts_fr, tts_local
 from ..voix.comprendre import comprendre
 from ..voix.espace import EspaceVoix, VoixIndisponible
 from ..voix.repondre import Lecteur, repondre
@@ -53,7 +53,7 @@ class QuestionTexte(BaseModel):
 
 class ReponseVoix(BaseModel):
     transcription: str | None = Field(None, description="Ce que la reconnaissance vocale a entendu (wolof)")
-    fonctionnalite: str = Field(description="saison, semis, culture, besoins ou alerte")
+    fonctionnalite: str = Field(description="saison, semis, culture, besoins, alerte, bulletin, aide, libre ou hors_champ")
     texte_fr: str
     texte_wo: str = Field(description="Réponse en wolof (phrases types, à faire relire par un locuteur)")
     code_departement: str | None = None
@@ -62,6 +62,8 @@ class ReponseVoix(BaseModel):
     annee: int | None = None
     nature: str | None = Field(None, description="prévision océan, prévision de tendance, année passée…")
     vue: dict[str, Any] = Field(description="Ce que le front affiche : bouton, département, culture, année")
+    sources: list[dict[str, str]] = Field(default_factory=list, description="Bulletins de l'ANACIM cités (titre, thème, fichier)")
+    redige_par_ia: bool = Field(False, description="Vrai si le modèle de langue a rédigé le texte français à partir des sources")
     audio_wo_base64: str | None = Field(None, description="Réponse parlée en wolof (wav, base64), si la synthèse a réussi")
 
 
@@ -84,7 +86,15 @@ async def _repondre(request: Request, texte: str, code_departement: str | None, 
     intention = comprendre(texte, index.departements)
     intention.code_departement = intention.code_departement or (code_departement if code_departement in index.departements else None)
     intention.annee = intention.annee or annee
-    return (await repondre(intention, index, Lecteur(cache, version))).en_dict()
+    p = request.app.state.parametres
+
+    async def rediger(question: str, passages: list[dict[str, str]]) -> str | None:
+        # Sans clé, ou au-delà du débit « llm » (partagé avec les PDF) : None, le passage est cité tel quel
+        if not p.llm_api_key.get_secret_value() or request.app.state.limites["llm"].attente(adresse_client(request)):
+            return None
+        return await asyncio.to_thread(redaction.rediger, p, question, passages)
+
+    return (await repondre(intention, index, Lecteur(cache, version), rediger)).en_dict()
 
 
 @voix.post("/texte", response_model=ReponseVoix, responses=reponses_erreurs(429, 503), summary="Répondre à une question écrite")

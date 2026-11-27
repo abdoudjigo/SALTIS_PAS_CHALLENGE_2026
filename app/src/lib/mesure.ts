@@ -17,6 +17,7 @@ export const EVENEMENTS = [
   'avis_erreur',
   'carte_indisponible', // pas de carte 3D (WebGL absent ou erreur)
   'hors_ligne', // bandeau hors ligne ou serveur muet affiché
+  'assistant_question', // question à l'assistant : langue, sujet compris, résultat (jamais le texte)
 ] as const
 export type Evenement = (typeof EVENEMENTS)[number]
 

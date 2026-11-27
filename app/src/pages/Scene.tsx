@@ -28,6 +28,8 @@ import { suivre } from '../lib/mesure'
 import { BandeauAccueil } from '../scene/voix/BandeauAccueil'
 import { GuideOng, GuidesAgri } from '../scene/voix/GuideOng'
 import { codeCulture } from '../observatoire/outils'
+import { AssistantFlottant } from '../scene/voix/Assistant'
+import type { ReponseAssistant } from '../types/assistant'
 
 // La carte (Mapbox, ~500 Ko compressés) se télécharge dès l'ouverture de la scène, en même temps que les
 // données : sans cela, son chargement n'aurait commencé qu'après leur arrivée
@@ -249,6 +251,21 @@ export default function Scene() {
       </Suspense>
     </DossierContext.Provider>
   ), [Composant, actif.id, cadre, publier, valeurDossier])
+  // L'assistant : département affiché (ou celui de l'agriculteur) et année de l'écran, si la question n'en cite pas
+  const codeAssistant = selection ?? user?.code_departement ?? null
+  const contexteAssistant = useMemo(() => ({
+    codeDepartement: codeAssistant,
+    nomDepartement: ref?.departements.find((d) => d.code_departement === codeAssistant)?.departement ?? null,
+    annee: cadre?.annee ?? null,
+    ecrans: liste.map((f) => f.id),
+  }), [codeAssistant, ref, cadre?.annee, liste])
+  // « Voir sur la carte » : ouvre l'écran de la réponse avec son département, sa culture et son année
+  const voirReponse = useCallback((v: ReponseAssistant['vue']) => {
+    if (v.code_departement) setSelection(v.code_departement)
+    if (v.culture) setCulture(v.culture)
+    if (v.annee) choisirAnnee(v.annee)
+    if (v.mode) ouvrir(v.mode)
+  }, [choisirAnnee, ouvrir])
   const vue = useMemo<VueCarte | null>(() => (cadre ? { ambiance: 'jour', camera: cadrer.pays(cadre), ...sortie.vue } : null), [cadre, sortie.vue])
 
   return (
@@ -311,6 +328,9 @@ export default function Scene() {
           {sortie.tableauDeBord && <div className="w-full max-w-[64rem]"><SignalTableau.Provider value={selection}>{sortie.tableauDeBord}</SignalTableau.Provider></div>}
         </div>
       )}
+
+      {/* Assistant (questions en français ou en wolof) : bulle en bas à droite, au-dessus du tiroir sur téléphone */}
+      {user && <AssistantFlottant profil={profilAccueil} contexte={contexteAssistant} onVoir={voirReponse} bas={large || !cadre ? 24 : hauteurCran(cran, ecran.h) + 12} />}
 
       {/* La fonctionnalité s'ouvre dans une fenêtre flottante (pop-up), un tiroir sur téléphone */}
       {cadre && (

@@ -79,6 +79,7 @@ Aucune route n'exige d'authentification, à part l'administration : c'est voulu,
 
 ### [BE-02] Routes vocales publiques sans client : `/voix/question` (audio) et `/voix/texte`
 - **Suivi (22/11/2026, après l'audit)** : ✅ Corrigé — réglage `VOIX_QUESTIONS` (faux par défaut) : `/voix/texte` et `/voix/question` répondent `404 fonction_inactive` tant qu'aucun client ne s'en sert. Test : `test_questions_a_la_voix_coupees_par_defaut`. Documenté dans `api/README.md` et `.env.example`.
+- **Suivi (27/11/2026)** : réglage passé à **vrai par défaut**, comme le recommandait le constat, car l'assistant de la scène (bulle en bas à droite) se sert de `/voix/texte`. `/voix/question` s'ouvre aussi (même réglage), limitée par `LIMITE_VOIX_SYNTHESE_PAR_MINUTE`. `VOIX_QUESTIONS=false` referme les deux. Test renommé : `test_questions_a_la_voix_ouvertes_par_defaut_et_coupables`.
 - Sévérité : 🟡 Moyen   Statut : Constaté
 - Où : `api/routes/voix.py:71-110` ; aucune référence dans `app/src` (module 01)
 - Constat : ces deux routes sont en ligne derrière Caddy, que seul `/api/*` filtre. `/voix/question` accepte 5 Mo d'audio et les transmet au Space Hugging Face. Aucun écran ne les appelle.

@@ -29,9 +29,9 @@ class Parametres(BaseSettings):
     voix_service_url: str = ""
     # Délai d'attente d'une synthèse par le service (s) : au-delà, 503 et le texte wolof reste affiché
     voix_service_delai_s: float = Field(90, gt=0, le=170)
-    # Questions posées à la voix (POST /voix/texte, /voix/question) : aucun écran ne s'en sert encore. Coupées par défaut
-    # tant qu'aucun client (site, WhatsApp, serveur vocal) ne les utilise (audit, constat BE-02).
-    voix_questions: bool = False
+    # Questions posées à la voix (POST /voix/texte, /voix/question). Ouvertes par défaut depuis que l'assistant de la
+    # scène s'en sert (audit BE-02 : « rouvrir quand un client existe ») ; false coupe l'assistant.
+    voix_questions: bool = True
 
     # Explications des exports PDF : API compatible OpenAI. Par défaut Groq, offre gratuite (clé sur console.groq.com),
     # modèle « production » ; vide = génération IA désactivée (repères de lecture sans IA).

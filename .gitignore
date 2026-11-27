@@ -26,3 +26,5 @@ venv
 voix/.venv/
 voix/cache/
 .claude/
+# Textes extraits (bulletins ANACIM) et jeux de données de voix : hors Git (docs/technique/assistant.md)
+data/text/

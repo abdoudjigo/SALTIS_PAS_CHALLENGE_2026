@@ -4,6 +4,7 @@
 import { config } from '../config'
 import { sessionStore } from '../auth/session'
 import { cultureMontree, sansCulturesRetirees } from '../lib/cultures'
+import type { ReponseAssistant } from '../types/assistant'
 import type { Session, Utilisateur } from '../types/auth'
 import type {
   CarteOpportunite, Departement, Intrant, LigneBesoin, LigneCadreHarmonise, LigneCarte, LigneChoixCulture, LigneSuivi,
@@ -167,6 +168,10 @@ export const api = {
     // 100 s au plus : l'API abandonne à 90 s (VOIX_SERVICE_DELAI_S) et le modèle est chargé dès le démarrage du
     // service « voix » (audit ARC-02). Au-delà, le texte wolof reste affiché
     requete<{ audio_wo_base64: string }>('/api/v1/voix/parler', { method: 'POST', body: { texte }, sansJeton: true, timeout: 100000 }),
+
+  // Assistant de la scène (api/routes/voix.py) : question écrite en français ou en wolof → réponse dans les deux langues
+  voixTexte: (q: { texte: string; code_departement: string | null; annee: number | null }) =>
+    requete<ReponseAssistant>('/api/v1/voix/texte', { method: 'POST', body: q, sansJeton: true, timeout: 30000 }),
 
   // Observatoire Sénégal 2050 (api/routes/observatoire.py). `null` : pas de donnée pour cette zone (404)
   observatoire: {
