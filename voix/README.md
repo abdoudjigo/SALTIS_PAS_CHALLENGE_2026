@@ -61,13 +61,13 @@ On pose sa question à voix haute ; la plateforme répond avec ses vraies donné
 
 | Profil | Langue | Écoute | Voix de la réponse |
 |---|---|---|---|
-| Agriculteur | **Wolof** | M-Kiriku-ASR (IA Hub Sénégal), dans le Space Hugging Face | Adia TTS (CONCREE), dans le Space |
+| Agriculteur | **Wolof** | wav2vec2 wolof (asr-africa) sur le serveur, `api/voix/asr_local.py` ; ou M-Kiriku-ASR si un Space est configuré | SpeechT5 wolof sur le serveur ; ou Adia TTS dans le Space |
 | ONG et services de l'État | **Français** | Le navigateur (reconnaissance vocale de Chrome, Edge, Safari) | Le navigateur (synthèse vocale) |
 
 ## Comment ça marche
 ```
 Question parlée
-  → transcription (wolof : Space ; français : navigateur)
+  → transcription (wolof : serveur, ou Space s'il est configuré ; français : navigateur)
   → compréhension (api/voix/comprendre.py) : fonctionnalité, département, culture, année, surface
   → réponse (api/voix/repondre.py) : chiffres lus dans le cache de l'API, phrases types en français et en wolof
   → voix (wolof : Space ; français : navigateur) + la carte s'ouvre sur le bon bouton
@@ -151,12 +151,12 @@ Puis `venv/bin/python -m api`. Sans `VOIX_SPACE`, tout le reste fonctionne : la 
 | Route | Entrée | Sortie |
 |---|---|---|
 | `POST /api/v1/voix/texte` | `{texte, code_departement?, annee?}` | réponse en français et en wolof, vue de la carte |
-| `POST /api/v1/voix/question?code_departement=&annee=` | l'audio brut (`audio/webm`…), 30 s au plus | transcription + réponse + voix wolof (wav en base64) |
+| `POST /api/v1/voix/question?code_departement=&annee=&parler=` | l'audio brut, 30 s au plus : `audio/wav` (ce qu'envoie le chatbot) ; autres formats avec le Space seulement | transcription + réponse (+ voix wolof en base64 si `parler=true` et Space) |
 
 `code_departement` et `annee` sont ceux affichés à l'écran : ils servent si la question ne les cite pas.
 
 ## Vie privée
-L'audio est transcrit puis oublié : ni l'API ni le Space ne le conservent. La reconnaissance vocale du navigateur (français) passe par le service de l'éditeur du navigateur (Google pour Chrome).
+L'audio est transcrit puis oublié : ni l'API, ni le service « voix », ni le Space ne le conservent. La reconnaissance vocale du navigateur (français) passe par le service de l'éditeur du navigateur (Google pour Chrome).
 
 ## Limites
 - M-Kiriku-ASR se trompe sur environ un mot sur six en wolof (WER 16 %, chiffre de la fiche du modèle). La compréhension par mots-clés résiste à ces erreurs, mais une phrase très mal transcrite peut être mal comprise : la transcription s'affiche toujours, pour que l'utilisateur voie ce qui a été entendu.
@@ -164,7 +164,7 @@ L'audio est transcrit puis oublié : ni l'API ni le Space ne le conservent. La r
 - Premier appel après une période d'inactivité : le Space se réveille (jusqu'à une minute).
 
 ## Crédits
-M-Kiriku-ASR : AI Hub Senegal (Apache 2.0). Adia TTS : CONCREE (Apache 2.0).
+wav2vec2 wolof (kallaama + fleurs) : asr-africa (Apache 2.0). M-Kiriku-ASR : AI Hub Senegal (Apache 2.0). Adia TTS : CONCREE (Apache 2.0).
 
 ## Guides vocaux : lecture phrase par phrase (français et wolof)
 

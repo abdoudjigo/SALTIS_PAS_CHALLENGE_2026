@@ -53,6 +53,7 @@ def test_texte_semis_alerte_besoins(client_ml):  # noqa: F811
 def test_question_audio_avec_space_simule(client_ml, monkeypatch):  # noqa: F811
     from api.voix.espace import EspaceVoix
 
+    monkeypatch.setattr(client_ml.app.state.parametres, "voix_space", "compte/voix")
     monkeypatch.setattr(EspaceVoix, "transcrire", lambda self, audio, suffixe: "nawet bi ci Kolda atum 2024")
     monkeypatch.setattr(EspaceVoix, "parler", lambda self, texte: base64.b64encode(b"RIFF").decode())
     d = client_ml.post(f"{V1}/question", content=b"\x00audio", headers={"Content-Type": "audio/webm"}).json()
@@ -60,10 +61,91 @@ def test_question_audio_avec_space_simule(client_ml, monkeypatch):  # noqa: F811
     assert d["departement"] == "Kolda" and d["audio_wo_base64"] == base64.b64encode(b"RIFF").decode()
 
 
-def test_question_audio_sans_space(client_ml):  # noqa: F811
+def _wav(secondes: float = 1.0, frequence: int = 16000) -> bytes:
+    import io
+    import math
+    import struct
+    import wave
+
+    tampon = io.BytesIO()
+    with wave.open(tampon, "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(frequence)
+        n = int(secondes * frequence)
+        f.writeframes(b"".join(struct.pack("<h", int(8000 * math.sin(i / 10))) for i in range(n)))
+    return tampon.getvalue()
+
+
+def test_question_audio_sans_space(client_ml, monkeypatch):  # noqa: F811
+    """Sans Space : seul le WAV du chatbot est accepté ; sans modèle local ni service « voix », 503 clair."""
+    from api.voix import asr_local
+
     r = client_ml.post(f"{V1}/question", content=b"\x00audio", headers={"Content-Type": "audio/webm"})
-    assert r.status_code == 503 and r.json()["erreur"]["code"] == "voix_indisponible"
+    assert r.status_code == 422 and r.json()["erreur"]["code"] == "audio_illisible"
     assert client_ml.post(f"{V1}/question", content=b"").status_code == 422
+    monkeypatch.setattr(asr_local, "disponible", lambda: False)
+    r = client_ml.post(f"{V1}/question", content=_wav(), headers={"Content-Type": "audio/wav"})
+    assert r.status_code == 503 and r.json()["erreur"]["code"] == "voix_indisponible"
+
+
+def test_question_audio_wolof_local(client_ml, monkeypatch):  # noqa: F811
+    """Micro wolof du chatbot, sans Space : l'API transcrit elle-même (asr_local) et répond, sans voix (parler=false)."""
+    from api.voix import asr_local
+
+    monkeypatch.setattr(asr_local, "disponible", lambda: True)
+    recu = []
+    monkeypatch.setattr(asr_local, "transcrire", lambda octets: recu.append(octets) or "nawet bi ci Kolda atum 2024")
+    wav = _wav()
+    d = client_ml.post(f"{V1}/question", params={"parler": "false"}, content=wav, headers={"Content-Type": "audio/wav"}).json()
+    assert recu == [wav] and d["transcription"] == "nawet bi ci Kolda atum 2024"
+    assert d["departement"] == "Kolda" and d["audio_wo_base64"] is None
+
+    def illisible(octets):
+        raise asr_local.AudioIllisible("Audio illisible : WAV attendu.")
+
+    monkeypatch.setattr(asr_local, "transcrire", illisible)
+    r = client_ml.post(f"{V1}/question", content=b"RIFFxx", headers={"Content-Type": "audio/wav"})
+    assert r.status_code == 422 and r.json()["erreur"]["code"] == "audio_illisible"
+    monkeypatch.setattr(asr_local, "transcrire", lambda octets: "")
+    r = client_ml.post(f"{V1}/question", content=wav, headers={"Content-Type": "audio/wav"})
+    assert r.status_code == 422 and r.json()["erreur"]["code"] == "rien_entendu"
+
+
+def test_question_audio_par_le_service_voix(client_ml, monkeypatch):  # noqa: F811
+    """En production, la transcription se fait dans le conteneur « voix » (comme la synthèse, audit ARC-02)."""
+    import io
+    import json
+    import urllib.request
+
+    monkeypatch.setattr(client_ml.app.state.parametres, "voix_service_url", "http://voix:8090")
+    appels = []
+
+    def urlopen(requete, timeout):
+        appels.append((requete.full_url, requete.data, requete.headers.get("Content-type")))
+        return io.BytesIO(json.dumps({"texte": "nawet bi ci Kolda"}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    wav = _wav()
+    d = client_ml.post(f"{V1}/question", params={"parler": "false"}, content=wav, headers={"Content-Type": "audio/wav"}).json()
+    assert appels == [("http://voix:8090/transcrire_wo", wav, "audio/wav")] and d["departement"] == "Kolda"
+
+    def injoignable(requete, timeout):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(urllib.request, "urlopen", injoignable)
+    r = client_ml.post(f"{V1}/question", content=wav, headers={"Content-Type": "audio/wav"})
+    assert r.status_code == 503 and r.json()["erreur"]["code"] == "voix_indisponible"
+
+
+def test_lire_wav_reechantillonne():
+    from api.voix import asr_local
+
+    assert len(asr_local.lire_wav(_wav(1.0, 48000))) == 16000
+    import pytest
+
+    with pytest.raises(asr_local.AudioIllisible):
+        asr_local.lire_wav(b"pas un wav")
 
 
 def test_nom_compose_abrege():
@@ -165,15 +247,18 @@ def test_service_voix(monkeypatch):
     """Le conteneur « voix » : une synthèse à la fois, texte borné, 503 en cas d'échec."""
     from fastapi.testclient import TestClient
 
-    from api.voix import service, tts_local
+    from api.voix import asr_local, service, tts_local
 
     monkeypatch.setenv("VOIX_PRECHARGER", "0")
     monkeypatch.setattr(tts_local, "parler", lambda texte: "UklGRg==" if texte != "échec" else None)
     with TestClient(service.app) as c:
-        assert c.get("/sante").json() == {"pret": False, "pret_fr": False}
+        assert c.get("/sante").json() == {"pret": False, "pret_fr": False, "pret_asr": False}
         assert c.post("/dire", json={"texte": "Nawet bi."}).json() == {"audio_wo_base64": "UklGRg=="}
         assert c.post("/dire", json={"texte": "échec"}).status_code == 503
         assert c.post("/dire", json={"texte": "x" * 701}).status_code == 422
+        monkeypatch.setattr(asr_local, "transcrire", lambda octets: "nawet bi")
+        assert c.post("/transcrire_wo", content=b"RIFF", headers={"Content-Type": "audio/wav"}).json() == {"texte": "nawet bi"}
+        assert c.post("/transcrire_wo", content=b"").status_code == 422
 
 
 def test_parler_par_le_space_puis_repli_sur_le_service(client_ml, monkeypatch, tmp_path):  # noqa: F811

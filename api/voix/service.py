@@ -7,7 +7,8 @@ plafonnée (cpus, mem_limit dans docker-compose.prod.yml) et l'API ne fait plus 
     POST /dire   {texte}  → {audio_wo_base64}   une synthèse à la fois ; 503 si occupée ou impossible
     GET  /dire_wo?texte=  → audio/wav           une phrase wolof (SpeechT5), lecture phrase par phrase
     GET  /dire_fr?texte=  → audio/wav           voix française Piper (deux synthèses à la fois, rapides)
-    GET  /sante           → {pret, pret_fr}     modèles déjà chargés en mémoire
+    POST /transcrire_wo   corps = WAV         → {texte}   question parlée en wolof (micro du chatbot), une à la fois
+    GET  /sante           → {pret, pret_fr, pret_asr}     modèles déjà chargés en mémoire
 
 Lancement : uvicorn api.voix.service:app --port 8090 (image deploy/Dockerfile.voix).
 Le service n'est joignable que par l'API, sur un réseau interne : il n'a pas de port publié.
@@ -18,10 +19,10 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
-from . import tts_fr, tts_local
+from . import asr_local, tts_fr, tts_local
 
 TEXTE_MAX = 700  # même plafond que POST /voix/parler (api/routes/voix.py)
 # Les messages de tts_local (modèle chargé, chargement impossible) dans les journaux du conteneur
@@ -34,6 +35,7 @@ async def _cycle(_app: FastAPI):
     if os.environ.get("VOIX_PRECHARGER", "1") == "1":
         asyncio.get_running_loop().run_in_executor(None, tts_local.precharger)
         asyncio.get_running_loop().run_in_executor(None, tts_fr.precharger)
+        asyncio.get_running_loop().run_in_executor(None, asr_local.precharger)
     yield
 
 
@@ -51,7 +53,29 @@ class Texte(BaseModel):
 
 @app.get("/sante")
 def sante() -> dict:
-    return {"pret": tts_local.charge(), "pret_fr": tts_fr.charge()}
+    return {"pret": tts_local.charge(), "pret_fr": tts_fr.charge(), "pret_asr": asr_local.charge()}
+
+
+AUDIO_MAX = 5 * 1024 * 1024  # même plafond que l'API (TAILLE_MAX_AUDIO) : 30 s de WAV 16 kHz en font ~1 Mo
+_transcription = asyncio.Semaphore(1)
+
+
+@app.post("/transcrire_wo")
+async def transcrire_wo(request: Request) -> dict:
+    audio = await request.body()
+    if not audio or len(audio) > AUDIO_MAX:
+        raise HTTPException(422, "audio")
+    if _transcription.locked():
+        raise HTTPException(503, "occupee")
+    async with _transcription:
+        try:
+            texte = await asyncio.to_thread(asr_local.transcrire, audio)
+        except asr_local.AudioIllisible:
+            raise HTTPException(422, "audio") from None
+        except Exception:
+            logging.getLogger(__name__).exception("Transcription wolof impossible")
+            raise HTTPException(503, "echec") from None
+    return {"texte": texte}
 
 
 TEXTE_WO_PHRASE_MAX = 200
