@@ -16,13 +16,14 @@ import wave
 log = logging.getLogger(__name__)
 
 MODELE = os.environ.get("VOIX_WO_ASR_MODELE", "asr-africa/wav2vec2-xls-r-wolof-kallaama-fleurs-51-hours")
-FILS = int(os.environ.get("VOIX_WO_FILS", "2"))
+# Fils de calcul : ceux du conteneur (OMP_NUM_THREADS=1 dans deploy/Dockerfile.voix) sauf réglage explicite
+FILS = int(os.environ.get("VOIX_ASR_FILS", "0")) or None
 FREQUENCE = 16000
 DUREE_MAX_S = 30
 
 _modeles = None
 _verrou = threading.Lock()
-_calcul = threading.Lock()  # une transcription à la fois : les deux cœurs servent la même question
+_calcul = threading.Lock()  # une transcription à la fois : les cœurs du conteneur servent la même question
 
 
 class AudioIllisible(ValueError):
@@ -56,7 +57,8 @@ def _charger():
             import torch
             from transformers import AutoModelForCTC, AutoProcessor
 
-            torch.set_num_threads(FILS)
+            if FILS:
+                torch.set_num_threads(FILS)
             processeur = AutoProcessor.from_pretrained(MODELE)
             modele = AutoModelForCTC.from_pretrained(MODELE).eval()
             _modeles = (processeur, modele)

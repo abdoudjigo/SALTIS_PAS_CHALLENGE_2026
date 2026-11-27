@@ -39,7 +39,7 @@ Le département et l'année de l'écran servent quand la question n'en cite pas 
   passer une phrase : compléter ces listes.
 - Recherche par mots : une question vague peut tomber sur un passage voisin. La source est toujours affichée.
 - Micro wolof : modèle `asr-africa/wav2vec2-xls-r-wolof-kallaama-fleurs-51-hours` (Apache 2.0, ~1,3 Go, processeur),
-  dans le service « voix » en production (`/transcrire_wo`), dans l'API en développement. ~3 à 5 s par question sur 2 cœurs.
+  dans le service « voix » en production (`/transcrire_wo`), dans l'API en développement. ~3 à 5 s par question sur 2 cœurs, ~6 à 8 s sur le cœur unique du service « voix » en production.
   Erreurs fréquentes sur les noms de lieux (« Kaolack » → « kaolaat ») : le département affiché à l'écran sert alors.
   Banc d'essai du 27/11/2026 : Whisper-small wolof aussi juste mais ~25 s par question ; HuBERT (AGPL) et MMS-300m
   (non commercial) écartés pour leur licence ; Kiriku (Whisper large) trop lourd sans carte graphique.

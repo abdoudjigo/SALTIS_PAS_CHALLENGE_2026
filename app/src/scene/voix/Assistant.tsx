@@ -44,12 +44,16 @@ const LIBELLES = {
   fr: { titre: 'Poser une question', placeholder: 'Votre question…', bonjour: 'Bonjour ! Posez votre question sur la saison, les semis, les cultures, les engrais ou les derniers bulletins de l’ANACIM.', envoyer: 'Envoyer', micro: 'Dicter la question', ecouter: 'Écouter la réponse', francais: 'En français',
     jecoute: 'Je vous écoute…', pasEntendu: 'Je n’ai pas bien entendu. Parlez près du micro, ou écrivez la question.',
     microIndisponible: 'Le micro ne marche pas pour le moment. Écrivez la question.',
-    microRefuse: 'Le micro n’est pas autorisé. Autorisez-le dans le navigateur, ou écrivez la question.' },
+    microRefuse: 'Le micro n’est pas autorisé. Autorisez-le dans le navigateur, ou écrivez la question.',
+    voixOccupee: 'La voix wolof est très demandée : réessayez dans un instant. Réponse lue en français.',
+    voixMuette: 'La voix wolof ne répond pas pour le moment. Réponse lue en français.' },
   wo: { titre: 'Laaj ma', placeholder: 'Sa laaj…', bonjour: 'Salaam aleekum ! Laajal ma ci nawet bi, ji gi, tool yi, ndawal yi walla xibaar yu mujj yi ANACIM génne.', envoyer: 'Yónnee', micro: 'Wax sa laaj', ecouter: 'Déglu tontu bi', francais: 'Ci farañse',
     // Wolof À FAIRE RELIRE par un locuteur
     jecoute: 'Maa ngi lay déglu… Bësal ko ngir yónnee.', pasEntendu: 'Dégguma la bu baax. Wax ci wetu micro bi, walla bindal sa laaj.',
     microIndisponible: 'Micro bi doxul léegi. Bindal sa laaj.',
-    microRefuse: 'Micro bi amul ndigal. May ko ci navigateur bi, walla bindal sa laaj.' },
+    microRefuse: 'Micro bi amul ndigal. May ko ci navigateur bi, walla bindal sa laaj.',
+    voixOccupee: 'Baat wolof bi dafa xat léegi, jéemaatal ci kanam. Dinañu ko jàng ci farañse.',
+    voixMuette: 'Baat wolof bi tontuwul léegi. Dinañu ko jàng ci farañse.' },
 } as const
 
 const lireStock = (cle: string) => {
@@ -129,6 +133,7 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
   const [ecoute, setEcoute] = useState(false)
   const [lectureWo, setLectureWo] = useState<number | null>(null) // message dont la voix wolof se prépare
   const [enLecture, setEnLecture] = useState<number | null>(null)
+  const [voixEnPanne, setVoixEnPanne] = useState<{ id: number; texte: string } | null>(null) // pourquoi le wolof n'a pas été dit
   const qui = useQuiParle()
   const fil = useRef<HTMLDivElement>(null)
   const champ = useRef<HTMLInputElement>(null)
@@ -166,12 +171,15 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
     if (!m.reponse) return
     if (enLecture === m.id && qui) return arreter()
     setEnLecture(m.id)
+    setVoixEnPanne(null)
     if (l === 'wo') {
       try {
         await lireWolof(m.reponse.texte_wo, () => setLectureWo(m.id))
         return
-      } catch {
-        // voix wolof indisponible (API ou service « voix ») : la réponse est dite en français
+      } catch (e) {
+        // voix wolof indisponible (API ou service « voix ») : on dit pourquoi, et la réponse est dite en français
+        const code = e instanceof ApiError ? (e.details as { erreur?: { code?: string } } | null)?.erreur?.code : undefined
+        setVoixEnPanne({ id: m.id, texte: code === 'voix_occupee' || (e instanceof ApiError && e.status === 429) ? LIBELLES.wo.voixOccupee : LIBELLES.wo.voixMuette })
       } finally {
         setLectureWo(null)
       }
@@ -309,7 +317,7 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
               <p key={m.id} className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-pluie-500/80 px-3 py-2 text-sm leading-relaxed">{m.texte}</p>
             ) : (
               <MessageAssistant key={m.id} message={m} langue={langue} ecrans={contexte.ecrans} parle={enLecture === m.id && qui !== null}
-                prepare={lectureWo === m.id} onEcouter={() => void ecouter(m, langue)} onVoir={onVoir} libelleEcouter={t.ecouter} libelleFrancais={t.francais} />
+                prepare={lectureWo === m.id} panne={voixEnPanne?.id === m.id ? voixEnPanne.texte : null} onEcouter={() => void ecouter(m, langue)} onVoir={onVoir} libelleEcouter={t.ecouter} libelleFrancais={t.francais} />
             ))}
             {attente && <p className="flex items-center gap-2 text-xs text-white/60"><Loader2 className="size-3.5 animate-spin" aria-hidden />Je cherche dans les données…</p>}
           </div>
@@ -334,12 +342,14 @@ export function Assistant({ profil, ouvert, onFermer, contexte, onVoir, classNam
   )
 }
 
-function MessageAssistant({ message: m, langue, ecrans, parle, prepare, onEcouter, onVoir, libelleEcouter, libelleFrancais }: {
+function MessageAssistant({ message: m, langue, ecrans, parle, prepare, panne, onEcouter, onVoir, libelleEcouter, libelleFrancais }: {
   message: Message
   langue: Langue
   ecrans: string[]
   parle: boolean
   prepare: boolean
+  /** la voix wolof n'a pas pu dire la réponse : pourquoi */
+  panne: string | null
   onEcouter: () => void
   onVoir: (vue: ReponseAssistant['vue']) => void
   libelleEcouter: string
@@ -375,6 +385,7 @@ function MessageAssistant({ message: m, langue, ecrans, parle, prepare, onEcoute
           {r.redige_par_ia && <span title="Texte rédigé par un modèle de langue à partir des extraits cités">· rédigé par IA</span>}
         </div>
       )}
+      {panne && <p role="status" className="pl-1 text-2xs text-soleil-100">{panne}</p>}
       {r?.sources.length ? (
         <p className="pl-1 text-2xs text-white/50">Source : {r.sources[0].titre}{r.sources.length > 1 ? ` (et ${r.sources.length - 1} autre${r.sources.length > 2 ? 's' : ''})` : ''}</p>
       ) : null}
