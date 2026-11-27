@@ -6,7 +6,7 @@ import { Loader2, Pointer, Square } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { EXPLICATION_AGRI } from './guideAgri'
 import { EXPLICATION_ONG, INTRO_ONG } from './guideOng'
-import { arreter, decouper, lectureDisponible, lire, lireWolof, phrasesWo, pourLOreille, prechargerFr, prechargerWo, useQuiParle } from './lecture'
+import { arreter, decouper, lectureDisponible, lire, lireWolof, pourLOreille, prechargerFr, useQuiParle } from './lecture'
 import { Fille, Garcon } from './Mascottes'
 import { MESSAGES } from './voiceMessages'
 
@@ -60,19 +60,15 @@ function Guide({ langue, cleIntro, intro: texteIntro, explication, resume, actif
   const Tete = langue === 'fr' ? Garcon : Fille
   const libelle = parle ? `Arrêter ${nom}` : attente ? `${nom} : la voix se prépare` : !intro ? `${nom} : écouter l’introduction` : `${nom} : écouter « ${titre} »`
 
-  // Les deux premières phrases de ce qui sera dit au prochain appui sont demandées d'avance au serveur, pour que la
-  // voix parte dès l'appui. Wolof : toute l'introduction (fixe, calculée une fois pour tous les visiteurs) ; les
-  // résumés changent avec chaque choix, les calculer d'avance occuperait le serveur pour rien.
-  const prochain = langue === 'fr'
-    ? (intro ? aDire : texteIntro).slice(0, 2).map(pourLOreille).flatMap(decouper).slice(0, 2)
-    : intro ? [] : phrasesWo(texteIntro.join(' '))
+  // Français : les deux premières phrases de ce qui sera dit au prochain appui sont demandées d'avance au serveur,
+  // pour que la voix parte dès l'appui (et le modèle est chargé avant)
+  const prochain = langue === 'fr' ? (intro ? aDire : texteIntro).slice(0, 2).map(pourLOreille).flatMap(decouper).slice(0, 2) : []
   const clePrechargement = prochain.join('|')
   useEffect(() => {
     if (!clePrechargement) return
-    const phrases = clePrechargement.split('|')
-    const minuteur = window.setTimeout(() => (langue === 'fr' ? phrases.forEach(prechargerFr) : prechargerWo(phrases)), 800)
+    const minuteur = window.setTimeout(() => clePrechargement.split('|').forEach(prechargerFr), 800)
     return () => clearTimeout(minuteur)
-  }, [clePrechargement, langue])
+  }, [clePrechargement])
 
   const appuyer = async () => {
     if (parle) {
