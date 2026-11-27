@@ -9,6 +9,7 @@
 import { useSyncExternalStore } from 'react'
 import { api } from '../../api'
 import { config } from '../../config'
+import { ApiError } from '../../api/client'
 import { suivre } from '../../lib/mesure'
 
 const LONGUEUR_MAX = 180 // au-delà, une phrase est recoupée aux virgules
@@ -61,101 +62,21 @@ export function decouper(texte: string): string[] {
   })
 }
 
-// ---- Voix du serveur, phrase par phrase : français (Piper) et wolof (SpeechT5 wolof) ----
-// La phrase suivante est demandée pendant que la première est dite ; une phrase déjà dite est gardée par le
-// navigateur (Cache-Control immutable) et par le serveur. Un seul élément audio, créé dans le clic : les navigateurs
-// mobiles (Safari, Chrome Android) le laissent ensuite enchaîner les phrases sans nouveau geste.
+// ---- Voix française : Piper sur le serveur (modèle neuronal, même voix sur tous les navigateurs) ----
+// Phrase par phrase : la phrase suivante est demandée pendant que la première est dite ; une phrase déjà dite est
+// gardée par le navigateur (Cache-Control immutable). Serveur muet ou trop lent : voix du navigateur, sans coupure.
 
 const DELAI_PREMIERE_PHRASE_MS = 6000
-const DELAI_PREMIERE_PHRASE_WO_MS = 45000 // wolof : le tout premier appel peut charger le modèle
-const PAUSE_SERVEUR_MS = 5 * 60_000 // français : après un échec, voix du navigateur pendant ce délai
+const PAUSE_SERVEUR_MS = 5 * 60_000 // après un échec, on ne réessaie le serveur qu'après ce délai
 let serveurMuetJusqua = 0
 let jeton = 0
 
 export const urlVoixFr = (phrase: string) => `${config.apiUrl}/api/v1/voix/francais?texte=${encodeURIComponent(phrase)}`
-export const urlVoixWo = (phrase: string) => `${config.apiUrl}/api/v1/voix/wolof?texte=${encodeURIComponent(phrase)}`
 
-const precharge = (url: string) => void fetch(url, { mode: 'no-cors' }).catch(() => undefined)
-
-/** Demande les adresses l'une après l'autre, dans l'ordre : le serveur calcule une phrase à la fois, et des demandes
- *  simultanées le faisaient calculer dans le désordre (la première phrase pouvait passer en dernier). */
-async function prechargerEnSuite(urls: string[], encore: () => boolean = () => true) {
-  for (const url of urls) {
-    if (!encore()) return
-    await fetch(url, { mode: 'no-cors' }).catch(() => undefined)
-  }
-}
-
-/** Demande d'avance une phrase française au serveur (elle sera dite sans attente). */
+/** Demande d'avance une phrase au serveur (elle sera dite sans attente). */
 export function prechargerFr(phrase: string) {
   if (Date.now() < serveurMuetJusqua || !phrase) return
-  precharge(urlVoixFr(phrase))
-}
-/** Demande d'avance des phrases wolof (découpées par `phrasesWo`), dans l'ordre. */
-export const prechargerWo = (phrases: string[]) => void prechargerEnSuite(phrases.filter(Boolean).map(urlVoixWo))
-
-/** Le wolof écrit pour la voix : sans mise en forme ni symbole, en phrases de 200 caractères au plus. */
-export function phrasesWo(texte: string): string[] {
-  const propre = texte
-    .replace(/\*\*/g, '').replace(/[«»"]/g, '').replace(/\s?[·•|]\s?/g, ', ')
-    .replace(/\s*\(([^)]+)\)/g, ', $1,').replace(/(\d)\s?%/g, '$1 ci téeméer')
-    .replace(/,\s*([.!?;:])/g, '$1').replace(/\s{2,}/g, ' ').trim()
-  return decouper(propre)
-}
-
-interface Lecture {
-  morceaux: string[]
-  url: (phrase: string) => string
-  parleur: Parleur
-  delai: number
-  /** le serveur n'a pas pu dire la phrase `i` (ni les suivantes) */
-  repli: (i: number) => void
-  /** la première phrase est dite */
-  demarre?: () => void
-  /** demander toutes les phrases dès le départ (wolof : le serveur les calcule d'affilée, à peu près au rythme de la
-   *  parole ; attendre la fin de chaque phrase pour demander la suivante laissait des blancs) */
-  toutDemander?: boolean
-}
-
-function lireServeur({ morceaux, url, parleur, delai, repli, demarre, toutDemander = false }: Lecture, t: number) {
-  const el = new Audio()
-  audio = el
-  let i = 0
-  let parti = false
-  const echec = () => {
-    if (t !== jeton) return
-    clearTimeout(minuteur)
-    el.onended = el.onerror = el.onplaying = null
-    el.pause()
-    if (audio === el) audio = null
-    repli(i)
-  }
-  const minuteur = window.setTimeout(() => !parti && echec(), delai)
-  const dire = () => {
-    el.src = url(morceaux[i])
-    if (!toutDemander && morceaux[i + 1]) precharge(url(morceaux[i + 1]))
-    void el.play().catch(() => t === jeton && echec())
-  }
-  el.onplaying = () => {
-    if (parti) return
-    parti = true
-    clearTimeout(minuteur)
-    demarre?.()
-    // La première phrase est arrivée : les suivantes sont demandées d'affilée, dans l'ordre
-    if (toutDemander) void prechargerEnSuite(morceaux.slice(1).map(url), () => t === jeton)
-  }
-  el.onended = () => {
-    if (t !== jeton) return
-    i += 1
-    if (i < morceaux.length) dire()
-    else {
-      audio = null
-      notifier(null)
-    }
-  }
-  el.onerror = echec
-  notifier(parleur)
-  dire()
+  void fetch(urlVoixFr(phrase), { mode: 'no-cors' }).catch(() => undefined)
 }
 
 function lireNavigateur(morceaux: string[], t: number) {
@@ -172,25 +93,50 @@ function lireNavigateur(morceaux: string[], t: number) {
   })
 }
 
-/** Lit les phrases françaises données (déjà écrites pour l'oreille), après avoir arrêté toute lecture en cours.
- *  Serveur muet ou trop lent : la voix du navigateur prend le relais, sans coupure. */
+/** Lit les phrases données (déjà écrites pour l'oreille), après avoir arrêté toute lecture en cours. */
 export function lire(phrases: string[]) {
   arreter() // une seule voix : coupe aussi le wolof en cours, d'où qu'il vienne
   const morceaux = phrases.flatMap(decouper)
   if (!morceaux.length) return notifier(null)
   const t = ++jeton
   suivre('voix_lue', { langue: 'fr', resultat: 'ok' })
-  if (Date.now() < serveurMuetJusqua) {
-    notifier('fr')
-    return lireNavigateur(morceaux, t)
+  notifier('fr')
+  if (Date.now() < serveurMuetJusqua) return lireNavigateur(morceaux, t)
+
+  // Un seul élément audio, créé dans le clic : les navigateurs mobiles le laissent ensuite enchaîner les phrases
+  const el = new Audio()
+  audio = el
+  let i = 0
+  let demarre = false
+  const repli = () => {
+    if (t !== jeton) return
+    serveurMuetJusqua = Date.now() + PAUSE_SERVEUR_MS
+    el.onended = el.onerror = el.onplaying = null
+    el.pause()
+    if (audio === el) audio = null
+    lireNavigateur(morceaux.slice(i), t)
   }
-  lireServeur({
-    morceaux, url: urlVoixFr, parleur: 'fr', delai: DELAI_PREMIERE_PHRASE_MS,
-    repli: (i) => {
-      serveurMuetJusqua = Date.now() + PAUSE_SERVEUR_MS
-      lireNavigateur(morceaux.slice(i), t)
-    },
-  }, t)
+  const minuteur = window.setTimeout(() => !demarre && repli(), DELAI_PREMIERE_PHRASE_MS)
+  const dire = () => {
+    el.src = urlVoixFr(morceaux[i])
+    if (morceaux[i + 1]) prechargerFr(morceaux[i + 1])
+    void el.play().catch(() => t === jeton && repli())
+  }
+  el.onplaying = () => {
+    demarre = true
+    clearTimeout(minuteur)
+  }
+  el.onended = () => {
+    if (t !== jeton) return
+    i += 1
+    if (i < morceaux.length) dire()
+    else {
+      audio = null
+      notifier(null)
+    }
+  }
+  el.onerror = () => repli()
+  dire()
 }
 
 /** Adresse jouable d'une voix en base64 : mp3 (Space, Adia TTS) ou wav (service « voix » du serveur), reconnus à leurs
@@ -226,29 +172,17 @@ export async function syntheseWolof(texte: string): Promise<string> {
 }
 export const wolofEnCache = (texte: string) => cacheWolof.has(texte)
 
-/** Lit un texte en wolof, phrase par phrase, par le serveur. `preparer` : appelé tant que la première phrase se
- *  prépare. La promesse se résout quand la voix part, et est rejetée si le serveur ne répond pas. */
-export function lireWolof(texte: string, preparer?: () => void): Promise<void> {
-  arreter()
-  const morceaux = phrasesWo(texte)
-  if (!morceaux.length) return Promise.resolve()
-  const t = ++jeton
-  preparer?.()
-  return new Promise((fini, echec) => {
-    lireServeur({
-      morceaux, url: urlVoixWo, parleur: 'wo', delai: DELAI_PREMIERE_PHRASE_WO_MS, toutDemander: true,
-      demarre: () => {
-        suivre('voix_lue', { langue: 'wo', resultat: 'ok' })
-        fini()
-      },
-      repli: (i) => {
-        notifier(null)
-        suivre('voix_lue', { langue: 'wo', resultat: 'erreur' })
-        // Une phrase du milieu manquée : on s'arrête là, le début a été dit
-        if (i === 0) echec(new Error('La voix wolof ne répond pas pour le moment.'))
-      },
-    }, t)
-  })
+/** Lit un texte en wolof : depuis le cache, sinon par le Space (`preparer` est appelé avant l'attente). Rejette si le Space ne répond pas. */
+export async function lireWolof(texte: string, preparer?: () => void) {
+  if (!wolofEnCache(texte)) preparer?.()
+  try {
+    const audioWo = await syntheseWolof(texte)
+    suivre('voix_lue', { langue: 'wo', resultat: 'ok' })
+    lireAudio(audioWo)
+  } catch (e) {
+    suivre('voix_lue', { langue: 'wo', resultat: e instanceof ApiError && e.status === 503 ? 'occupee' : 'erreur' })
+    throw e
+  }
 }
 
 // Les autres voix de la plateforme (message d'accueil, voir accueil.ts) s'arrêtent aussi quand une lecture démarre
