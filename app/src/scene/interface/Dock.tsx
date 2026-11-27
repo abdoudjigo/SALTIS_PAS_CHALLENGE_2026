@@ -2,12 +2,14 @@
 // les icônes grossissent sous le pointeur et chacune ouvre une bulle. Téléphone : une rangée en haut.
 // L'agriculteur lit des questions (« Que semer ? ») ; la fonctionnalité ouverte y ajoute sa réponse en une ligne.
 import clsx from 'clsx'
+import { ChartColumn } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import type { Fonctionnalite } from '../cadre'
 
 const PORTEE_PX = 120
 
-export function Dock({ fonctionnalites, actif, onChoisir, reponse, guide, guideCompact, avantDock }: { fonctionnalites: Fonctionnalite[]; actif: string; onChoisir: (id: string) => void; reponse?: string; /** en tête du dock (ONG) : le guide vocal */ guide?: ReactNode; guideCompact?: ReactNode; /** au-dessus du dock (agriculteur) : les deux voix */ avantDock?: ReactNode }) {
+export function Dock({ fonctionnalites, actif, onChoisir, reponse, guide, guideCompact, avantDock, lienDonnees }: { /** premier lien du menu : la page « 45 ans de données », ouverte sur la zone et la culture choisies */ lienDonnees?: string; fonctionnalites: Fonctionnalite[]; actif: string; onChoisir: (id: string) => void; reponse?: string; /** en tête du dock (ONG) : le guide vocal */ guide?: ReactNode; guideCompact?: ReactNode; /** au-dessus du dock (agriculteur) : les deux voix */ avantDock?: ReactNode }) {
   const boutons = useRef(new Map<string, HTMLButtonElement>())
   const intitule = (f: Fonctionnalite) => f.question ?? f.titre
   const reponseDe = (f: Fonctionnalite) => (f.id === actif && reponse ? reponse : null)
@@ -44,6 +46,18 @@ export function Dock({ fonctionnalites, actif, onChoisir, reponse, guide, guideC
           onMouseLeave={() => grossir(null)}
         >
           {guide}
+          {lienDonnees && (
+            <li className="dock-item relative flex items-center" style={{ animationDelay: '0.19s' }}>
+              <Link to={lienDonnees} aria-label="45 ans de données : la pluie et les récoltes depuis 1981"
+                className="dock-bouton grid size-14 place-items-center rounded-xl border border-white/10 bg-white/[0.07] text-white hover:bg-white/[0.16]">
+                <ChartColumn className="size-6" aria-hidden />
+              </Link>
+              <span className="dock-bulle verre-scene absolute left-[calc(100%+1.25rem)] w-56 rounded-lg px-3.5 py-2.5">
+                <span className="block text-sm font-medium text-white">45 ans de données</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-white/75">La pluie et les récoltes du Sénégal depuis 1981.</span>
+              </span>
+            </li>
+          )}
           {fonctionnalites.map((f, i) => (
             <li key={f.id} className="dock-item relative flex items-center" style={{ animationDelay: `${0.25 + i * 0.06}s` }}>
               <button
@@ -72,6 +86,11 @@ export function Dock({ fonctionnalites, actif, onChoisir, reponse, guide, guideC
       {/* Téléphone */}
       <nav aria-label="Fonctionnalités" className="absolute inset-x-0 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.5rem)] z-30 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] md:hidden">
         {guideCompact}
+        {lienDonnees && (
+          <Link to={lienDonnees} className="verre-scene inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium text-white">
+            <ChartColumn className="size-4" aria-hidden />45 ans de données
+          </Link>
+        )}
         {fonctionnalites.map((f) => (
           <button key={f.id} type="button" onClick={() => onChoisir(f.id)} aria-current={f.id === actif ? 'true' : undefined} aria-label={etiquette(f)}
             className={clsx('verre-scene inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3.5 text-sm font-medium transition', f.id === actif ? 'border-soleil-500! bg-soleil-500! text-encre-nuit' : 'text-white')}>
