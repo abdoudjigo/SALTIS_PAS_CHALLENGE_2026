@@ -159,13 +159,13 @@ def test_etat_du_cache_reserve_a_l_administration(client):
     assert client.get(f"{V1}/systeme/sante").status_code == 200  # la santé reste publique (supervision)
 
 
-def test_questions_a_la_voix_coupees_par_defaut():
-    """Audit BE-02 : sans client, /voix/texte et /voix/question sont fermées (réglage VOIX_QUESTIONS)."""
+def test_questions_a_la_voix_ouvertes_par_defaut_et_coupables():
+    """Audit BE-02 : ouvertes depuis que l'assistant de la scène s'en sert ; VOIX_QUESTIONS=false les ferme."""
     from api.config import Parametres
 
     from .conftest import parametres_test, service_test
 
-    assert Parametres(_env_file=None).voix_questions is False
+    assert Parametres(_env_file=None).voix_questions is True
     p = parametres_test(voix_questions=False)
     with TestClient(creer_app(p, service_test(p))) as c:
         r = c.post(f"{V1}/voix/texte", json={"texte": "Quand semer l'arachide ?"})

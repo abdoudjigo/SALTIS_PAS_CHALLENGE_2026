@@ -14,7 +14,7 @@ JETON = "jeton-de-test"
 
 def parametres_test(**autres) -> Parametres:
     valeurs = dict(api_admin_token=JETON, prechargement_au_demarrage=False, redis_url="redis://127.0.0.1:1/0", cache_ttl_version_s=0,
-                   voix_questions=True)  # les tests couvrent aussi les routes de questions, coupées par défaut en production
+                   voix_questions=True)  # les routes de questions (ouvertes par défaut, voir test_securite)
     valeurs.update(autres)
     return Parametres(_env_file=None, **valeurs)
 

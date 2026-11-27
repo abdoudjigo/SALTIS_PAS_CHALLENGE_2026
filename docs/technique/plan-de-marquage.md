@@ -25,6 +25,7 @@ Outil : **Umami**, auto-hébergé sur le VPS, sans cookie (`deploy/README.md`, s
 | `avis_erreur` | Échec de l'envoi | `code` : statut HTTP (0 = réseau) | L'envoi des avis fonctionne-t-il ? | `scene/ong/AvisOng.tsx` |
 | `carte_indisponible` | Pas de carte 3D (une fois par visite) | `raison` : `webgl_ou_erreur` | Quelle part des appareils n'a pas la carte ? | `pages/Scene.tsx` |
 | `hors_ligne` | Bandeau réseau affiché | `cause` : `reseau`, `serveur` | Les coupures sont-elles fréquentes ? | `scene/interface/EtatReseau.tsx` |
+| `assistant_question` | Question posée à l'assistant | `langue` (`fr`, `wo`), `sujet` (saison, semis, bulletin, libre…), `resultat` (`ok`, `erreur`), `ia` | L'assistant sert-il, et sur quels sujets ? | `scene/voix/Assistant.tsx` |
 
 Hors ligne, l'envoi d'un événement échoue lui-même : `hors_ligne` avec `cause: reseau` sous-compte les coupures réelles.
 
