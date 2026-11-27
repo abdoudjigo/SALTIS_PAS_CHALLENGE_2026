@@ -3,7 +3,6 @@ import { ArrowDown, ArrowRight, CalendarDays, CloudRain, CloudSun, Layers, Shiel
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 import { useCarte, useReferentiels, useTerritoires, useVulnerabilite } from '../hooks/donnees'
-import { Bandeau45 } from '../landing/Bandeau45'
 import { Entete, type Chapitre } from '../landing/Entete'
 import { PiedDePage } from '../landing/PiedDePage'
 import { Portes } from '../landing/Portes'
@@ -257,7 +256,6 @@ export default function Landing() {
           {/* Ordinateur : le bloc occupe toute la hauteur de la colonne gauche, en trois temps (marque, accueil, action) */}
           <div className="pointer-events-auto relative max-w-[35rem] lg:flex lg:max-w-[min(40rem,44vw)] lg:flex-1 lg:flex-col lg:justify-between lg:gap-12">
             <div className="vitrine-entree">
-              <Bandeau45 />
               <p className="flex items-center gap-3 text-xs font-semibold tracking-[0.18em] text-encre-douce uppercase">
                 <span className="h-px w-8 bg-encre-douce/50" aria-hidden />Aide à la décision agricole
               </p>
